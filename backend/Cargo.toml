@@ -2,6 +2,11 @@
 name = "plant-tracker-api"
 version = "0.1.0"
 edition = "2021"
+description = "A REST API for tracking plant care and growth metrics"
+license = "MIT"
+repository = "https://github.com/ThomasConrad/PlantTracker"
+keywords = ["plants", "api", "tracker", "gardening", "care"]
+categories = ["web-programming::http-server", "database"]
 
 [dependencies]
 # Web framework

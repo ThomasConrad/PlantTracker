@@ -15,7 +15,8 @@ pub struct AuthBackend {
 }
 
 impl AuthBackend {
-    pub fn new(db: DatabasePool) -> Self {
+    #[must_use]
+    pub const fn new(db: DatabasePool) -> Self {
         Self { db }
     }
 }
@@ -36,8 +37,7 @@ impl axum_login::AuthnBackend for AuthBackend {
                 let _ = db_users::update_user_login_time(&self.db, &user.id).await;
                 Ok(Some(user))
             }
-            Err(AppError::Authentication { .. }) => Ok(None),
-            Err(AppError::NotFound { .. }) => Ok(None),
+            Err(AppError::Authentication { .. } | AppError::NotFound { .. }) => Ok(None),
             Err(e) => Err(e),
         }
     }
@@ -73,11 +73,12 @@ pub struct Credentials {
 pub type AuthSession = axum_login::AuthSession<AuthBackend>;
 
 // Helper function to create session and auth layers
+#[must_use]
 pub fn create_auth_layers(
     pool: DatabasePool,
 ) -> (SessionManagerLayer<MemoryStore>, axum_login::AuthManagerLayer<AuthBackend, MemoryStore>) {
     let session_store = MemoryStore::default();
-    let session_layer = SessionManagerLayer::new(session_store.clone())
+    let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false) // Set to true in production with HTTPS
         .with_expiry(Expiry::OnInactivity(Duration::seconds(3600))); // 1 hour
 

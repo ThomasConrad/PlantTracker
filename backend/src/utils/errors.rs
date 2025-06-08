@@ -8,6 +8,7 @@ use thiserror::Error;
 use validator::ValidationErrors;
 
 #[derive(Error, Debug)]
+#[allow(dead_code)]
 pub enum AppError {
     #[error("Validation error: {0}")]
     Validation(#[from] ValidationErrors),
@@ -36,16 +37,16 @@ pub struct ErrorResponse {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_type, message, details) = match &self {
-            AppError::Validation(validation_errors) => {
+            Self::Validation(validation_errors) => {
                 let details = validation_errors
                     .field_errors()
                     .iter()
                     .map(|(field, errors)| {
                         let messages: Vec<String> = errors
                             .iter()
-                            .filter_map(|error| error.message.as_ref().map(|m| m.to_string()))
+                            .filter_map(|error| error.message.as_ref().map(std::string::ToString::to_string))
                             .collect();
-                        (field.to_string(), messages)
+                        ((*field).to_string(), messages)
                     })
                     .collect::<std::collections::HashMap<String, Vec<String>>>();
 
@@ -56,7 +57,7 @@ impl IntoResponse for AppError {
                     Some(serde_json::to_value(details).unwrap_or_default()),
                 )
             }
-            AppError::JsonRejection(rejection) => {
+            Self::JsonRejection(rejection) => {
                 tracing::error!("JSON rejection: {}", rejection);
                 (
                     StatusCode::BAD_REQUEST,
@@ -65,7 +66,7 @@ impl IntoResponse for AppError {
                     Some(serde_json::json!({ "details": rejection.to_string() })),
                 )
             }
-            AppError::Database(db_error) => {
+            Self::Database(db_error) => {
                 tracing::error!("Database error: {}", db_error);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -74,25 +75,25 @@ impl IntoResponse for AppError {
                     None,
                 )
             }
-            AppError::Authentication { message } => (
+            Self::Authentication { message } => (
                 StatusCode::UNAUTHORIZED,
                 "authentication_error",
                 message.as_str(),
                 None,
             ),
-            AppError::Authorization { message } => (
+            Self::Authorization { message } => (
                 StatusCode::FORBIDDEN,
                 "authorization_error",
                 message.as_str(),
                 None,
             ),
-            AppError::NotFound { resource } => (
+            Self::NotFound { resource } => (
                 StatusCode::NOT_FOUND,
                 "not_found",
                 resource.as_str(),
                 None,
             ),
-            AppError::Internal { message } => {
+            Self::Internal { message } => {
                 tracing::error!("Internal error: {}", message);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,

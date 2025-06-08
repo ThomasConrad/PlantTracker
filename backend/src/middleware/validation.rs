@@ -1,7 +1,6 @@
 use axum::{
     async_trait,
     extract::{FromRequest, Request},
-    response::Response,
     Json,
 };
 use serde::de::DeserializeOwned;
@@ -23,7 +22,7 @@ where
     async fn from_request(req: Request, state: &S) -> Result<Self> {
         let Json(value) = Json::<T>::from_request(req, state).await?;
         value.validate()?;
-        Ok(ValidatedJson(value))
+        Ok(Self(value))
     }
 }
 
@@ -32,7 +31,7 @@ mod tests {
     use super::*;
     use axum::{
         body::Body,
-        http::{self, Request, StatusCode},
+        http::{self, Request},
     };
     use serde::{Deserialize, Serialize};
     use validator::Validate;

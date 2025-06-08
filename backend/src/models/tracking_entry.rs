@@ -26,6 +26,7 @@ pub enum EntryType {
 }
 
 #[derive(Debug, Deserialize, Validate)]
+#[allow(dead_code)]
 pub struct CreateTrackingEntryRequest {
     pub entry_type: EntryType,
     pub timestamp: DateTime<Utc>,
@@ -36,6 +37,7 @@ pub struct CreateTrackingEntryRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct UpdateTrackingEntryRequest {
     pub timestamp: Option<DateTime<Utc>>,
     pub value: Option<serde_json::Value>,

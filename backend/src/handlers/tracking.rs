@@ -8,6 +8,8 @@ use axum::{
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+use crate::utils::errors::{AppError, Result};
+
 pub fn routes() -> Router {
     Router::new()
         .route(
@@ -20,7 +22,7 @@ pub fn routes() -> Router {
         )
 }
 
-async fn list_entries(Path(plant_id): Path<Uuid>) -> Result<Json<Value>, StatusCode> {
+async fn list_entries(Path(plant_id): Path<Uuid>) -> Result<Json<Value>> {
     // TODO: Implement actual tracking entry listing
     tracing::info!("List tracking entries request for plant: {}", plant_id);
 
@@ -33,7 +35,7 @@ async fn list_entries(Path(plant_id): Path<Uuid>) -> Result<Json<Value>, StatusC
     Ok(Json(response))
 }
 
-async fn create_entry(Path(plant_id): Path<Uuid>) -> Result<Json<Value>, StatusCode> {
+async fn create_entry(Path(plant_id): Path<Uuid>) -> Result<Json<Value>> {
     // TODO: Implement actual tracking entry creation
     tracing::info!("Create tracking entry request for plant: {}", plant_id);
 
@@ -55,7 +57,7 @@ async fn create_entry(Path(plant_id): Path<Uuid>) -> Result<Json<Value>, StatusC
 
 async fn get_entry(
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<Value>, StatusCode> {
+) -> Result<Json<Value>> {
     // TODO: Implement actual tracking entry retrieval
     tracing::info!(
         "Get tracking entry request for plant: {}, entry: {}",
@@ -81,7 +83,7 @@ async fn get_entry(
 
 async fn update_entry(
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<Value>, StatusCode> {
+) -> Result<Json<Value>> {
     // TODO: Implement actual tracking entry update
     tracing::info!(
         "Update tracking entry request for plant: {}, entry: {}",
@@ -107,7 +109,7 @@ async fn update_entry(
 
 async fn delete_entry(
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode> {
     // TODO: Implement actual tracking entry deletion
     tracing::info!(
         "Delete tracking entry request for plant: {}, entry: {}",

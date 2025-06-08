@@ -36,6 +36,7 @@ pub enum MetricDataType {
 }
 
 #[derive(Debug, Deserialize, Validate)]
+#[serde(rename_all = "camelCase")]
 pub struct CreatePlantRequest {
     #[validate(length(min = 1, max = 100))]
     pub name: String,

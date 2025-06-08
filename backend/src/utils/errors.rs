@@ -114,3 +114,182 @@ impl IntoResponse for AppError {
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::http::StatusCode;
+    use serde_json::Value;
+    use validator::{Validate, ValidationError, ValidationErrors};
+
+    #[derive(Validate)]
+    struct TestStruct {
+        #[validate(email)]
+        email: String,
+        #[validate(length(min = 8))]
+        password: String,
+    }
+
+    #[tokio::test]
+    async fn test_validation_error_response() {
+        let test_data = TestStruct {
+            email: "invalid-email".to_string(),
+            password: "short".to_string(),
+        };
+        
+        let validation_result = test_data.validate();
+        assert!(validation_result.is_err());
+        
+        let error = AppError::Validation(validation_result.unwrap_err());
+        let response = error.into_response();
+        
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["error"], "validation_error");
+        assert_eq!(json["message"], "Request validation failed");
+        assert!(json["details"].is_object());
+    }
+
+    #[tokio::test]
+    async fn test_json_rejection_error_response() {
+        // Create a simple JSON error using missing content type rejection
+        use axum::extract::rejection::JsonRejection;
+        
+        let json_error = JsonRejection::MissingJsonContentType(Default::default());
+        
+        let error = AppError::JsonRejection(json_error);
+        let response = error.into_response();
+        
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["error"], "json_error");
+        assert_eq!(json["message"], "Invalid JSON in request body");
+        assert!(json["details"].is_object());
+    }
+
+    #[tokio::test]
+    async fn test_database_error_response() {
+        let error = AppError::Database(sqlx::Error::RowNotFound);
+        let response = error.into_response();
+        
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["error"], "database_error");
+        assert_eq!(json["message"], "A database error occurred");
+        assert!(json["details"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_authentication_error_response() {
+        let error = AppError::Authentication { 
+            message: "Invalid credentials".to_string() 
+        };
+        let response = error.into_response();
+        
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["error"], "authentication_error");
+        assert_eq!(json["message"], "Invalid credentials");
+        assert!(json["details"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_authorization_error_response() {
+        let error = AppError::Authorization { 
+            message: "Insufficient permissions".to_string() 
+        };
+        let response = error.into_response();
+        
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["error"], "authorization_error");
+        assert_eq!(json["message"], "Insufficient permissions");
+        assert!(json["details"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_not_found_error_response() {
+        let error = AppError::NotFound { 
+            resource: "Plant with id 123".to_string() 
+        };
+        let response = error.into_response();
+        
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["error"], "not_found");
+        assert_eq!(json["message"], "Plant with id 123");
+        assert!(json["details"].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_internal_error_response() {
+        let error = AppError::Internal { 
+            message: "Something went wrong".to_string() 
+        };
+        let response = error.into_response();
+        
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        
+        assert_eq!(json["error"], "internal_error");
+        assert_eq!(json["message"], "An internal server error occurred");
+        assert!(json["details"].is_null());
+    }
+
+    #[test]
+    fn test_error_display() {
+        let error = AppError::Authentication { 
+            message: "Invalid token".to_string() 
+        };
+        assert_eq!(format!("{}", error), "Authentication error: Invalid token");
+
+        let error = AppError::NotFound { 
+            resource: "User".to_string() 
+        };
+        assert_eq!(format!("{}", error), "Not found: User");
+    }
+
+    #[test]
+    fn test_error_debug() {
+        let error = AppError::Internal { 
+            message: "Duplicate entry".to_string() 
+        };
+        let debug_output = format!("{:?}", error);
+        assert!(debug_output.contains("Internal"));
+        assert!(debug_output.contains("Duplicate entry"));
+    }
+
+    #[test]
+    fn test_error_from_conversions() {
+        // Test conversion from ValidationErrors
+        let mut validation_errors = ValidationErrors::new();
+        validation_errors.add("email", ValidationError::new("invalid"));
+        let error: AppError = validation_errors.into();
+        assert!(matches!(error, AppError::Validation(_)));
+
+        // Test conversion from sqlx::Error
+        let sqlx_error = sqlx::Error::RowNotFound;
+        let error: AppError = sqlx_error.into();
+        assert!(matches!(error, AppError::Database(_)));
+    }
+}

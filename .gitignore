@@ -27,3 +27,4 @@ backend/uploads/
 
 # OS
 Thumbs.db
+node_modules

@@ -13,7 +13,10 @@ use crate::models::{CreatePlantRequest, PlantResponse, PlantsResponse, UpdatePla
 pub fn routes() -> Router {
     Router::new()
         .route("/", get(list_plants).post(create_plant))
-        .route("/:id", get(get_plant).put(update_plant).delete(delete_plant))
+        .route(
+            "/:id",
+            get(get_plant).put(update_plant).delete(delete_plant),
+        )
 }
 
 #[derive(Debug, Deserialize)]
@@ -23,10 +26,12 @@ struct ListPlantsQuery {
     search: Option<String>,
 }
 
-async fn list_plants(Query(params): Query<ListPlantsQuery>) -> Result<Json<PlantsResponse>, StatusCode> {
+async fn list_plants(
+    Query(params): Query<ListPlantsQuery>,
+) -> Result<Json<PlantsResponse>, StatusCode> {
     // TODO: Implement actual plant listing
     tracing::info!("List plants request with params: {:?}", params);
-    
+
     // Mock response for now
     let response = PlantsResponse {
         plants: vec![],
@@ -34,14 +39,16 @@ async fn list_plants(Query(params): Query<ListPlantsQuery>) -> Result<Json<Plant
         limit: params.limit.unwrap_or(20),
         offset: params.offset.unwrap_or(0),
     };
-    
+
     Ok(Json(response))
 }
 
-async fn create_plant(Json(payload): Json<CreatePlantRequest>) -> Result<Json<PlantResponse>, StatusCode> {
+async fn create_plant(
+    Json(payload): Json<CreatePlantRequest>,
+) -> Result<Json<PlantResponse>, StatusCode> {
     // TODO: Implement actual plant creation
     tracing::info!("Create plant request: {:?}", payload);
-    
+
     // Mock response for now
     let mock_plant = PlantResponse {
         id: Uuid::new_v4(),
@@ -56,14 +63,14 @@ async fn create_plant(Json(payload): Json<CreatePlantRequest>) -> Result<Json<Pl
         updated_at: chrono::Utc::now(),
         user_id: Uuid::new_v4(),
     };
-    
+
     Ok(Json(mock_plant))
 }
 
 async fn get_plant(Path(id): Path<Uuid>) -> Result<Json<PlantResponse>, StatusCode> {
     // TODO: Implement actual plant retrieval
     tracing::info!("Get plant request for id: {}", id);
-    
+
     // Mock response for now
     let mock_plant = PlantResponse {
         id,
@@ -78,7 +85,7 @@ async fn get_plant(Path(id): Path<Uuid>) -> Result<Json<PlantResponse>, StatusCo
         updated_at: chrono::Utc::now(),
         user_id: Uuid::new_v4(),
     };
-    
+
     Ok(Json(mock_plant))
 }
 
@@ -87,8 +94,12 @@ async fn update_plant(
     Json(payload): Json<UpdatePlantRequest>,
 ) -> Result<Json<PlantResponse>, StatusCode> {
     // TODO: Implement actual plant update
-    tracing::info!("Update plant request for id: {} with payload: {:?}", id, payload);
-    
+    tracing::info!(
+        "Update plant request for id: {} with payload: {:?}",
+        id,
+        payload
+    );
+
     // Mock response for now
     let mock_plant = PlantResponse {
         id,
@@ -103,13 +114,13 @@ async fn update_plant(
         updated_at: chrono::Utc::now(),
         user_id: Uuid::new_v4(),
     };
-    
+
     Ok(Json(mock_plant))
 }
 
 async fn delete_plant(Path(id): Path<Uuid>) -> Result<StatusCode, StatusCode> {
     // TODO: Implement actual plant deletion
     tracing::info!("Delete plant request for id: {}", id);
-    
+
     Ok(StatusCode::NO_CONTENT)
 }

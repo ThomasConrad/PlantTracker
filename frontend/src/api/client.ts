@@ -15,7 +15,7 @@ import type {
   UpdateTrackingEntryRequest,
 } from '@/types/api';
 
-const API_BASE_URL = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || 'http://localhost:3000/v1';
+const API_BASE_URL = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '/api/v1';
 
 class ApiError extends Error {
   constructor(

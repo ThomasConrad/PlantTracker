@@ -1,15 +1,16 @@
 use axum::{
     extract::DefaultBodyLimit,
-    http::{header, Method},
-    response::Json,
+    http::{header, Method, StatusCode, Uri},
+    response::{Html, Json},
     routing::{get, post},
     Router,
 };
 use serde_json::{json, Value};
-use std::env;
+use std::{env, path::Path};
 use tower::ServiceBuilder;
 use tower_http::{
     cors::{Any, CorsLayer},
+    services::ServeDir,
     trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -19,7 +20,7 @@ mod middleware;
 mod models;
 mod utils;
 
-use handlers::{auth, plants, photos, tracking};
+use handlers::{auth, photos, plants, tracking};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -45,26 +46,56 @@ async fn main() -> anyhow::Result<()> {
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
-    // Build application router
-    let app = Router::new()
-        .route("/", get(health_check))
-        .nest("/v1/auth", auth::routes())
-        .nest("/v1/plants", plants::routes())
-        .nest("/v1/photos", photos::routes())
-        .nest("/v1/tracking", tracking::routes())
-        .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(cors)
-                .layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB max
+    // Get the frontend dist directory path
+    let frontend_dir = env::var("FRONTEND_DIR").unwrap_or_else(|_| "../frontend/dist".to_string());
+    let serve_frontend = Path::new(&frontend_dir).exists();
+
+    if serve_frontend {
+        tracing::info!("Serving frontend from: {}", frontend_dir);
+    } else {
+        tracing::warn!(
+            "Frontend directory not found: {}. API-only mode.",
+            frontend_dir
         );
+    }
+
+    // Build API router
+    let api_router = Router::new()
+        .route("/health", get(health_check))
+        .nest("/auth", auth::routes())
+        .nest("/plants", plants::routes())
+        .nest("/photos", photos::routes())
+        .nest("/tracking", tracking::routes());
+
+    // Build main application router
+    let app = if serve_frontend {
+        Router::new()
+            .nest("/api/v1", api_router)
+            .route("/api/health", get(health_check))
+            .fallback_service(
+                ServeDir::new(&frontend_dir)
+                    .append_index_html_on_directories(true)
+                    .fallback(get(serve_spa_fallback)),
+            )
+    } else {
+        Router::new()
+            .route("/", get(health_check))
+            .nest("/v1", api_router)
+    };
+
+    let app = app.layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(cors)
+            .layer(DefaultBodyLimit::max(10 * 1024 * 1024)), // 10MB max
+    );
 
     // Start server
     let port = env::var("PORT").unwrap_or_else(|_| "3000".to_string());
     let addr = format!("0.0.0.0:{}", port);
-    
+
     tracing::info!("Plant Tracker API starting on {}", addr);
-    
+
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
 
@@ -77,4 +108,18 @@ async fn health_check() -> Json<Value> {
         "service": "plant-tracker-api",
         "version": env!("CARGO_PKG_VERSION")
     }))
+}
+
+// SPA fallback handler - serves index.html for unmatched routes
+async fn serve_spa_fallback(_uri: Uri) -> Result<Html<String>, StatusCode> {
+    let frontend_dir = env::var("FRONTEND_DIR").unwrap_or_else(|_| "../frontend/dist".to_string());
+    let index_path = format!("{}/index.html", frontend_dir);
+
+    match tokio::fs::read_to_string(&index_path).await {
+        Ok(content) => Ok(Html(content)),
+        Err(_) => {
+            tracing::error!("Failed to read index.html from: {}", index_path);
+            Err(StatusCode::NOT_FOUND)
+        }
+    }
 }

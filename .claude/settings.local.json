@@ -11,7 +11,8 @@
       "Bash(cargo test:*)",
       "Bash(just test-e2e-auth:*)",
       "Bash(cargo build:*)",
-      "Bash(just test-e2e-plants:*)"
+      "Bash(just test-e2e-plants:*)",
+      "Bash(cargo clippy:*)"
     ],
     "deny": []
   }

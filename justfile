@@ -18,6 +18,7 @@ clean:
     rm -rf frontend/dist
     rm -rf backend/target
     rm -rf backend/uploads
+    just clean-e2e
     @echo "✅ Clean complete!"
 
 # Deep clean including lock files
@@ -75,6 +76,7 @@ test:
     @echo "🧪 Running all tests..."
     just test-frontend
     just test-backend
+    just test-e2e
     @echo "✅ All tests passed!"
 
 # Run only frontend tests
@@ -86,6 +88,62 @@ test-frontend:
 test-backend:
     @echo "🧪 Running backend tests..."
     cd backend && cargo test
+
+# Run end-to-end tests
+test-e2e:
+    @echo "🧪 Running end-to-end tests..."
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -v
+    @echo "✅ E2E tests passed!"
+
+# Setup Python environment for E2E tests
+setup-e2e-env:
+    #!/usr/bin/env bash
+    echo "📦 Setting up E2E test environment..."
+    cd backend
+    # Create virtual environment if it doesn't exist
+    if [ ! -d "venv-e2e" ]; then
+        python3 -m venv venv-e2e
+        echo "✅ Created Python virtual environment"
+    fi
+    # Activate and install dependencies
+    source venv-e2e/bin/activate
+    pip install -q -r requirements-e2e.txt
+    echo "✅ E2E environment ready"
+
+# Run E2E tests with specific markers
+test-e2e-auth:
+    @echo "🧪 Running authentication E2E tests..."
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m auth -v
+
+test-e2e-plants:
+    @echo "🧪 Running plant management E2E tests..."
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m plants -v
+
+test-e2e-isolation:
+    @echo "🧪 Running user isolation E2E tests..."
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m isolation -v
+
+# Run E2E tests in parallel (faster)
+test-e2e-parallel:
+    @echo "🧪 Running E2E tests in parallel..."
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -v -n auto
+
+# Run E2E tests excluding slow tests
+test-e2e-fast:
+    @echo "🧪 Running fast E2E tests..."
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -v -m "not slow"
+
+# Clean E2E test artifacts
+clean-e2e:
+    @echo "🧹 Cleaning E2E test artifacts..."
+    cd backend && rm -rf venv-e2e test_plant_tracker.db
+    @echo "✅ E2E cleanup complete!"
 
 # Run frontend tests in watch mode
 test-watch:
@@ -221,7 +279,8 @@ deploy-prep:
     just clean
     just install
     just check
-    just test
+    just test-backend
+    just test-e2e-fast
     just build
     @echo "✅ Ready for deployment!"
 

@@ -77,6 +77,7 @@ pub struct UpdateCustomMetricRequest {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlantResponse {
     pub id: Uuid,
     pub name: String,

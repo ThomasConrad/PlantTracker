@@ -148,23 +148,40 @@ cp frontend/.env.example frontend/.env
 # Edit frontend/.env with your API URL
 ```
 
-### 4. Start the Backend
+### 4. Start Development (Option 1: Separate servers)
 ```bash
-cd backend
-cargo run
-# Server starts on http://localhost:3000
+# Start backend API server
+cd backend && cargo run
+
+# In another terminal, start frontend dev server
+cd frontend && npm run dev
 ```
 
-### 5. Start the Frontend
+### 5. Start Development (Option 2: Using Just)
 ```bash
-cd frontend
-npm install
-npm run dev
-# App opens on http://localhost:5173
+# Install Just (if not already installed)
+# macOS: brew install just
+# Other platforms: https://github.com/casey/just
+
+# Start both frontend and backend
+just dev
+
+# Or start them individually
+just backend    # Start only backend
+just frontend   # Start only frontend
 ```
 
-### 6. Open the App
-Visit `http://localhost:5173` in your browser and start tracking your plants! 🌱
+### 6. Production Mode
+```bash
+# Build frontend and serve from backend
+just build
+just backend
+# Full-stack app available at http://localhost:3000
+```
+
+### 7. Open the App
+- **Development**: `http://localhost:5173` (frontend dev server)
+- **Production**: `http://localhost:3000` (backend serves frontend)
 
 ## 🔧 Development
 

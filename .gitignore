@@ -1,0 +1,29 @@
+# Frontend (Node.js)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.DS_Store
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Backend (Rust)
+backend/target/
+backend/.env
+backend/Cargo.lock
+backend/uploads/
+
+# General
+.DS_Store
+*.log
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database
+*.sqlite
+*.db
+
+# OS
+Thumbs.db

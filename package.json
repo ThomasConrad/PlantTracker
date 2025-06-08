@@ -1,0 +1,54 @@
+{
+  "name": "plant-tracker",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A full-stack Progressive Web Application for tracking plant care, growth, and health",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && cargo run",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && cargo build --release",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "cd frontend && npm run test",
+    "test:backend": "cd backend && cargo test",
+    "lint": "npm run lint:frontend && npm run lint:backend",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:backend": "cd backend && cargo clippy",
+    "format": "npm run format:frontend && npm run format:backend",
+    "format:frontend": "cd frontend && npm run format",
+    "format:backend": "cd backend && cargo fmt",
+    "install:all": "npm run install:frontend",
+    "install:frontend": "cd frontend && npm install",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f"
+  },
+  "workspaces": [
+    "frontend"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "plant-tracker",
+    "pwa",
+    "solidjs",
+    "rust",
+    "axum",
+    "postgresql",
+    "plant-care",
+    "gardening"
+  ],
+  "author": "Plant Tracker Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/plant-tracker.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/plant-tracker/issues"
+  },
+  "homepage": "https://github.com/yourusername/plant-tracker#readme"
+}

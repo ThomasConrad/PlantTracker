@@ -8,9 +8,10 @@ use axum::{
 use serde_json::{json, Value};
 use uuid::Uuid;
 
+use crate::database::DatabasePool;
 use crate::utils::errors::{AppError, Result};
 
-pub fn routes() -> Router {
+pub fn routes() -> Router<DatabasePool> {
     Router::new()
         .route(
             "/plants/:plant_id/photos",

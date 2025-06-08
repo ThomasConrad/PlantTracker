@@ -22,7 +22,7 @@ pub async fn create_user(
     let salt = Uuid::new_v4().to_string();
     let password_hash = hash(&request.password, DEFAULT_COST)
         .map_err(|e| AppError::Internal {
-            message: format!("Failed to hash password: {}", e),
+            message: format!("Failed to hash password: {e}"),
         })?;
     
     let now = Utc::now().to_rfc3339();
@@ -69,12 +69,9 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, 
         AppError::Database(e)
     })?;
 
-    match user_row {
-        Some(user) => user.to_user(),
-        None => Err(AppError::NotFound {
-            resource: format!("User with id {}", user_id),
-        }),
-    }
+    user_row.map_or_else(|| Err(AppError::NotFound {
+            resource: format!("User with id {user_id}"),
+        }), UserRow::to_user)
 }
 
 pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User, AppError> {
@@ -89,12 +86,9 @@ pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User,
         AppError::Database(e)
     })?;
 
-    match user_row {
-        Some(user) => user.to_user(),
-        None => Err(AppError::NotFound {
-            resource: format!("User with email {}", email),
-        }),
-    }
+    user_row.map_or_else(|| Err(AppError::NotFound {
+            resource: format!("User with email {email}"),
+        }), UserRow::to_user)
 }
 
 pub async fn verify_password(
@@ -106,7 +100,7 @@ pub async fn verify_password(
     
     let is_valid = verify(password, &user.password_hash)
         .map_err(|e| AppError::Internal {
-            message: format!("Failed to verify password: {}", e),
+            message: format!("Failed to verify password: {e}"),
         })?;
 
     if is_valid {
@@ -138,7 +132,7 @@ pub async fn update_user_login_time(
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
-            resource: format!("User with id {}", user_id),
+            resource: format!("User with id {user_id}"),
         });
     }
 

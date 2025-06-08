@@ -36,6 +36,7 @@ pub enum MetricDataType {
 }
 
 #[derive(Debug, Deserialize, Validate)]
+#[allow(dead_code)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePlantRequest {
     #[validate(length(min = 1, max = 100))]
@@ -50,6 +51,7 @@ pub struct CreatePlantRequest {
 }
 
 #[derive(Debug, Deserialize, Validate)]
+#[allow(dead_code)]
 pub struct CreateCustomMetricRequest {
     #[validate(length(min = 1, max = 50))]
     pub name: String,
@@ -59,6 +61,7 @@ pub struct CreateCustomMetricRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePlantRequest {
     pub name: Option<String>,
@@ -69,6 +72,7 @@ pub struct UpdatePlantRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct UpdateCustomMetricRequest {
     pub id: Option<Uuid>,
     pub name: String,

@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -96,7 +97,7 @@ async fn get_plant(
     // Verify the plant belongs to the authenticated user
     if plant.user_id != user.id {
         return Err(AppError::NotFound {
-            resource: format!("Plant with id {}", id),
+            resource: format!("Plant with id {id}"),
         });
     }
 

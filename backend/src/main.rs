@@ -1,8 +1,8 @@
 use axum::{
     extract::DefaultBodyLimit,
-    http::{header, Method, StatusCode, Uri},
+    http::{header, Method, StatusCode},
     response::{Html, Json},
-    routing::{get, post},
+    routing::get,
     Router,
 };
 use clap::Parser;
@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}={},tower_http=debug", env!("CARGO_PKG_NAME").replace("-", "_"), args.log_level).into()),
+                .unwrap_or_else(|_| format!("{}={},tower_http=debug", env!("CARGO_PKG_NAME").replace('-', '_'), args.log_level).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -141,13 +141,10 @@ async fn health_check() -> Json<Value> {
 
 // SPA fallback handler - serves index.html for unmatched routes
 async fn serve_spa_fallback(frontend_dir: String) -> Result<Html<String>, StatusCode> {
-    let index_path = format!("{}/index.html", frontend_dir);
+    let index_path = format!("{frontend_dir}/index.html");
 
-    match tokio::fs::read_to_string(&index_path).await {
-        Ok(content) => Ok(Html(content)),
-        Err(_) => {
+    tokio::fs::read_to_string(&index_path).await.map_or_else(|_| {
             tracing::error!("Failed to read index.html from: {}", index_path);
             Err(StatusCode::NOT_FOUND)
-        }
-    }
+        }, |content| Ok(Html(content)))
 }

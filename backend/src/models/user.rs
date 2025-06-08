@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use uuid::Uuid;
 use validator::Validate;
 
 // For axum-login integration
@@ -30,6 +29,7 @@ pub struct UserRow {
 }
 
 impl UserRow {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_user(self) -> Result<User, crate::utils::errors::AppError> {
         Ok(User {
             id: self.id,

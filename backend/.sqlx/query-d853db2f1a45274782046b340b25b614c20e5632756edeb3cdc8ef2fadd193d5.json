@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO plants (\n            id, user_id, name, genus, \n            watering_interval_days, fertilizing_interval_days,\n            created_at, updated_at\n        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "d853db2f1a45274782046b340b25b614c20e5632756edeb3cdc8ef2fadd193d5"
+}

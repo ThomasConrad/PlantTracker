@@ -94,17 +94,14 @@ async fn register(
 }
 
 async fn me(auth_session: AuthSession) -> Result<Json<UserResponse>> {
-    match auth_session.user {
-        Some(user) => {
-            tracing::debug!("Retrieved user profile: {}", user.email);
-            Ok(Json(user.into()))
-        }
-        None => {
-            tracing::warn!("Unauthenticated request to /me endpoint");
-            Err(AppError::Authentication {
-                message: "Not authenticated".to_string(),
-            })
-        }
+    if let Some(user) = auth_session.user {
+        tracing::debug!("Retrieved user profile: {}", user.email);
+        Ok(Json(user.into()))
+    } else {
+        tracing::warn!("Unauthenticated request to /me endpoint");
+        Err(AppError::Authentication {
+            message: "Not authenticated".to_string(),
+        })
     }
 }
 

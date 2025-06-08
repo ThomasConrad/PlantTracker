@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use axum::{
     extract::Path,
     http::StatusCode,
@@ -9,7 +10,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::database::DatabasePool;
-use crate::utils::errors::{AppError, Result};
+use crate::utils::errors::Result;
 
 pub fn routes() -> Router<DatabasePool> {
     Router::new()

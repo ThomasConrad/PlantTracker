@@ -22,6 +22,12 @@ pub struct PlantRow {
 }
 
 impl PlantRow {
+    /// Converts a `PlantRow` from the database into a `PlantResponse` for the API.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the plant ID in the database is not a valid UUID.
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_response(self) -> Result<PlantResponse, AppError> {
         Ok(PlantResponse {
             id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal { 
@@ -55,6 +61,20 @@ impl PlantRow {
     }
 }
 
+/// Creates a new plant in the database for a specific user.
+///
+/// # Arguments
+///
+/// * `pool` - Database connection pool
+/// * `user_id` - ID of the user creating the plant
+/// * `request` - Plant creation request data
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - Database insertion fails
+/// - Invalid data provided
+/// - User does not exist
 pub async fn create_plant(
     pool: &DatabasePool,
     user_id: &str,
@@ -111,12 +131,9 @@ pub async fn get_plant_by_id(pool: &DatabasePool, plant_id: Uuid) -> Result<Plan
         AppError::Database(e)
     })?;
 
-    match plant_row {
-        Some(plant) => plant.to_response(),
-        None => Err(AppError::NotFound {
-            resource: format!("Plant with id {}", plant_id),
-        }),
-    }
+    plant_row.map_or_else(|| Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        }), PlantRow::to_response)
 }
 
 pub async fn list_plants_for_user(
@@ -126,20 +143,18 @@ pub async fn list_plants_for_user(
     offset: i64,
     search: Option<&str>,
 ) -> Result<(Vec<PlantResponse>, i64), AppError> {
-    let (query, count_query, search_param) = if let Some(search_term) = search {
-        let search_pattern = format!("%{}%", search_term);
+    let (query, count_query, search_param) = search.map_or((
+            "SELECT * FROM plants WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            "SELECT COUNT(*) as count FROM plants WHERE user_id = ?",
+            None
+        ), |search_term| {
+        let search_pattern = format!("%{search_term}%");
         (
             "SELECT * FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?",
             "SELECT COUNT(*) as count FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?)",
             Some(search_pattern)
         )
-    } else {
-        (
-            "SELECT * FROM plants WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            "SELECT COUNT(*) as count FROM plants WHERE user_id = ?",
-            None
-        )
-    };
+    });
 
     // Get total count
     let total = if let Some(search_param) = &search_param {
@@ -191,7 +206,7 @@ pub async fn list_plants_for_user(
 
     let plants = plant_rows
         .into_iter()
-        .map(|row| row.to_response())
+        .map(PlantRow::to_response)
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok((plants, total))
@@ -207,7 +222,7 @@ pub async fn update_plant(
     let existing_plant = get_plant_by_id(pool, plant_id).await?;
     if existing_plant.user_id != user_id {
         return Err(AppError::NotFound {
-            resource: format!("Plant with id {}", plant_id),
+            resource: format!("Plant with id {plant_id}"),
         });
     }
 
@@ -260,7 +275,7 @@ pub async fn update_plant(
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
-            resource: format!("Plant with id {}", plant_id),
+            resource: format!("Plant with id {plant_id}"),
         });
     }
 
@@ -289,7 +304,7 @@ pub async fn delete_plant(
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
-            resource: format!("Plant with id {}", plant_id),
+            resource: format!("Plant with id {plant_id}"),
         });
     }
 

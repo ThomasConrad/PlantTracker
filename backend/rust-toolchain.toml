@@ -1,0 +1,7 @@
+[toolchain]
+channel = "stable"
+targets = ["x86_64-unknown-linux-gnu"]
+components = ["rustfmt", "clippy"]
+
+[env]
+DATABASE_URL = "sqlite:plant_tracker.db"

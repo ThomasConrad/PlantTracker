@@ -1,8 +1,9 @@
 use axum_login::{
-    tower_sessions::{cookie::SameSite, Expiry, MemoryStore, SessionManagerLayer},
+    tower_sessions::{cookie::SameSite, Expiry, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
 use time::Duration;
+use tower_sessions_sqlx_store::SqliteStore;
 
 use crate::database::{users as db_users, DatabasePool};
 use crate::models::User;
@@ -73,12 +74,12 @@ pub struct Credentials {
 pub type AuthSession = axum_login::AuthSession<AuthBackend>;
 
 // Helper function to create session and auth layers
-// Note: For production, consider using a persistent session store like Redis or database-backed storage
+// Uses SQLite-backed session storage for persistence across server restarts
 #[must_use]
 pub fn create_auth_layers(
     pool: DatabasePool,
-) -> (SessionManagerLayer<MemoryStore>, axum_login::AuthManagerLayer<AuthBackend, MemoryStore>) {
-    let session_store = MemoryStore::default();
+) -> (SessionManagerLayer<SqliteStore>, axum_login::AuthManagerLayer<AuthBackend, SqliteStore>) {
+    let session_store = SqliteStore::new(pool.clone());
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false) // Set to true in production with HTTPS
         .with_http_only(true) // Prevent XSS attacks

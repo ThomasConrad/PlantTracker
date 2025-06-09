@@ -24,6 +24,8 @@ sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "postgre
 
 # Authentication
 axum-login = "0.15"
+tower-sessions = "0.12"
+tower-sessions-sqlx-store = { version = "0.12", features = ["sqlite"] }
 bcrypt = "0.15"
 password-hash = { version = "0.5", features = ["std"] }
 async-trait = "0.1"

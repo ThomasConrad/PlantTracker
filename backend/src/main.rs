@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use std::{env, path::Path};
 use tower::ServiceBuilder;
 use tower_http::{
-    cors::{Any, CorsLayer},
+    cors::CorsLayer,
     services::ServeDir,
     trace::TraceLayer,
 };
@@ -69,7 +69,12 @@ async fn main() -> anyhow::Result<()> {
 
     // CORS configuration
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin([
+            "http://localhost:3000".parse().unwrap(), // Frontend dev server
+            "http://localhost:5173".parse().unwrap(), // Vite dev server  
+            "http://127.0.0.1:3000".parse().unwrap(), // Alternative localhost
+            "http://127.0.0.1:5173".parse().unwrap(), // Alternative Vite
+        ])
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::COOKIE, header::SET_COOKIE])
         .allow_credentials(true); // Allow cookies for authentication

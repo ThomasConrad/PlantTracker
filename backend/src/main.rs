@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| format!("{}={},tower_http=debug", env!("CARGO_PKG_NAME").replace('-', '_'), args.log_level).into()),
+                .unwrap_or_else(|_| format!("{}={},tower_http=debug", env!("CARGO_PKG_NAME").replace('-', "_"), args.log_level).into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
@@ -71,7 +71,8 @@ async fn main() -> anyhow::Result<()> {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION, header::COOKIE, header::SET_COOKIE])
+        .allow_credentials(true); // Allow cookies for authentication
 
     // Get the frontend dist directory path
     let serve_frontend = Path::new(&args.frontend_dir).exists();

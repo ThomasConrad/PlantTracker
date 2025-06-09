@@ -1,5 +1,5 @@
 use axum_login::{
-    tower_sessions::{Expiry, MemoryStore, SessionManagerLayer},
+    tower_sessions::{cookie::SameSite, Expiry, MemoryStore, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
 use time::Duration;
@@ -73,6 +73,7 @@ pub struct Credentials {
 pub type AuthSession = axum_login::AuthSession<AuthBackend>;
 
 // Helper function to create session and auth layers
+// Note: For production, consider using a persistent session store like Redis or database-backed storage
 #[must_use]
 pub fn create_auth_layers(
     pool: DatabasePool,
@@ -80,7 +81,10 @@ pub fn create_auth_layers(
     let session_store = MemoryStore::default();
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false) // Set to true in production with HTTPS
-        .with_expiry(Expiry::OnInactivity(Duration::seconds(3600))); // 1 hour
+        .with_http_only(true) // Prevent XSS attacks
+        .with_same_site(SameSite::Lax) // CSRF protection
+        .with_name("plant_tracker_session") // Custom cookie name
+        .with_expiry(Expiry::OnInactivity(Duration::days(7))); // 7 days
 
     let backend = AuthBackend::new(pool);
     let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer.clone()).build();

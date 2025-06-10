@@ -127,9 +127,10 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
-        Plant: {
+        PlantResponse: {
             /** Format: date-time */
             createdAt: string;
+            customMetrics: components["schemas"]["CustomMetric"][];
             /** Format: int32 */
             fertilizingIntervalDays: number;
             genus: string;
@@ -142,12 +143,21 @@ export interface components {
             name: string;
             /** Format: uuid */
             thumbnailId?: string | null;
+            thumbnailUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
-            /** Format: uuid */
             userId: string;
             /** Format: int32 */
             wateringIntervalDays: number;
+        };
+        PlantsResponse: {
+            /** Format: int64 */
+            limit: number;
+            /** Format: int64 */
+            offset: number;
+            plants: components["schemas"]["PlantResponse"][];
+            /** Format: int64 */
+            total: number;
         };
         TrackingEntriesResponse: {
             entries: components["schemas"]["TrackingEntry"][];

@@ -1,6 +1,7 @@
 import { Component, JSX, createSignal } from 'solid-js';
 import { A } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
+import { BottomNavigation } from './BottomNavigation';
 
 interface AppLayoutProps {
   children: JSX.Element;
@@ -122,9 +123,11 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
         </div>
       </nav>
 
-      <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 pb-safe-area-inset-bottom">
         {props.children}
       </main>
+      
+      <BottomNavigation />
     </div>
   );
 };

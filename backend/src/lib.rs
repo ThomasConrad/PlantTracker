@@ -9,7 +9,7 @@ pub mod utils;
 
 use models::{
     photo::{Photo, PhotosResponse},
-    plant::{CreateCustomMetricRequest, CreatePlantRequest, CustomMetric, MetricDataType, Plant},
+    plant::{CreateCustomMetricRequest, CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, PlantsResponse},
     tracking_entry::{
         CreateTrackingEntryRequest, EntryType, TrackingEntriesResponse, TrackingEntry,
     },
@@ -36,7 +36,8 @@ use models::{
             TrackingEntry,
             Photo,
             PhotosResponse,
-            Plant,
+            PlantResponse,
+            PlantsResponse,
             CreatePlantRequest,
             CreateCustomMetricRequest,
             CustomMetric,

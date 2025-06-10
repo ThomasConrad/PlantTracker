@@ -39,7 +39,7 @@ const plantsStore = {
     return error();
   },
 
-  async loadPlants(params?: { search?: string }): Promise<void> {
+  async loadPlants(params?: { search?: string; sort?: string }): Promise<void> {
     try {
       setLoading(true);
       setError(null);

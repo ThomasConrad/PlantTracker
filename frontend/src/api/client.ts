@@ -119,11 +119,13 @@ class ApiClient {
     limit?: number;
     offset?: number;
     search?: string;
+    sort?: string;
   }): Promise<PlantsResponse> {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.offset) searchParams.set('offset', params.offset.toString());
     if (params?.search) searchParams.set('search', params.search);
+    if (params?.sort) searchParams.set('sort', params.sort);
 
     const query = searchParams.toString();
     return this.request<PlantsResponse>(`/plants${query ? `?${query}` : ''}`);

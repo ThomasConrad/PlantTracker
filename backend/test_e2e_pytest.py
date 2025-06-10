@@ -57,7 +57,7 @@ class BackendServer:
         
         try:
             self.process = subprocess.Popen([
-                "cargo", "run", "--release", "--",
+                "cargo", "run", "--release", "--bin", "plant-tracker-api", "--",
                 "--port", str(self.port),
                 "--database-url", "sqlite::memory:",
                 "--frontend-dir", "/nonexistent"  # Force API-only mode
@@ -680,9 +680,8 @@ class TestPhotoUpload:
         assert list_response.status_code == 200
         
         photos_data = list_response.json()
-        assert photos_data["total"] == 1
-        assert len(photos_data["photos"]) == 1
-        assert photos_data["photos"][0]["originalFilename"] == "list-test.jpg"
+        assert len(photos_data) == 1
+        assert photos_data[0]["originalFilename"] == "list-test.jpg"
 
     def test_delete_photo(self, client):
         """Test deleting a photo"""
@@ -726,8 +725,7 @@ class TestPhotoUpload:
         assert list_response.status_code == 200
         
         photos_data = list_response.json()
-        assert photos_data["total"] == 0
-        assert len(photos_data["photos"]) == 0
+        assert len(photos_data) == 0
 
     def test_upload_photo_validation_errors(self, client):
         """Test photo upload validation"""

@@ -26,7 +26,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
       ...prev,
       customMetrics: [
         ...prev.customMetrics,
-        { name: '', unit: '', dataType: 'number' as const }
+        { name: '', unit: '', dataType: 'Number' as const }
       ]
     }));
   };
@@ -205,9 +205,9 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                       value={metric.dataType}
                       onChange={(e) => updateCustomMetric(index(), 'dataType', e.currentTarget.value)}
                     >
-                      <option value="number">Number</option>
-                      <option value="text">Text</option>
-                      <option value="boolean">Yes/No</option>
+                      <option value="Number">Number</option>
+                      <option value="Text">Text</option>
+                      <option value="Boolean">Yes/No</option>
                     </select>
                   </div>
                 </div>

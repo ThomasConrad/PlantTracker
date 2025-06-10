@@ -2,7 +2,11 @@ import { Component, createSignal, Show, For } from 'solid-js';
 import { plantsStore } from '@/stores/plants';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import type { Plant, CreateTrackingEntryRequest } from '@/types';
+import type { Plant } from '@/types';
+import type { components } from '@/types/api-generated';
+
+type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
+type EntryType = components['schemas']['EntryType'];
 
 interface TrackingSectionProps {
   plant: Plant;
@@ -10,19 +14,20 @@ interface TrackingSectionProps {
 
 export const TrackingSection: Component<TrackingSectionProps> = (props) => {
   const [showTrackingForm, setShowTrackingForm] = createSignal(false);
-  const [trackingType, setTrackingType] = createSignal<'watering' | 'fertilizing' | 'custom_metric'>('watering');
+  const [trackingType, setTrackingType] = createSignal<EntryType>('watering');
   const [selectedMetricId, setSelectedMetricId] = createSignal('');
   const [value, setValue] = createSignal('');
   const [notes, setNotes] = createSignal('');
   const [submitting, setSubmitting] = createSignal(false);
 
-  const handleQuickAction = async (type: 'watering' | 'fertilizing') => {
+  const handleQuickAction = async (type: EntryType) => {
     try {
       setSubmitting(true);
-      await plantsStore.createTrackingEntry(props.plant.id, {
-        type,
+      const payload: CreateTrackingEntryRequest = {
+        entryType: type,
         timestamp: new Date().toISOString(),
-      });
+      };
+      await plantsStore.createTrackingEntry(props.plant.id, payload);
     } catch (error) {
       console.error('Failed to create tracking entry:', error);
     } finally {
@@ -34,18 +39,18 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
     e.preventDefault();
     
     const entryData: CreateTrackingEntryRequest = {
-      type: trackingType(),
+      entryType: trackingType(),
       timestamp: new Date().toISOString(),
       notes: notes() || undefined,
     };
 
-    if (trackingType() === 'custom_metric') {
+    if (trackingType() === 'customMetric') {
       entryData.metricId = selectedMetricId();
       const metric = props.plant.customMetrics.find(m => m.id === selectedMetricId());
       if (metric) {
-        if (metric.dataType === 'number') {
+        if (metric.dataType === 'Number') {
           entryData.value = parseFloat(value()) || 0;
-        } else if (metric.dataType === 'boolean') {
+        } else if (metric.dataType === 'Boolean') {
           entryData.value = value() === 'true';
         } else {
           entryData.value = value();
@@ -128,17 +133,17 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
                 <select
                   class="input"
                   value={trackingType()}
-                  onChange={(e) => setTrackingType(e.currentTarget.value as 'watering' | 'fertilizing' | 'custom_metric')}
+                  onChange={(e) => setTrackingType(e.currentTarget.value as EntryType)}
                 >
                   <option value="watering">Watering</option>
                   <option value="fertilizing">Fertilizing</option>
                   {props.plant.customMetrics.length > 0 && (
-                    <option value="custom_metric">Custom Metric</option>
+                    <option value="customMetric">Custom Metric</option>
                   )}
                 </select>
               </div>
 
-              <Show when={trackingType() === 'custom_metric'}>
+              <Show when={trackingType() === 'customMetric'}>
                 <div class="space-y-1">
                   <label class="label">Metric</label>
                   <select
@@ -158,12 +163,12 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
               </Show>
             </div>
 
-            <Show when={trackingType() === 'custom_metric' && selectedMetricId()}>
+            <Show when={trackingType() === 'customMetric' && selectedMetricId()}>
               {(() => {
                 const metric = props.plant.customMetrics.find(m => m.id === selectedMetricId());
                 if (!metric) return null;
 
-                if (metric.dataType === 'boolean') {
+                if (metric.dataType === 'Boolean') {
                   return (
                     <div class="space-y-1">
                       <label class="label">Value</label>
@@ -183,7 +188,7 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
                   return (
                     <Input
                       label={`Value (${metric.unit})`}
-                      type={metric.dataType === 'number' ? 'number' : 'text'}
+                      type={metric.dataType === 'Number' ? 'number' : 'text'}
                       value={value()}
                       onInput={(e) => setValue(e.currentTarget.value)}
                       required
@@ -215,7 +220,7 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
                 size="sm"
                 loading={submitting()}
                 disabled={
-                  trackingType() === 'custom_metric' && 
+                  trackingType() === 'customMetric' && 
                   (!selectedMetricId() || !value())
                 }
               >

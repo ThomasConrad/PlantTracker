@@ -1,16 +1,11 @@
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// This file contains only local types not covered by the generated API types
+// The main API types are now generated from the OpenAPI spec in api-generated.ts
 
 export interface CustomMetric {
   id: string;
   name: string;
   unit: string;
-  dataType: 'number' | 'text' | 'boolean';
+  dataType: 'Number' | 'Text' | 'Boolean';
 }
 
 export interface Plant {
@@ -37,89 +32,5 @@ export interface Photo {
   createdAt: string;
 }
 
-export type EntryType = 'watering' | 'fertilizing' | 'custom_metric';
-
-export interface TrackingEntry {
-  id: string;
-  type: EntryType;
-  timestamp: string;
-  value: number | string | boolean;
-  notes: string | null;
-  metricId: string | null;
-  plantId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreatePlantRequest {
-  name: string;
-  genus: string;
-  wateringIntervalDays: number;
-  fertilizingIntervalDays: number;
-  customMetrics?: {
-    name: string;
-    unit: string;
-    dataType: 'number' | 'text' | 'boolean';
-  }[];
-}
-
-export interface UpdatePlantRequest {
-  name?: string;
-  genus?: string;
-  wateringIntervalDays?: number;
-  fertilizingIntervalDays?: number;
-  customMetrics?: {
-    id?: string;
-    name: string;
-    unit: string;
-    dataType: 'number' | 'text' | 'boolean';
-  }[];
-}
-
-export interface CreateTrackingEntryRequest {
-  type: EntryType;
-  timestamp: string;
-  value?: number | string | boolean;
-  notes?: string;
-  metricId?: string;
-}
-
-export interface UpdateTrackingEntryRequest {
-  timestamp?: string;
-  value?: number | string | boolean;
-  notes?: string;
-}
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  name: string;
-}
-
-export interface AuthResponse {
-  user: User;
-}
-
-export interface PaginatedResponse<T> {
-  total: number;
-  limit: number;
-  offset: number;
-  data: T[];
-}
-
-export interface PlantsResponse extends PaginatedResponse<Plant> {
-  plants: Plant[];
-}
-
-export interface PhotosResponse extends PaginatedResponse<Photo> {
-  photos: Photo[];
-}
-
-export interface TrackingEntriesResponse extends PaginatedResponse<TrackingEntry> {
-  entries: TrackingEntry[];
-}
+// Re-export commonly used generated types for convenience
+export type { components } from './api-generated';

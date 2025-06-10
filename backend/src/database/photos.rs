@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::database::DatabasePool;
 use crate::models::{Photo, PhotosResponse, UploadPhotoRequest};
 use crate::utils::errors::AppError;
+use crate::utils::thumbnail::generate_thumbnail;
 
 /// Get all photos for a specific plant
 pub async fn get_photos_for_plant(
@@ -27,7 +28,7 @@ pub async fn get_photos_for_plant(
 
     // Get photos (without data to save memory for listings)
     let photos_rows = sqlx::query(
-        "SELECT id, plant_id, filename, original_filename, size, content_type, created_at 
+        "SELECT id, plant_id, filename, original_filename, size, content_type, thumbnail_width, thumbnail_height, created_at 
          FROM photos 
          WHERE plant_id = ? 
          ORDER BY created_at DESC",
@@ -50,6 +51,8 @@ pub async fn get_photos_for_plant(
                 original_filename: row.get("original_filename"),
                 size: row.get("size"),
                 content_type: row.get("content_type"),
+                thumbnail_width: row.get("thumbnail_width"),
+                thumbnail_height: row.get("thumbnail_height"),
                 created_at: chrono::DateTime::parse_from_rfc3339(&created_at_str)
                     .expect("Invalid timestamp")
                     .with_timezone(&Utc),
@@ -135,10 +138,23 @@ pub async fn create_photo(
     };
     let filename = format!("{}_{}.{}", plant_id, photo_id, extension);
 
+    // Generate thumbnail if requested
+    let thumbnail_info = if request.generate_thumbnail.unwrap_or(true) {
+        match generate_thumbnail(&request.data, &request.content_type) {
+            Ok(info) => Some(info),
+            Err(e) => {
+                tracing::warn!("Failed to generate thumbnail: {:?}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     // Store photo data in database
     sqlx::query(
-        "INSERT INTO photos (id, plant_id, filename, original_filename, size, content_type, data, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO photos (id, plant_id, filename, original_filename, size, content_type, data, thumbnail_data, thumbnail_width, thumbnail_height, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(photo_id.to_string())
     .bind(plant_id.to_string())
@@ -147,6 +163,9 @@ pub async fn create_photo(
     .bind(request.size)
     .bind(&request.content_type)
     .bind(&request.data)
+    .bind(thumbnail_info.as_ref().map(|t| &t.data))
+    .bind(thumbnail_info.as_ref().map(|t| t.width))
+    .bind(thumbnail_info.as_ref().map(|t| t.height))
     .bind(now.to_rfc3339())
     .execute(pool)
     .await?;
@@ -158,6 +177,8 @@ pub async fn create_photo(
         original_filename: request.original_filename.clone(),
         size: request.size,
         content_type: request.content_type.clone(),
+        thumbnail_width: thumbnail_info.as_ref().map(|t| t.width),
+        thumbnail_height: thumbnail_info.as_ref().map(|t| t.height),
         created_at: now,
     })
 }
@@ -211,6 +232,48 @@ pub async fn delete_photo(
     }
 
     Ok(())
+}
+
+/// Get thumbnail data for a photo
+pub async fn get_photo_thumbnail_data(
+    pool: &DatabasePool,
+    plant_id: &Uuid,
+    photo_id: &Uuid,
+    user_id: &str,
+) -> Result<(Vec<u8>, String), AppError> {
+    // First verify the plant exists and belongs to the user
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(plant_id.to_string())
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
+
+    if plant_exists.is_none() {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    // Get thumbnail data
+    let photo_row = sqlx::query(
+        "SELECT thumbnail_data, content_type FROM photos WHERE id = ? AND plant_id = ? AND thumbnail_data IS NOT NULL"
+    )
+    .bind(photo_id.to_string())
+    .bind(plant_id.to_string())
+    .fetch_optional(pool)
+    .await?;
+
+    match photo_row {
+        Some(row) => {
+            let data: Vec<u8> = row.get("thumbnail_data");
+            let _content_type: String = row.get("content_type");
+            // Thumbnails are always JPEG
+            Ok((data, "image/jpeg".to_string()))
+        }
+        None => Err(AppError::NotFound {
+            resource: format!("Thumbnail for photo with id {photo_id}"),
+        }),
+    }
 }
 
 #[cfg(test)]
@@ -304,6 +367,7 @@ mod tests {
             size: 1024,
             content_type: "image/jpeg".to_string(),
             data: vec![1, 2, 3, 4], // Fake image data
+            generate_thumbnail: Some(false), // Skip thumbnail generation in tests
         };
 
         let result = create_photo(&pool, &plant_id, &user_id, &request).await;
@@ -328,6 +392,7 @@ mod tests {
             size: 1024,
             content_type: "image/jpeg".to_string(),
             data: vec![1, 2, 3, 4],
+            generate_thumbnail: Some(false),
         };
 
         let result = create_photo(&pool, &plant_id, &user_id, &request).await;
@@ -345,6 +410,7 @@ mod tests {
             size: 1024,
             content_type: "image/jpeg".to_string(),
             data: vec![1, 2, 3, 4],
+            generate_thumbnail: Some(false),
         };
 
         let photo = create_photo(&pool, &plant_id, &user_id, &request)
@@ -385,6 +451,7 @@ mod tests {
             size: fake_image_data.len() as i64,
             content_type: "image/jpeg".to_string(),
             data: fake_image_data.clone(),
+            generate_thumbnail: Some(false),
         };
 
         let photo = create_photo(&pool, &plant_id, &user_id, &request)

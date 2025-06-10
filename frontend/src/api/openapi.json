@@ -395,6 +395,16 @@
           "size": {
             "type": "integer",
             "format": "int64"
+          },
+          "thumbnailHeight": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "thumbnailWidth": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         }
       },
@@ -457,6 +467,11 @@
           },
           "name": {
             "type": "string"
+          },
+          "thumbnailId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           },
           "updatedAt": {
             "type": "string",

@@ -17,6 +17,7 @@ pub struct PlantRow {
     pub fertilizing_interval_days: i32,
     pub last_watered: Option<String>,
     pub last_fertilized: Option<String>,
+    pub thumbnail_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -51,6 +52,10 @@ impl PlantRow {
                 .map_err(|_| AppError::Internal {
                     message: "Invalid datetime in database".to_string(),
                 })?,
+            thumbnail_id: self.thumbnail_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
+            thumbnail_url: self.thumbnail_id.as_ref().map(|thumb_id| {
+                format!("/api/v1/plants/{}/photos/{}/thumbnail", self.id, thumb_id)
+            }),
             custom_metrics: vec![], // TODO: Load custom metrics
             created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
                 AppError::Internal {
@@ -318,4 +323,73 @@ pub async fn delete_plant(
     }
 
     Ok(())
+}
+
+pub async fn set_plant_thumbnail(
+    pool: &DatabasePool,
+    plant_id: Uuid,
+    photo_id: Uuid,
+    user_id: &str,
+) -> Result<PlantResponse, AppError> {
+    let plant_id_str = plant_id.to_string();
+    let photo_id_str = photo_id.to_string();
+
+    // First verify the plant exists and belongs to the user
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(&plant_id_str)
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check plant existence: {}", e);
+            AppError::Database(e)
+        })?;
+
+    if plant_exists.is_none() {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    // Verify the photo exists and belongs to the plant
+    let photo_exists = sqlx::query("SELECT 1 FROM photos WHERE id = ? AND plant_id = ?")
+        .bind(&photo_id_str)
+        .bind(&plant_id_str)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check photo existence: {}", e);
+            AppError::Database(e)
+        })?;
+
+    if photo_exists.is_none() {
+        return Err(AppError::NotFound {
+            resource: format!("Photo with id {photo_id} for plant {plant_id}"),
+        });
+    }
+
+    // Update the plant's thumbnail_id
+    let now = Utc::now().to_rfc3339();
+    let result = sqlx::query!(
+        "UPDATE plants SET thumbnail_id = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        photo_id_str,
+        now,
+        plant_id_str,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to update plant thumbnail: {}", e);
+        AppError::Database(e)
+    })?;
+
+    if result.rows_affected() != 1 {
+        return Err(AppError::Internal {
+            message: "Failed to update plant thumbnail".to_string(),
+        });
+    }
+
+    // Return the updated plant
+    get_plant_by_id(pool, plant_id).await
 }

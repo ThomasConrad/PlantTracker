@@ -19,7 +19,8 @@ export const CreatePlantPage: Component = () => {
       // Upload thumbnail if provided
       if (thumbnailFile) {
         try {
-          await plantsStore.uploadPhoto(plant.id, thumbnailFile, 'Plant thumbnail');
+          const photo = await plantsStore.uploadPhoto(plant.id, thumbnailFile, 'Plant thumbnail');
+          await plantsStore.setPlantThumbnail(plant.id, photo.id);
         } catch (photoError) {
           console.error('Failed to upload thumbnail:', photoError);
           // Don't fail the entire creation if thumbnail upload fails

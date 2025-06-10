@@ -23,6 +23,7 @@ pub fn routes() -> Router<DatabasePool> {
             "/:id",
             get(get_plant).put(update_plant).delete(delete_plant),
         )
+        .route("/:id/thumbnail/:photo_id", put(set_plant_thumbnail))
         .nest("/:plant_id", photos::routes())
         .merge(tracking::routes())
 }
@@ -151,4 +152,31 @@ async fn delete_plant(
 
     tracing::info!("Deleted plant with id: {} for user: {}", id, user.id);
     Ok(StatusCode::NO_CONTENT)
+}
+
+async fn set_plant_thumbnail(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
+    Path((id, photo_id)): Path<(Uuid, Uuid)>,
+) -> Result<Json<PlantResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    tracing::info!(
+        "Set thumbnail request for plant: {}, photo: {} by user: {}",
+        id,
+        photo_id,
+        user.id
+    );
+
+    let plant = db_plants::set_plant_thumbnail(&pool, id, photo_id, &user.id).await?;
+
+    tracing::info!(
+        "Set thumbnail for plant: {} to photo: {} for user: {}",
+        id,
+        photo_id,
+        user.id
+    );
+    Ok(Json(plant))
 }

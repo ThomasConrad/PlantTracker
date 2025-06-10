@@ -139,6 +139,31 @@ const plantsStore = {
     }
   },
 
+  async setPlantThumbnail(plantId: string, photoId: string): Promise<Plant> {
+    try {
+      setError(null);
+      const updatedPlant = await apiClient.setPlantThumbnail(plantId, photoId);
+      
+      // Update plants in store
+      setPlants(plants => 
+        plants.map(plant => 
+          plant.id === plantId ? updatedPlant : plant
+        )
+      );
+      
+      // Update selectedPlant if it's the one being updated
+      if (selectedPlant()?.id === plantId) {
+        setSelectedPlant(updatedPlant);
+      }
+      
+      return updatedPlant;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set thumbnail';
+      setError(errorMessage);
+      throw err;
+    }
+  },
+
   async createTrackingEntry(
     plantId: string,
     entryData: CreateTrackingEntryRequest

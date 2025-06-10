@@ -117,6 +117,10 @@ export interface components {
             plantId: string;
             /** Format: int64 */
             size: number;
+            /** Format: int32 */
+            thumbnailHeight?: number | null;
+            /** Format: int32 */
+            thumbnailWidth?: number | null;
         };
         PhotosResponse: {
             photos: components["schemas"]["Photo"][];
@@ -136,6 +140,8 @@ export interface components {
             /** Format: date-time */
             lastWatered?: string | null;
             name: string;
+            /** Format: uuid */
+            thumbnailId?: string | null;
             /** Format: date-time */
             updatedAt: string;
             /** Format: uuid */

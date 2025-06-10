@@ -40,8 +40,7 @@ async fn test_list_photos_for_empty_plant() {
     assert_eq!(response.status(), 200);
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
-    assert_eq!(body["photos"].as_array().unwrap().len(), 0);
-    assert_eq!(body["total"], 0);
+    assert_eq!(body.as_array().unwrap().len(), 0);
 }
 
 #[tokio::test]
@@ -270,8 +269,7 @@ async fn test_delete_photo() {
         .json()
         .await
         .expect("Failed to parse list response");
-    assert_eq!(list_body["photos"].as_array().unwrap().len(), 0);
-    assert_eq!(list_body["total"], 0);
+    assert_eq!(list_body.as_array().unwrap().len(), 0);
 }
 
 #[tokio::test]

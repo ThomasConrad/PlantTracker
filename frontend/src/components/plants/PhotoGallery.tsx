@@ -43,6 +43,12 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
       return;
     }
 
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB');
+      return;
+    }
+
     try {
       setUploading(true);
       setError(null);
@@ -149,9 +155,14 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
                 {(photo) => (
                   <div class="relative group">
                     <img
-                      src={photo.thumbnailUrl || photo.url}
-                      alt={photo.caption || 'Plant photo'}
+                      src={apiClient.getPhotoUrl(props.plantId, photo.id)}
+                      alt={photo.originalFilename}
                       class="w-full h-24 object-cover rounded-lg bg-gray-100"
+                      loading="lazy"
+                      onError={(e) => {
+                        // If image fails to load, show a placeholder
+                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgMTZMOC41ODYgMTEuNDE0QzguOTYxIDExLjAzOSA5LjQ1OSAxMC44MjkgMTAgMTAuODI5QzEwLjU0MSAxMC44MjkgMTEuMDM5IDExLjAzOSAxMS40MTQgMTEuNDE0TDE2IDE2TTE0IDE0TDE1LjU4NiAxMi40MTRDMTUuOTYxIDEyLjAzOSAxNi40NTkgMTEuODI5IDE3IDExLjgyOUMxNy41NDEgMTEuODI5IDE4LjAzOSAxMi4wMzkgMTguNDE0IDEyLjQxNEwyMCAxNE0xOCA4VjhNNiAyMEgxOEMxOC41MzA0IDIwIDE5LjAzOTEgMTkuNzg5MyAxOS40MTQyIDE5LjQxNDJDMTkuNzg5MyAxOS4wMzkxIDIwIDE4LjUzMDQgMjAgMThWNkMyMCA1LjQ2OTU3IDE5Ljc4OTMgNC45NjA4NiAxOS40MTQyIDQuNTg1NzlDMTkuMDM5MSA0LjIxMDcxIDE4LjUzMDQgNCA4IDRINkM1LjQ2OTU3IDQgNC45NjA4NiA0LjIxMDcxIDQuNTg1NzkgNC41ODU3OUM0LjIxMDcxIDQuOTYwODYgNCA1LjQ2OTU3IDQgNlYxOEM0IDE4LjUzMDQgNC4yMTA3MSAxOS4wMzkxIDQuNTg1NzkgMTkuNDE0MkM0Ljk2MDg2IDE5Ljc4OTMgNS40Njk1NyAyMCA2IDIwWiIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
+                      }}
                     />
                     <button
                       onClick={() => handleDeletePhoto(photo.id)}
@@ -162,9 +173,10 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
-                    {photo.caption && (
-                      <p class="mt-1 text-xs text-gray-600 truncate">{photo.caption}</p>
-                    )}
+                    <div class="absolute bottom-1 left-1 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p class="truncate max-w-20">{photo.originalFilename}</p>
+                      <p class="text-gray-300">{(photo.size / 1024).toFixed(1)}KB</p>
+                    </div>
                   </div>
                 )}
               </For>

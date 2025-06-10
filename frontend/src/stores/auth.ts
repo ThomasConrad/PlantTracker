@@ -65,18 +65,14 @@ const authStore = {
   },
 
   async initializeAuth(): Promise<void> {
-    const token = localStorage.getItem('authToken');
-    if (!token) return;
-
     try {
       setLoading(true);
       const userData = await apiClient.getCurrentUser();
       setUser(userData);
       setIsAuthenticated(true);
     } catch (err: unknown) {
-      localStorage.removeItem('authToken');
-      apiClient.setToken(null);
-      console.error('Auth initialization failed:', err);
+      // No session found or session expired
+      console.debug('No active session found');
     } finally {
       setLoading(false);
     }

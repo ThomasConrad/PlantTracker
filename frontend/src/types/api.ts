@@ -29,11 +29,12 @@ export interface Plant {
 
 export interface Photo {
   id: string;
-  url: string;
-  thumbnailUrl: string;
-  caption: string | null;
-  createdAt: string;
   plantId: string;
+  filename: string;
+  originalFilename: string;
+  size: number;
+  contentType: string;
+  createdAt: string;
 }
 
 export type EntryType = 'watering' | 'fertilizing' | 'custom_metric';
@@ -101,7 +102,6 @@ export interface RegisterRequest {
 }
 
 export interface AuthResponse {
-  token: string;
   user: User;
 }
 

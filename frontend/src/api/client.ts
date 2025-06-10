@@ -30,20 +30,9 @@ class ApiError extends Error {
 
 class ApiClient {
   private baseUrl: string;
-  private token: string | null = null;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
-    this.token = localStorage.getItem('authToken');
-  }
-
-  setToken(token: string | null) {
-    this.token = token;
-    if (token) {
-      localStorage.setItem('authToken', token);
-    } else {
-      localStorage.removeItem('authToken');
-    }
   }
 
   private async request<T>(
@@ -60,14 +49,11 @@ class ApiClient {
       ...(options.headers || {}),
     };
 
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`;
-    }
-
     const response = await fetch(url, {
       method: options.method || 'GET',
       body: options.body,
       headers,
+      credentials: 'include', // Include cookies for session auth
     });
 
     if (!response.ok) {
@@ -87,7 +73,6 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    this.setToken(response.token);
     return response;
   }
 
@@ -96,7 +81,6 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    this.setToken(response.token);
     return response;
   }
 
@@ -105,7 +89,9 @@ class ApiClient {
   }
 
   async logout(): Promise<void> {
-    this.setToken(null);
+    await this.request('/auth/logout', {
+      method: 'POST',
+    });
   }
 
   async getPlants(params?: {
@@ -169,15 +155,10 @@ class ApiClient {
     formData.append('file', file);
     if (caption) formData.append('caption', caption);
 
-    const headers: Record<string, string> = {};
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`;
-    }
-
     const response = await fetch(`${this.baseUrl}/plants/${plantId}/photos`, {
       method: 'POST',
-      headers,
       body: formData,
+      credentials: 'include', // Include cookies for session auth
     });
 
     if (!response.ok) {
@@ -196,6 +177,10 @@ class ApiClient {
     await this.request(`/plants/${plantId}/photos/${photoId}`, {
       method: 'DELETE',
     });
+  }
+
+  getPhotoUrl(plantId: string, photoId: string): string {
+    return `${this.baseUrl}/plants/${plantId}/photos/${photoId}`;
   }
 
   async getTrackingEntries(

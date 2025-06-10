@@ -3,7 +3,7 @@ import { A, useNavigate, useParams } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
-import { ActivityLog } from '@/components/plants/ActivityLog';
+import { PlantCareStatus } from '@/components/plants/PlantCareStatus';
 import { PhotoGallery } from '@/components/plants/PhotoGallery';
 import { formatDate } from '@/utils/date';
 
@@ -90,7 +90,7 @@ export const PlantDetailPage: Component = () => {
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="lg:col-span-2 space-y-6">
-            <ActivityLog plant={plant} />
+            <PlantCareStatus plant={plant} />
           </div>
           
           <div class="space-y-6">

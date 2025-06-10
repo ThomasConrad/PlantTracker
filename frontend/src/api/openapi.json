@@ -262,6 +262,14 @@
             "type": "string",
             "nullable": true
           },
+          "photoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
           "timestamp": {
             "type": "string",
             "format": "date-time"
@@ -324,7 +332,8 @@
         "enum": [
           "watering",
           "fertilizing",
-          "customMetric"
+          "customMetric",
+          "note"
         ]
       },
       "LoginRequest": {
@@ -511,6 +520,9 @@
           },
           "notes": {
             "type": "string",
+            "nullable": true
+          },
+          "photoIds": {
             "nullable": true
           },
           "plantId": {

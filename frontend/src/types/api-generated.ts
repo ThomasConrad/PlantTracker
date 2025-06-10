@@ -78,6 +78,7 @@ export interface components {
             /** Format: uuid */
             metricId?: string | null;
             notes?: string | null;
+            photoIds?: string[] | null;
             /** Format: date-time */
             timestamp: string;
             value?: unknown;
@@ -97,7 +98,7 @@ export interface components {
             unit: string;
         };
         /** @enum {string} */
-        EntryType: "watering" | "fertilizing" | "customMetric";
+        EntryType: "watering" | "fertilizing" | "customMetric" | "note";
         LoginRequest: {
             email: string;
             password: string;
@@ -156,6 +157,7 @@ export interface components {
             /** Format: uuid */
             metricId?: string | null;
             notes?: string | null;
+            photoIds?: unknown;
             /** Format: uuid */
             plantId: string;
             /** Format: date-time */

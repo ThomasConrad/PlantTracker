@@ -15,6 +15,7 @@ pub struct TrackingEntry {
     pub value: Option<serde_json::Value>,
     pub notes: Option<String>,
     pub metric_id: Option<Uuid>,
+    pub photo_ids: Option<serde_json::Value>, // Array of photo UUIDs
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -25,6 +26,7 @@ pub enum EntryType {
     Watering,
     Fertilizing,
     CustomMetric,
+    Note,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -36,6 +38,7 @@ pub struct CreateTrackingEntryRequest {
     #[validate(length(max = 1000))]
     pub notes: Option<String>,
     pub metric_id: Option<Uuid>,
+    pub photo_ids: Option<Vec<Uuid>>, // Array of photo UUIDs
 }
 
 #[derive(Debug, Deserialize)]

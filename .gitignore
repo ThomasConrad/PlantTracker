@@ -20,7 +20,7 @@ backend/uploads/
 .idea/
 *.swp
 *.swo
-.claude
+.claud
 
 # Database
 *.sqlite

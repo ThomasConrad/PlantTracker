@@ -45,7 +45,8 @@ dev-parallel:
 # Run only the backend API server
 backend:
     @echo "🦀 Starting Rust backend..."
-    cd backend && cargo run
+    just build
+    cd backend && cargo run --bin plant-tracker-api
 
 # Run only the frontend development server
 frontend:
@@ -55,6 +56,7 @@ frontend:
 # Build everything for production
 build:
     @echo "🏗️ Building for production..."
+    just generate-types
     just build-frontend
     just build-backend
     @echo "✅ Production build complete!"
@@ -289,11 +291,13 @@ watch:
     @echo "👀 Watching for frontend changes..."
     cd frontend && npm run dev
 
-# Generate API client from OpenAPI spec
+# Generate OpenAPI spec and TypeScript types
 generate-types:
-    @echo "🔄 Generating TypeScript types from OpenAPI spec..."
-    @echo "ℹ️  Types are currently manually maintained in frontend/src/types/api.ts"
-    @echo "ℹ️  OpenAPI spec is in frontend/src/api/openapi.yaml"
+    @echo "🔄 Generating OpenAPI spec and TypeScript types..."
+    cd backend && cargo build --bin generate-openapi
+    cd backend && ./target/debug/generate-openapi > ../frontend/src/api/openapi.json
+    cd frontend && npm run generate-types
+    @echo "✅ OpenAPI spec and TypeScript types generated!"
 
 # Run security audit
 audit:

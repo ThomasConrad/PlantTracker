@@ -3,6 +3,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -10,7 +11,7 @@ lazy_static! {
     static ref CONTENT_TYPE_REGEX: Regex = Regex::new(r"^image/(jpeg|png|gif|webp)$").unwrap();
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Photo {
     pub id: Uuid,
@@ -22,7 +23,7 @@ pub struct Photo {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PhotosResponse {
     pub photos: Vec<Photo>,

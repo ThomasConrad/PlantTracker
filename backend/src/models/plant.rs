@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct Plant {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -18,7 +20,8 @@ pub struct Plant {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct CustomMetric {
     pub id: Uuid,
     pub plant_id: Uuid,
@@ -27,7 +30,7 @@ pub struct CustomMetric {
     pub data_type: MetricDataType,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type, ToSchema)]
 #[sqlx(type_name = "metric_data_type", rename_all = "lowercase")]
 pub enum MetricDataType {
     Number,
@@ -35,7 +38,7 @@ pub enum MetricDataType {
     Boolean,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[allow(dead_code)]
 #[serde(rename_all = "camelCase")]
 pub struct CreatePlantRequest {
@@ -50,7 +53,8 @@ pub struct CreatePlantRequest {
     pub custom_metrics: Option<Vec<CreateCustomMetricRequest>>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
 pub struct CreateCustomMetricRequest {
     #[validate(length(min = 1, max = 50))]

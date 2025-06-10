@@ -1,10 +1,11 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TrackingEntry {
     pub id: Uuid,
@@ -18,7 +19,7 @@ pub struct TrackingEntry {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum EntryType {
     Watering,
@@ -26,7 +27,7 @@ pub enum EntryType {
     CustomMetric,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTrackingEntryRequest {
     pub entry_type: EntryType,
@@ -45,7 +46,7 @@ pub struct UpdateTrackingEntryRequest {
     pub notes: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct TrackingEntriesResponse {
     pub entries: Vec<TrackingEntry>,
     pub total: i64,

@@ -118,7 +118,6 @@ async fn get_entry(
         message: "Not authenticated".to_string(),
     })?;
 
-    // TODO: Implement get single tracking entry
     tracing::info!(
         "Get tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,
@@ -126,22 +125,26 @@ async fn get_entry(
         user.id
     );
 
-    // For now, return error since we haven't implemented single entry retrieval
-    Err(AppError::NotFound {
-        resource: format!("Tracking entry with id {entry_id}"),
-    })
+    let entry = db_tracking::get_tracking_entry(&pool, &plant_id, &entry_id, &user.id).await?;
+
+    tracing::debug!(
+        "Retrieved tracking entry: {} for plant: {}",
+        entry_id,
+        plant_id
+    );
+    Ok(Json(entry))
 }
 
 async fn update_entry(
     auth_session: AuthSession,
     State(pool): State<DatabasePool>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
+    ValidatedJson(payload): ValidatedJson<crate::models::tracking_entry::UpdateTrackingEntryRequest>,
 ) -> Result<Json<TrackingEntry>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
 
-    // TODO: Implement actual tracking entry update
     tracing::info!(
         "Update tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,
@@ -149,10 +152,14 @@ async fn update_entry(
         user.id
     );
 
-    // For now, return error since we haven't implemented entry updates
-    Err(AppError::NotFound {
-        resource: format!("Tracking entry with id {entry_id}"),
-    })
+    let entry = db_tracking::update_tracking_entry(&pool, &plant_id, &entry_id, &user.id, &payload).await?;
+
+    tracing::info!(
+        "Updated tracking entry: {} for plant: {}",
+        entry_id,
+        plant_id
+    );
+    Ok(Json(entry))
 }
 
 async fn delete_entry(

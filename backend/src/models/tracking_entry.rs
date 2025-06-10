@@ -41,12 +41,14 @@ pub struct CreateTrackingEntryRequest {
     pub photo_ids: Option<Vec<Uuid>>, // Array of photo UUIDs
 }
 
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTrackingEntryRequest {
     pub timestamp: Option<DateTime<Utc>>,
     pub value: Option<serde_json::Value>,
+    #[validate(length(max = 1000))]
     pub notes: Option<String>,
+    pub photo_ids: Option<Vec<Uuid>>, // Array of photo UUIDs
 }
 
 #[derive(Debug, Serialize, ToSchema)]

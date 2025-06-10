@@ -204,6 +204,16 @@ class ApiClient {
     return `${this.baseUrl}/plants/${plantId}/photos/${photoId}`;
   }
 
+  getThumbnailUrl(plantId: string, photoId: string): string {
+    return `${this.baseUrl}/plants/${plantId}/photos/${photoId}/thumbnail`;
+  }
+
+  async setPlantThumbnail(plantId: string, photoId: string): Promise<Plant> {
+    return this.request<Plant>(`/plants/${plantId}/thumbnail/${photoId}`, {
+      method: 'PUT',
+    });
+  }
+
   async getTrackingEntries(
     plantId: string,
     params?: {

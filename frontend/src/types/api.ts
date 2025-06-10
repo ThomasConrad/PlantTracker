@@ -17,6 +17,8 @@ export interface Plant {
   customMetrics: CustomMetric[];
   lastWatered: string | null;
   lastFertilized: string | null;
+  thumbnailId?: string | null;
+  thumbnailUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   userId: string;
@@ -29,7 +31,14 @@ export interface Photo {
   originalFilename: string;
   size: number;
   contentType: string;
+  thumbnailWidth?: number | null;
+  thumbnailHeight?: number | null;
   createdAt: string;
+}
+
+export interface PhotoWithThumbnail extends Photo {
+  fullUrl: string;
+  thumbnailUrl?: string | null;
 }
 
 // Re-export commonly used generated types for convenience

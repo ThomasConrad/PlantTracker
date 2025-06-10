@@ -16,6 +16,7 @@ pub struct Plant {
     pub fertilizing_interval_days: i32,
     pub last_watered: Option<DateTime<Utc>>,
     pub last_fertilized: Option<DateTime<Utc>>,
+    pub thumbnail_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -94,6 +95,8 @@ pub struct PlantResponse {
     pub fertilizing_interval_days: i32,
     pub last_watered: Option<DateTime<Utc>>,
     pub last_fertilized: Option<DateTime<Utc>>,
+    pub thumbnail_id: Option<Uuid>,
+    pub thumbnail_url: Option<String>,
     pub custom_metrics: Vec<CustomMetric>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -325,6 +328,8 @@ mod tests {
             fertilizing_interval_days: 14,
             last_watered: None,
             last_fertilized: None,
+            thumbnail_id: None,
+            thumbnail_url: None,
             custom_metrics: vec![],
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -356,6 +361,7 @@ mod tests {
             fertilizing_interval_days: 14,
             last_watered: None,
             last_fertilized: None,
+            thumbnail_id: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

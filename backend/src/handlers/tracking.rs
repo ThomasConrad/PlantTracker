@@ -6,6 +6,7 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
+use utoipa::OpenApi;
 use uuid::Uuid;
 
 use crate::auth::AuthSession;
@@ -25,6 +26,21 @@ pub fn routes() -> Router<DatabasePool> {
         )
 }
 
+#[utoipa::path(
+    get,
+    path = "/plants/{plant_id}/entries",
+    responses(
+        (status = 200, description = "List tracking entries for plant", body = TrackingEntriesResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+    ),
+    params(
+        ("plant_id" = Uuid, Path, description = "Plant ID")
+    ),
+    security(
+        ("session" = [])
+    )
+)]
 async fn list_entries(
     auth_session: AuthSession,
     State(pool): State<DatabasePool>,
@@ -50,6 +66,23 @@ async fn list_entries(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    post,
+    path = "/plants/{plant_id}/entries",
+    request_body = CreateTrackingEntryRequest,
+    responses(
+        (status = 201, description = "Tracking entry created", body = TrackingEntry),
+        (status = 400, description = "Invalid request"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+    ),
+    params(
+        ("plant_id" = Uuid, Path, description = "Plant ID")
+    ),
+    security(
+        ("session" = [])
+    )
+)]
 async fn create_entry(
     auth_session: AuthSession,
     State(pool): State<DatabasePool>,

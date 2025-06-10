@@ -12,6 +12,8 @@ use std::{env, path::Path};
 use tower::ServiceBuilder;
 use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 mod auth;
 mod database;
@@ -21,6 +23,7 @@ mod models;
 mod utils;
 
 use handlers::{auth as auth_handlers, plants};
+use plant_tracker_api::ApiDoc;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -112,6 +115,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health_check))
         .nest("/auth", auth_handlers::routes())
         .nest("/plants", plants::routes())
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .route("/openapi.json", get(|| async { Json(ApiDoc::openapi()) }))
         .with_state(pool);
 
     // Build main application router

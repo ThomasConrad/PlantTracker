@@ -25,7 +25,12 @@ backend/uploads/
 # Database
 *.sqlite
 *.db
+*.db-shm
+*.db-wal
 
 # OS
 Thumbs.db
 node_modules
+
+# Package locks (auto-generated)
+package-lock.json

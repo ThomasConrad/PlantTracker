@@ -3,6 +3,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use utoipa::OpenApi;
 
 use crate::auth::{AuthSession, Credentials};
 use crate::database::{users as db_users, DatabasePool};
@@ -18,6 +19,16 @@ pub fn routes() -> Router<DatabasePool> {
         .route("/me", get(me))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login successful", body = AuthResponse),
+        (status = 400, description = "Invalid credentials"),
+        (status = 401, description = "Authentication failed"),
+    )
+)]
 async fn login(
     mut auth_session: AuthSession,
     ValidatedJson(payload): ValidatedJson<LoginRequest>,
@@ -58,6 +69,16 @@ async fn login(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/register",
+    request_body = CreateUserRequest,
+    responses(
+        (status = 201, description = "Registration successful", body = AuthResponse),
+        (status = 400, description = "Invalid registration data"),
+        (status = 409, description = "Email already exists"),
+    )
+)]
 async fn register(
     mut auth_session: AuthSession,
     ValidatedJson(payload): ValidatedJson<CreateUserRequest>,

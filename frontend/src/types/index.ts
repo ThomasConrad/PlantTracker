@@ -1,4 +1,8 @@
 export * from './api';
+import type { Plant, components } from './api';
+
+type User = components['schemas']['UserResponse'];
+type EntryType = components['schemas']['EntryType'];
 
 export interface AppState {
   isAuthenticated: boolean;
@@ -16,12 +20,12 @@ export interface PlantFormData {
   customMetrics: {
     name: string;
     unit: string;
-    dataType: 'number' | 'text' | 'boolean';
+    dataType: 'Number' | 'Text' | 'Boolean';
   }[];
 }
 
 export interface TrackingFormData {
-  type: EntryType;
+  entryType: EntryType;
   timestamp: Date;
   value?: number | string | boolean;
   notes?: string;
@@ -35,4 +39,4 @@ export interface PlantStats {
   lastActivity: string | null;
 }
 
-import type { User, Plant, EntryType } from './api';
+export type { User, EntryType };

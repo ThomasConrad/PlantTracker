@@ -1,19 +1,40 @@
-import type {
-  AuthResponse,
-  LoginRequest,
-  RegisterRequest,
-  User,
-  Plant,
-  CreatePlantRequest,
-  UpdatePlantRequest,
-  PlantsResponse,
-  Photo,
-  PhotosResponse,
-  TrackingEntry,
-  TrackingEntriesResponse,
-  CreateTrackingEntryRequest,
-  UpdateTrackingEntryRequest,
-} from '@/types/api';
+import type { Plant, Photo, components } from '@/types/api';
+
+// Generated API types
+type AuthResponse = components['schemas']['AuthResponse'];
+type LoginRequest = components['schemas']['LoginRequest'];
+type UserResponse = components['schemas']['UserResponse'];
+type User = UserResponse;
+type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
+type TrackingEntry = components['schemas']['TrackingEntry'];
+type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
+type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
+type PhotosResponse = components['schemas']['PhotosResponse'];
+
+// Local types for compatibility
+interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+}
+
+interface UpdatePlantRequest {
+  name?: string;
+  genus?: string;
+  wateringIntervalDays?: number;
+  fertilizingIntervalDays?: number;
+}
+
+interface UpdateTrackingEntryRequest {
+  timestamp?: string;
+  value?: unknown;
+  notes?: string;
+}
+
+interface PlantsResponse {
+  plants: Plant[];
+  total: number;
+}
 
 const API_BASE_URL = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '/api/v1';
 

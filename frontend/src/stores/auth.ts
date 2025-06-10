@@ -1,6 +1,9 @@
 import { createSignal, createEffect } from 'solid-js';
 import { apiClient } from '@/api/client';
-import type { User, LoginRequest, RegisterRequest } from '@/types';
+import type { User, components } from '@/types';
+
+type LoginRequest = components['schemas']['LoginRequest'];
+type RegisterRequest = components['schemas']['CreateUserRequest'];
 
 const [isAuthenticated, setIsAuthenticated] = createSignal(false);
 const [user, setUser] = createSignal<User | null>(null);

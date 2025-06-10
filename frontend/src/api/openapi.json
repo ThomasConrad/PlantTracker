@@ -1,0 +1,582 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Plant Tracker API",
+    "description": "A REST API for tracking plant care and growth metrics",
+    "license": {
+      "name": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "crate::handlers::auth"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid credentials"
+          },
+          "401": {
+            "description": "Authentication failed"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "crate::handlers::auth"
+        ],
+        "operationId": "register",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Registration successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid registration data"
+          },
+          "409": {
+            "description": "Email already exists"
+          }
+        }
+      }
+    },
+    "/plants/{plant_id}/entries": {
+      "get": {
+        "tags": [
+          "crate::handlers::tracking"
+        ],
+        "operationId": "list_entries",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List tracking entries for plant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackingEntriesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "crate::handlers::tracking"
+        ],
+        "operationId": "create_entry",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTrackingEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Tracking entry created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackingEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthResponse": {
+        "type": "object",
+        "required": [
+          "user"
+        ],
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserResponse"
+          }
+        }
+      },
+      "CreateCustomMetricRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "unit",
+          "dataType"
+        ],
+        "properties": {
+          "dataType": {
+            "$ref": "#/components/schemas/MetricDataType"
+          },
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatePlantRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "genus",
+          "wateringIntervalDays",
+          "fertilizingIntervalDays"
+        ],
+        "properties": {
+          "customMetrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateCustomMetricRequest"
+            },
+            "nullable": true
+          },
+          "fertilizingIntervalDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "genus": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "wateringIntervalDays": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CreateTrackingEntryRequest": {
+        "type": "object",
+        "required": [
+          "entryType",
+          "timestamp"
+        ],
+        "properties": {
+          "entryType": {
+            "$ref": "#/components/schemas/EntryType"
+          },
+          "metricId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "value": {
+            "nullable": true
+          }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "name",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "CustomMetric": {
+        "type": "object",
+        "required": [
+          "id",
+          "plantId",
+          "name",
+          "unit",
+          "dataType"
+        ],
+        "properties": {
+          "dataType": {
+            "$ref": "#/components/schemas/MetricDataType"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "EntryType": {
+        "type": "string",
+        "enum": [
+          "watering",
+          "fertilizing",
+          "customMetric"
+        ]
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "MetricDataType": {
+        "type": "string",
+        "enum": [
+          "Number",
+          "Text",
+          "Boolean"
+        ]
+      },
+      "Photo": {
+        "type": "object",
+        "required": [
+          "id",
+          "plantId",
+          "filename",
+          "originalFilename",
+          "size",
+          "contentType",
+          "createdAt"
+        ],
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "originalFilename": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "PhotosResponse": {
+        "type": "object",
+        "required": [
+          "photos",
+          "total"
+        ],
+        "properties": {
+          "photos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Photo"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "Plant": {
+        "type": "object",
+        "required": [
+          "id",
+          "userId",
+          "name",
+          "genus",
+          "wateringIntervalDays",
+          "fertilizingIntervalDays",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fertilizingIntervalDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "genus": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastFertilized": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastWatered": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "wateringIntervalDays": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "TrackingEntriesResponse": {
+        "type": "object",
+        "required": [
+          "entries",
+          "total"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackingEntry"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "TrackingEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "plantId",
+          "entryType",
+          "timestamp",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entryType": {
+            "$ref": "#/components/schemas/EntryType"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metricId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "value": {
+            "nullable": true
+          }
+        }
+      },
+      "UserResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "name",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Authentication endpoints"
+    },
+    {
+      "name": "plants",
+      "description": "Plant management endpoints"
+    },
+    {
+      "name": "tracking",
+      "description": "Plant care tracking endpoints"
+    },
+    {
+      "name": "photos",
+      "description": "Photo management endpoints"
+    }
+  ]
+}

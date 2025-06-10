@@ -1,14 +1,23 @@
 import { createSignal } from 'solid-js';
 import { apiClient } from '@/api/client';
-import type {
-  Plant,
-  CreatePlantRequest,
-  UpdatePlantRequest,
-  Photo,
-  TrackingEntry,
-  CreateTrackingEntryRequest,
-  UpdateTrackingEntryRequest,
-} from '@/types';
+import type { Plant, Photo, components } from '@/types';
+
+type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
+type TrackingEntry = components['schemas']['TrackingEntry'];
+type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
+
+interface UpdatePlantRequest {
+  name?: string;
+  genus?: string;
+  wateringIntervalDays?: number;
+  fertilizingIntervalDays?: number;
+}
+
+interface UpdateTrackingEntryRequest {
+  timestamp?: string;
+  value?: unknown;
+  notes?: string;
+}
 
 const [plants, setPlants] = createSignal<Plant[]>([]);
 const [selectedPlant, setSelectedPlant] = createSignal<Plant | null>(null);
@@ -137,13 +146,13 @@ const plantsStore = {
       setError(null);
       const entry = await apiClient.createTrackingEntry(plantId, entryData);
       
-      if (entryData.type === 'watering' || entryData.type === 'fertilizing') {
+      if (entryData.entryType === 'watering' || entryData.entryType === 'fertilizing') {
         const plantToUpdate = plants().find(p => p.id === plantId);
         if (plantToUpdate) {
           const updatedPlant = {
             ...plantToUpdate,
-            lastWatered: entryData.type === 'watering' ? entryData.timestamp : plantToUpdate.lastWatered,
-            lastFertilized: entryData.type === 'fertilizing' ? entryData.timestamp : plantToUpdate.lastFertilized,
+            lastWatered: entryData.entryType === 'watering' ? entryData.timestamp : plantToUpdate.lastWatered,
+            lastFertilized: entryData.entryType === 'fertilizing' ? entryData.timestamp : plantToUpdate.lastFertilized,
           };
           
           setPlants(prev =>

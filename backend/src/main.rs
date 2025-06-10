@@ -1,6 +1,7 @@
 use axum::{
     extract::DefaultBodyLimit,
     http::{header, Method, StatusCode},
+    middleware::from_fn,
     response::{Html, Json},
     routing::get,
     Router,
@@ -23,7 +24,7 @@ mod middleware;
 mod models;
 mod utils;
 
-use handlers::{auth as auth_handlers, photos, plants, tracking};
+use handlers::{auth as auth_handlers, plants, tracking};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -63,6 +64,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Database setup with custom URL
     let pool = database::create_pool_with_url(&args.database_url).await?;
+    
+    // Run migrations for production (embedded migrations)
+    database::run_migrations(&pool).await?;
 
     // Authentication setup
     let (session_layer, auth_layer) = auth::create_auth_layers(pool.clone());
@@ -96,7 +100,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health_check))
         .nest("/auth", auth_handlers::routes())
         .nest("/plants", plants::routes())
-        .nest("/photos", photos::routes())
         .nest("/tracking", tracking::routes())
         .with_state(pool);
 
@@ -120,6 +123,7 @@ async fn main() -> anyhow::Result<()> {
     let app = app.layer(
         ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
+            .layer(from_fn(crate::middleware::logging::log_errors))
             .layer(cors)
             .layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB max
             .layer(auth_layer)

@@ -19,7 +19,7 @@ async fn test_user_registration() {
         .await
         .expect("Failed to send request");
 
-    assert_eq!(response.status(), 200);
+    assert_eq!(response.status(), 201);
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert_eq!(body["user"]["email"], "test@example.com");
@@ -44,7 +44,7 @@ async fn test_user_registration_duplicate_email() {
         .await
         .expect("Failed to send first request");
 
-    assert_eq!(response1.status(), 200);
+    assert_eq!(response1.status(), 201);
 
     // Second registration with same email should fail
     let response2 = app
@@ -188,7 +188,7 @@ async fn test_logout() {
         .send()
         .await
         .expect("Failed to send logout request");
-    assert_eq!(logout_response.status(), 204);
+    assert_eq!(logout_response.status(), 200);
 
     // Verify we're no longer authenticated
     let me_response_after = app

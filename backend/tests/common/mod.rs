@@ -20,14 +20,13 @@ impl TestApp {
         // Use in-memory SQLite database for tests
         let database_url = "sqlite::memory:".to_string();
 
-        // Set up database
-        let db_pool = SqlitePool::connect(&database_url)
+        // Set up database using the centralized pool creation function
+        let db_pool = plant_tracker_api::database::create_pool_with_url(&database_url)
             .await
-            .expect("Failed to connect to test database");
+            .expect("Failed to create test database pool");
 
-        // Run migrations
-        sqlx::migrate!("./migrations")
-            .run(&db_pool)
+        // Run migrations for tests
+        plant_tracker_api::database::run_migrations(&db_pool)
             .await
             .expect("Failed to run migrations");
 
@@ -91,7 +90,7 @@ pub async fn create_test_user(app: &TestApp, email: &str, name: &str, password: 
         .await
         .expect("Failed to send register request");
 
-    assert_eq!(response.status(), 200);
+    assert_eq!(response.status(), 201);
     response.json().await.expect("Failed to parse register response")
 }
 
@@ -126,6 +125,6 @@ pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_
         .await
         .expect("Failed to send create plant request");
 
-    assert_eq!(response.status(), 200);
+    assert_eq!(response.status(), 201);
     response.json().await.expect("Failed to parse create plant response")
 }

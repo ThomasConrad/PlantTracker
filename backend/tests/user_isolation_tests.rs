@@ -38,7 +38,7 @@ async fn test_user_can_only_see_own_plants() {
     assert_eq!(body["total"], 1);
     assert_eq!(body["plants"].as_array().unwrap().len(), 1);
     assert_eq!(body["plants"][0]["name"], "User2 Plant1");
-    assert_eq!(body["plants"][0]["user_id"], user2_id);
+    assert_eq!(body["plants"][0]["userId"], user2_id);
 
     // User2 should not be able to access user1's plants
     let plant1_id = plant1["id"].as_str().unwrap();
@@ -72,7 +72,7 @@ async fn test_user_can_only_see_own_plants() {
     // Verify both plants belong to user1
     let plants = body["plants"].as_array().unwrap();
     for plant in plants {
-        assert_eq!(plant["user_id"], user1_id);
+        assert_eq!(plant["userId"], user1_id);
     }
 
     // User1 should be able to access their own plants
@@ -86,7 +86,7 @@ async fn test_user_can_only_see_own_plants() {
     assert_eq!(response.status(), 200);
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert_eq!(body["id"], plant1_id);
-    assert_eq!(body["user_id"], user1_id);
+    assert_eq!(body["userId"], user1_id);
 }
 
 #[tokio::test]
@@ -209,8 +209,8 @@ async fn test_concurrent_users_isolated_sessions() {
         .await
         .expect("Failed to create plant with client2");
 
-    assert_eq!(plant1_response.status(), 200);
-    assert_eq!(plant2_response.status(), 200);
+    assert_eq!(plant1_response.status(), 201);
+    assert_eq!(plant2_response.status(), 201);
 
     // Verify each client only sees their own plants
     let client1_plants = client1
@@ -285,7 +285,7 @@ async fn test_session_isolation_after_logout() {
         .send()
         .await
         .expect("Failed to logout");
-    assert_eq!(logout_response.status(), 204);
+    assert_eq!(logout_response.status(), 200);
 
     // Verify access is denied after logout
     let response = app

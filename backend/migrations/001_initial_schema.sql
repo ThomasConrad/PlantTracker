@@ -44,11 +44,10 @@ CREATE TABLE photos (
     id TEXT PRIMARY KEY,
     plant_id TEXT NOT NULL,
     filename TEXT NOT NULL,
-    url TEXT NOT NULL,
-    thumbnail_url TEXT,
-    caption TEXT,
+    original_filename TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    content_type TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
 );
 

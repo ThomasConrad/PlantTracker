@@ -1,84 +1,137 @@
-#[allow(unused_imports)]
 use axum::{
-    extract::Path,
+    extract::{Multipart, Path, State},
     http::StatusCode,
     response::Json,
-    routing::{delete, get, post},
+    routing::{delete, get},
     Router,
 };
-use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::database::DatabasePool;
-use crate::utils::errors::Result;
+use crate::auth::AuthSession;
+use crate::database::{photos as db_photos, DatabasePool};
+use crate::models::{PhotosResponse, UploadPhotoRequest};
+use crate::utils::errors::{AppError, Result};
 
 pub fn routes() -> Router<DatabasePool> {
     Router::new()
         .route(
-            "/plants/:plant_id/photos",
+            "/photos",
             get(list_photos).post(upload_photo),
         )
-        .route("/plants/:plant_id/photos/:photo_id", delete(delete_photo))
+        .route("/photos/:photo_id", delete(delete_photo))
 }
 
-async fn list_photos(Path(plant_id): Path<Uuid>) -> Result<Json<Value>> {
-    tracing::info!("List photos request for plant: {}", plant_id);
+async fn list_photos(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
+    Path(plant_id): Path<Uuid>,
+) -> Result<Json<PhotosResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
 
-    // TODO: Implement actual photo listing
-    // In real implementation, would:
-    // 1. Verify plant exists (return AppError::NotFound if not)
-    // 2. Query photos from database
-    
-    // Mock response for now
-    let response = json!({
-        "photos": [],
-        "total": 0
-    });
+    tracing::info!("List photos request for plant: {} by user: {}", plant_id, user.id);
 
-    tracing::debug!("Returning 0 photos for plant: {}", plant_id);
+    let response = db_photos::get_photos_for_plant(&pool, &plant_id, &user.id).await?;
+
+    tracing::debug!("Returning {} photos for plant: {}", response.total, plant_id);
     Ok(Json(response))
 }
 
-async fn upload_photo(Path(plant_id): Path<Uuid>) -> Result<Json<Value>> {
-    tracing::info!("Upload photo request for plant: {}", plant_id);
+async fn upload_photo(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
+    Path(plant_id): Path<Uuid>,
+    mut multipart: Multipart,
+) -> Result<(StatusCode, Json<crate::models::Photo>)> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
 
-    // TODO: Implement actual photo upload
-    // In real implementation, would:
-    // 1. Verify plant exists (return AppError::NotFound if not)
-    // 2. Validate file upload (return AppError::Validation if invalid)
-    // 3. Save file to storage
-    // 4. Create thumbnail
-    // 5. Save photo record to database
-    
-    let photo_id = Uuid::new_v4();
-    let response = json!({
-        "id": photo_id,
-        "url": "https://example.com/photo.jpg",
-        "thumbnail_url": "https://example.com/photo_thumb.jpg",
-        "caption": null,
-        "created_at": chrono::Utc::now(),
-        "plant_id": plant_id
-    });
+    tracing::info!("Upload photo request for plant: {} by user: {}", plant_id, user.id);
 
-    tracing::info!("Photo uploaded with id: {} for plant: {}", photo_id, plant_id);
-    Ok(Json(response))
+    let mut file_data: Option<Vec<u8>> = None;
+    let mut original_filename: Option<String> = None;
+    let mut content_type: Option<String> = None;
+    let mut _caption: Option<String> = None;
+
+    // Process multipart form data
+    while let Some(field) = multipart.next_field().await.map_err(|_e| AppError::Validation(
+        validator::ValidationErrors::new()
+    ))? {
+        let name = field.name().unwrap_or("").to_string();
+        
+        match name.as_str() {
+            "file" => {
+                original_filename = field.file_name().map(|s| s.to_string());
+                content_type = field.content_type().map(|s| s.to_string());
+                file_data = Some(field.bytes().await.map_err(|_| AppError::Validation(
+                    validator::ValidationErrors::new()
+                ))?.to_vec());
+            }
+            "caption" => {
+                _caption = Some(field.text().await.map_err(|_| AppError::Validation(
+                    validator::ValidationErrors::new()
+                ))?);
+            }
+            _ => {
+                // Skip unknown fields
+            }
+        }
+    }
+
+    // Validate required fields
+    let file_data = file_data.ok_or_else(|| AppError::Validation(
+        validator::ValidationErrors::new()
+    ))?;
+    let original_filename = original_filename.ok_or_else(|| AppError::Validation(
+        validator::ValidationErrors::new()
+    ))?;
+    let content_type = content_type.ok_or_else(|| AppError::Validation(
+        validator::ValidationErrors::new()
+    ))?;
+
+    // Validate content type
+    if !content_type.starts_with("image/") {
+        return Err(AppError::Validation(validator::ValidationErrors::new()));
+    }
+
+    // Validate file size (10MB max)
+    if file_data.len() > 10 * 1024 * 1024 {
+        return Err(AppError::Validation(validator::ValidationErrors::new()));
+    }
+
+    // Create upload request
+    let upload_request = UploadPhotoRequest {
+        original_filename,
+        size: file_data.len() as i64,
+        content_type,
+        data: file_data,
+    };
+
+    let photo = db_photos::create_photo(&pool, &plant_id, &user.id, &upload_request).await?;
+
+    tracing::info!("Photo uploaded with id: {} for plant: {}", photo.id, plant_id);
+    Ok((StatusCode::CREATED, Json(photo)))
 }
 
 async fn delete_photo(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
     tracing::info!(
-        "Delete photo request for plant: {}, photo: {}",
+        "Delete photo request for plant: {}, photo: {} by user: {}",
         plant_id,
-        photo_id
+        photo_id,
+        user.id
     );
 
-    // TODO: Implement actual photo deletion
-    // In real implementation, would:
-    // 1. Verify plant exists (return AppError::NotFound if not)
-    // 2. Verify photo exists and belongs to plant (return AppError::NotFound if not)
-    // 3. Delete file from storage
-    // 4. Delete photo record from database
+    db_photos::delete_photo(&pool, &plant_id, &photo_id, &user.id).await?;
 
     tracing::info!("Deleted photo: {} for plant: {}", photo_id, plant_id);
     Ok(StatusCode::NO_CONTENT)

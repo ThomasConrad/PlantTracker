@@ -26,15 +26,15 @@ async fn test_create_plant_authenticated() {
         .await
         .expect("Failed to send create plant request");
 
-    assert_eq!(response.status(), 200);
+    assert_eq!(response.status(), 201);
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert_eq!(body["name"], "My Fiddle Leaf Fig");
     assert_eq!(body["genus"], "Ficus");
-    assert_eq!(body["watering_interval_days"], 7);
-    assert_eq!(body["fertilizing_interval_days"], 14);
+    assert_eq!(body["wateringIntervalDays"], 7);
+    assert_eq!(body["fertilizingIntervalDays"], 14);
     assert!(body["id"].is_string());
-    assert!(body["user_id"].is_string());
+    assert!(body["userId"].is_string());
 }
 
 #[tokio::test]
@@ -181,8 +181,8 @@ async fn test_update_plant() {
     assert_eq!(body["id"], plant_id);
     assert_eq!(body["name"], "Updated Plant");
     assert_eq!(body["genus"], "Updated Genus");
-    assert_eq!(body["watering_interval_days"], 5);
-    assert_eq!(body["fertilizing_interval_days"], 21);
+    assert_eq!(body["wateringIntervalDays"], 5);
+    assert_eq!(body["fertilizingIntervalDays"], 21);
 }
 
 #[tokio::test]

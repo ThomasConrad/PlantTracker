@@ -585,6 +585,202 @@ class TestPerformance:
         assert response_data["total"] == num_plants
 
 
+@pytest.mark.photos
+class TestPhotoUpload:
+    """Test photo upload functionality"""
+    
+    @pytest.fixture(autouse=True)
+    def login_user(self, client, test_users):
+        """Automatically login a user before each test"""
+        user_data = test_users["user1"]
+        
+        # Register and login user
+        client.request("POST", "/auth/register", json=user_data)
+        response = client.request("POST", "/auth/login", json={
+            "email": user_data["email"],
+            "password": user_data["password"]
+        })
+        assert response.status_code == 200
+
+    def test_upload_photo_multipart(self, client):
+        """Test uploading a photo using multipart form data"""
+        # Create a plant first
+        plant_data = {
+            "name": "Photo Test Plant",
+            "genus": "Photographicus",
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        plant_response = client.request("POST", "/plants", json=plant_data)
+        assert plant_response.status_code == 201
+        plant = plant_response.json()
+        plant_id = plant["id"]
+        
+        # Create fake image data (minimal JPEG header)
+        fake_image_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb'
+        
+        # Upload photo using multipart form data
+        import io
+        files = {
+            'file': ('test-photo.jpg', io.BytesIO(fake_image_data), 'image/jpeg')
+        }
+        
+        # Use requests directly for multipart upload
+        import requests
+        response = requests.post(
+            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            files=files,
+            cookies=client.session.cookies
+        )
+        
+        assert response.status_code == 201
+        photo_data = response.json()
+        
+        assert "id" in photo_data
+        assert photo_data["plantId"] == plant_id
+        assert photo_data["originalFilename"] == "test-photo.jpg"
+        assert photo_data["contentType"] == "image/jpeg"
+        assert photo_data["size"] == len(fake_image_data)
+        assert "createdAt" in photo_data
+
+    def test_list_photos_after_upload(self, client):
+        """Test listing photos after uploading one"""
+        # Create a plant first
+        plant_data = {
+            "name": "Photo List Plant",
+            "genus": "Listicus",
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        plant_response = client.request("POST", "/plants", json=plant_data)
+        assert plant_response.status_code == 201
+        plant = plant_response.json()
+        plant_id = plant["id"]
+        
+        # Upload a photo
+        fake_image_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb'
+        
+        import io
+        import requests
+        files = {
+            'file': ('list-test.jpg', io.BytesIO(fake_image_data), 'image/jpeg')
+        }
+        
+        upload_response = requests.post(
+            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            files=files,
+            cookies=client.session.cookies
+        )
+        assert upload_response.status_code == 201
+        
+        # List photos
+        list_response = client.request("GET", f"/plants/{plant_id}/photos")
+        assert list_response.status_code == 200
+        
+        photos_data = list_response.json()
+        assert photos_data["total"] == 1
+        assert len(photos_data["photos"]) == 1
+        assert photos_data["photos"][0]["originalFilename"] == "list-test.jpg"
+
+    def test_delete_photo(self, client):
+        """Test deleting a photo"""
+        # Create a plant first
+        plant_data = {
+            "name": "Photo Delete Plant",
+            "genus": "Deleticus",
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        plant_response = client.request("POST", "/plants", json=plant_data)
+        assert plant_response.status_code == 201
+        plant = plant_response.json()
+        plant_id = plant["id"]
+        
+        # Upload a photo
+        fake_image_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb'
+        
+        import io
+        import requests
+        files = {
+            'file': ('delete-test.jpg', io.BytesIO(fake_image_data), 'image/jpeg')
+        }
+        
+        upload_response = requests.post(
+            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            files=files,
+            cookies=client.session.cookies
+        )
+        assert upload_response.status_code == 201
+        photo = upload_response.json()
+        photo_id = photo["id"]
+        
+        # Delete the photo
+        delete_response = client.request("DELETE", f"/plants/{plant_id}/photos/{photo_id}")
+        assert delete_response.status_code == 204
+        
+        # Verify photo is deleted
+        list_response = client.request("GET", f"/plants/{plant_id}/photos")
+        assert list_response.status_code == 200
+        
+        photos_data = list_response.json()
+        assert photos_data["total"] == 0
+        assert len(photos_data["photos"]) == 0
+
+    def test_upload_photo_validation_errors(self, client):
+        """Test photo upload validation"""
+        # Create a plant first
+        plant_data = {
+            "name": "Validation Plant",
+            "genus": "Validicus", 
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        plant_response = client.request("POST", "/plants", json=plant_data)
+        assert plant_response.status_code == 201
+        plant = plant_response.json()
+        plant_id = plant["id"]
+        
+        # Test invalid file type
+        import io
+        import requests
+        files = {
+            'file': ('test.txt', io.BytesIO(b'not an image'), 'text/plain')
+        }
+        
+        response = requests.post(
+            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            files=files,
+            cookies=client.session.cookies
+        )
+        assert response.status_code == 422
+
+    def test_upload_photo_unauthenticated(self, client):
+        """Test photo upload without authentication"""
+        plant_id = str(uuid.uuid4())
+        
+        # Logout first
+        client.request("POST", "/auth/logout")
+        
+        fake_image_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb'
+        
+        import io
+        import requests
+        files = {
+            'file': ('unauth-test.jpg', io.BytesIO(fake_image_data), 'image/jpeg')
+        }
+        
+        # Create a new session without cookies
+        response = requests.post(
+            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            files=files
+        )
+        assert response.status_code == 401
+
+
 if __name__ == "__main__":
     # Run tests when script is executed directly
     pytest.main([__file__, "-v"])

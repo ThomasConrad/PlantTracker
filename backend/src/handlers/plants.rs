@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use crate::auth::AuthSession;
 use crate::database::{plants as db_plants, DatabasePool};
+use crate::handlers::photos;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{CreatePlantRequest, PlantResponse, PlantsResponse, UpdatePlantRequest};
 use crate::utils::errors::{AppError, Result};
@@ -22,6 +23,7 @@ pub fn routes() -> Router<DatabasePool> {
             "/:id",
             get(get_plant).put(update_plant).delete(delete_plant),
         )
+        .nest("/:plant_id", photos::routes())
 }
 
 #[derive(Debug, Deserialize)]

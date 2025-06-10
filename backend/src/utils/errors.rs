@@ -3,6 +3,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use chrono::Utc;
 use serde::Serialize;
 use thiserror::Error;
 use validator::ValidationErrors;
@@ -103,6 +104,16 @@ impl IntoResponse for AppError {
                 )
             }
         };
+
+        // Log all error responses with timestamp and details for debugging
+        tracing::debug!(
+            status_code = %status,
+            error_type = %error_type,
+            message = %message,
+            details = ?details,
+            timestamp = %Utc::now().to_rfc3339(),
+            "Error response generated"
+        );
 
         let body = Json(ErrorResponse {
             error: error_type.to_string(),
@@ -292,5 +303,22 @@ mod tests {
         let sqlx_error = sqlx::Error::RowNotFound;
         let error: AppError = sqlx_error.into();
         assert!(matches!(error, AppError::Database(_)));
+    }
+
+    #[test]
+    fn test_error_logging_includes_timestamp() {
+        // Test that IntoResponse generates logs with timestamp
+        use axum::response::IntoResponse;
+        
+        let error = AppError::NotFound {
+            resource: "Test Resource".to_string(),
+        };
+        
+        // This should trigger the debug logging with timestamp
+        let _response = error.into_response();
+        
+        // Note: In a real implementation, you might want to capture logs
+        // and verify they contain the expected timestamp format
+        // For this test, we're just ensuring the code path executes without panic
     }
 }

@@ -10,7 +10,7 @@ categories = ["web-programming::http-server", "database"]
 
 [dependencies]
 # Web framework
-axum = "0.7"
+axum = { version = "0.7", features = ["multipart"] }
 tokio = { version = "1.35", features = ["full"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "fs", "trace"] }
@@ -45,6 +45,8 @@ multer = "3.0"
 
 # Validation
 validator = { version = "0.18", features = ["derive"] }
+regex = "1.10"
+lazy_static = "1.4"
 
 # Logging
 tracing = "0.1"

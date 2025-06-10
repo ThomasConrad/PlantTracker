@@ -22,6 +22,7 @@ export interface PlantFormData {
     unit: string;
     dataType: 'Number' | 'Text' | 'Boolean';
   }[];
+  thumbnailFile?: File;
 }
 
 export interface TrackingFormData {

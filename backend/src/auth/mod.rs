@@ -78,7 +78,10 @@ pub type AuthSession = axum_login::AuthSession<AuthBackend>;
 #[must_use]
 pub fn create_auth_layers(
     pool: DatabasePool,
-) -> (SessionManagerLayer<SqliteStore>, axum_login::AuthManagerLayer<AuthBackend, SqliteStore>) {
+) -> (
+    SessionManagerLayer<SqliteStore>,
+    axum_login::AuthManagerLayer<AuthBackend, SqliteStore>,
+) {
     let session_store = SqliteStore::new(pool.clone());
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false) // Set to true in production with HTTPS

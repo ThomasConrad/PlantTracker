@@ -45,7 +45,9 @@ impl IntoResponse for AppError {
                     .map(|(field, errors)| {
                         let messages: Vec<String> = errors
                             .iter()
-                            .filter_map(|error| error.message.as_ref().map(std::string::ToString::to_string))
+                            .filter_map(|error| {
+                                error.message.as_ref().map(std::string::ToString::to_string)
+                            })
                             .collect();
                         ((*field).to_string(), messages)
                     })
@@ -88,12 +90,9 @@ impl IntoResponse for AppError {
                 message.as_str(),
                 None,
             ),
-            Self::NotFound { resource } => (
-                StatusCode::NOT_FOUND,
-                "not_found",
-                resource.as_str(),
-                None,
-            ),
+            Self::NotFound { resource } => {
+                (StatusCode::NOT_FOUND, "not_found", resource.as_str(), None)
+            }
             Self::Internal { message } => {
                 tracing::error!("Internal error: {}", message);
                 (
@@ -148,18 +147,20 @@ mod tests {
             email: "invalid-email".to_string(),
             password: "short".to_string(),
         };
-        
+
         let validation_result = test_data.validate();
         assert!(validation_result.is_err());
-        
+
         let error = AppError::Validation(validation_result.unwrap_err());
         let response = error.into_response();
-        
+
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(json["error"], "validation_error");
         assert_eq!(json["message"], "Request validation failed");
         assert!(json["details"].is_object());
@@ -169,17 +170,19 @@ mod tests {
     async fn test_json_rejection_error_response() {
         // Create a simple JSON error using missing content type rejection
         use axum::extract::rejection::JsonRejection;
-        
+
         let json_error = JsonRejection::MissingJsonContentType(Default::default());
-        
+
         let error = AppError::JsonRejection(json_error);
         let response = error.into_response();
-        
+
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-        
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(json["error"], "json_error");
         assert_eq!(json["message"], "Invalid JSON in request body");
         assert!(json["details"].is_object());
@@ -189,12 +192,14 @@ mod tests {
     async fn test_database_error_response() {
         let error = AppError::Database(sqlx::Error::RowNotFound);
         let response = error.into_response();
-        
+
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(json["error"], "database_error");
         assert_eq!(json["message"], "A database error occurred");
         assert!(json["details"].is_null());
@@ -202,16 +207,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_authentication_error_response() {
-        let error = AppError::Authentication { 
-            message: "Invalid credentials".to_string() 
+        let error = AppError::Authentication {
+            message: "Invalid credentials".to_string(),
         };
         let response = error.into_response();
-        
+
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-        
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(json["error"], "authentication_error");
         assert_eq!(json["message"], "Invalid credentials");
         assert!(json["details"].is_null());
@@ -219,16 +226,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_authorization_error_response() {
-        let error = AppError::Authorization { 
-            message: "Insufficient permissions".to_string() 
+        let error = AppError::Authorization {
+            message: "Insufficient permissions".to_string(),
         };
         let response = error.into_response();
-        
+
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
-        
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(json["error"], "authorization_error");
         assert_eq!(json["message"], "Insufficient permissions");
         assert!(json["details"].is_null());
@@ -236,16 +245,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_not_found_error_response() {
-        let error = AppError::NotFound { 
-            resource: "Plant with id 123".to_string() 
+        let error = AppError::NotFound {
+            resource: "Plant with id 123".to_string(),
         };
         let response = error.into_response();
-        
+
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
-        
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(json["error"], "not_found");
         assert_eq!(json["message"], "Plant with id 123");
         assert!(json["details"].is_null());
@@ -253,16 +264,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_internal_error_response() {
-        let error = AppError::Internal { 
-            message: "Something went wrong".to_string() 
+        let error = AppError::Internal {
+            message: "Something went wrong".to_string(),
         };
         let response = error.into_response();
-        
+
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-        
-        let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+
+        let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let json: Value = serde_json::from_slice(&body).unwrap();
-        
+
         assert_eq!(json["error"], "internal_error");
         assert_eq!(json["message"], "An internal server error occurred");
         assert!(json["details"].is_null());
@@ -270,21 +283,21 @@ mod tests {
 
     #[test]
     fn test_error_display() {
-        let error = AppError::Authentication { 
-            message: "Invalid token".to_string() 
+        let error = AppError::Authentication {
+            message: "Invalid token".to_string(),
         };
         assert_eq!(format!("{}", error), "Authentication error: Invalid token");
 
-        let error = AppError::NotFound { 
-            resource: "User".to_string() 
+        let error = AppError::NotFound {
+            resource: "User".to_string(),
         };
         assert_eq!(format!("{}", error), "Not found: User");
     }
 
     #[test]
     fn test_error_debug() {
-        let error = AppError::Internal { 
-            message: "Duplicate entry".to_string() 
+        let error = AppError::Internal {
+            message: "Duplicate entry".to_string(),
         };
         let debug_output = format!("{:?}", error);
         assert!(debug_output.contains("Internal"));
@@ -309,14 +322,14 @@ mod tests {
     fn test_error_logging_includes_timestamp() {
         // Test that IntoResponse generates logs with timestamp
         use axum::response::IntoResponse;
-        
+
         let error = AppError::NotFound {
             resource: "Test Resource".to_string(),
         };
-        
+
         // This should trigger the debug logging with timestamp
         let _response = error.into_response();
-        
+
         // Note: In a real implementation, you might want to capture logs
         // and verify they contain the expected timestamp format
         // For this test, we're just ensuring the code path executes without panic

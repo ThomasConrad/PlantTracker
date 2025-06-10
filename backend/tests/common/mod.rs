@@ -77,7 +77,12 @@ impl TestApp {
 }
 
 // Test helpers
-pub async fn create_test_user(app: &TestApp, email: &str, name: &str, password: &str) -> serde_json::Value {
+pub async fn create_test_user(
+    app: &TestApp,
+    email: &str,
+    name: &str,
+    password: &str,
+) -> serde_json::Value {
     let response = app
         .client
         .post(&app.url("/auth/register"))
@@ -91,7 +96,10 @@ pub async fn create_test_user(app: &TestApp, email: &str, name: &str, password: 
         .expect("Failed to send register request");
 
     assert_eq!(response.status(), 201);
-    response.json().await.expect("Failed to parse register response")
+    response
+        .json()
+        .await
+        .expect("Failed to parse register response")
 }
 
 pub async fn login_user(app: &TestApp, email: &str, password: &str) -> serde_json::Value {
@@ -107,7 +115,10 @@ pub async fn login_user(app: &TestApp, email: &str, password: &str) -> serde_jso
         .expect("Failed to send login request");
 
     assert_eq!(response.status(), 200);
-    response.json().await.expect("Failed to parse login response")
+    response
+        .json()
+        .await
+        .expect("Failed to parse login response")
 }
 
 pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_json::Value {
@@ -126,5 +137,8 @@ pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_
         .expect("Failed to send create plant request");
 
     assert_eq!(response.status(), 201);
-    response.json().await.expect("Failed to parse create plant response")
+    response
+        .json()
+        .await
+        .expect("Failed to parse create plant response")
 }

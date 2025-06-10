@@ -1,7 +1,7 @@
-use bcrypt::{hash, verify, DEFAULT_COST};
-use uuid::Uuid;
-use chrono::Utc;
 use anyhow::Result;
+use bcrypt::{hash, verify, DEFAULT_COST};
+use chrono::Utc;
+use uuid::Uuid;
 
 use crate::database::DatabasePool;
 use crate::models::{CreateUserRequest, User, UserRow};
@@ -14,17 +14,16 @@ pub async fn create_user(
     // Check if user with this email already exists
     if get_user_by_email(pool, &request.email).await.is_ok() {
         return Err(AppError::Validation(
-            validator::ValidationErrors::new() // TODO: Add proper validation error
+            validator::ValidationErrors::new(), // TODO: Add proper validation error
         ));
     }
 
     let user_id = Uuid::new_v4().to_string();
     let salt = Uuid::new_v4().to_string();
-    let password_hash = hash(&request.password, DEFAULT_COST)
-        .map_err(|e| AppError::Internal {
-            message: format!("Failed to hash password: {e}"),
-        })?;
-    
+    let password_hash = hash(&request.password, DEFAULT_COST).map_err(|e| AppError::Internal {
+        message: format!("Failed to hash password: {e}"),
+    })?;
+
     let now = Utc::now().to_rfc3339();
 
     let result = sqlx::query!(
@@ -58,37 +57,43 @@ pub async fn create_user(
 }
 
 pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, AppError> {
-    let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT * FROM users WHERE id = ?"
-    )
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to fetch user by id: {}", e);
-        AppError::Database(e)
-    })?;
+    let user_row = sqlx::query_as::<_, UserRow>("SELECT * FROM users WHERE id = ?")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to fetch user by id: {}", e);
+            AppError::Database(e)
+        })?;
 
-    user_row.map_or_else(|| Err(AppError::NotFound {
-            resource: format!("User with id {user_id}"),
-        }), UserRow::to_user)
+    user_row.map_or_else(
+        || {
+            Err(AppError::NotFound {
+                resource: format!("User with id {user_id}"),
+            })
+        },
+        UserRow::to_user,
+    )
 }
 
 pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User, AppError> {
-    let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT * FROM users WHERE email = ?"
-    )
-    .bind(email)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to fetch user by email: {}", e);
-        AppError::Database(e)
-    })?;
+    let user_row = sqlx::query_as::<_, UserRow>("SELECT * FROM users WHERE email = ?")
+        .bind(email)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to fetch user by email: {}", e);
+            AppError::Database(e)
+        })?;
 
-    user_row.map_or_else(|| Err(AppError::NotFound {
-            resource: format!("User with email {email}"),
-        }), UserRow::to_user)
+    user_row.map_or_else(
+        || {
+            Err(AppError::NotFound {
+                resource: format!("User with email {email}"),
+            })
+        },
+        UserRow::to_user,
+    )
 }
 
 pub async fn verify_password(
@@ -97,11 +102,10 @@ pub async fn verify_password(
     password: &str,
 ) -> Result<User, AppError> {
     let user = get_user_by_email(pool, email).await?;
-    
-    let is_valid = verify(password, &user.password_hash)
-        .map_err(|e| AppError::Internal {
-            message: format!("Failed to verify password: {e}"),
-        })?;
+
+    let is_valid = verify(password, &user.password_hash).map_err(|e| AppError::Internal {
+        message: format!("Failed to verify password: {e}"),
+    })?;
 
     if is_valid {
         Ok(user)
@@ -112,23 +116,16 @@ pub async fn verify_password(
     }
 }
 
-pub async fn update_user_login_time(
-    pool: &DatabasePool,
-    user_id: &str,
-) -> Result<(), AppError> {
+pub async fn update_user_login_time(pool: &DatabasePool, user_id: &str) -> Result<(), AppError> {
     let now = Utc::now().to_rfc3339();
-    
-    let result = sqlx::query!(
-        "UPDATE users SET updated_at = ? WHERE id = ?",
-        now,
-        user_id
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to update user login time: {}", e);
-        AppError::Database(e)
-    })?;
+
+    let result = sqlx::query!("UPDATE users SET updated_at = ? WHERE id = ?", now, user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update user login time: {}", e);
+            AppError::Database(e)
+        })?;
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
@@ -146,20 +143,20 @@ mod tests {
     #[test]
     fn test_password_hashing_and_verification() {
         let password = "test_password_123";
-        
+
         // Test hashing
         let hash_result = hash(password, DEFAULT_COST);
         assert!(hash_result.is_ok());
-        
+
         let password_hash = hash_result.unwrap();
         assert!(!password_hash.is_empty());
         assert_ne!(password_hash, password); // Hash should be different from original
-        
+
         // Test verification with correct password
         let verify_result = verify(password, &password_hash);
         assert!(verify_result.is_ok());
         assert!(verify_result.unwrap());
-        
+
         // Test verification with incorrect password
         let wrong_password = "wrong_password";
         let verify_wrong_result = verify(wrong_password, &password_hash);
@@ -170,13 +167,13 @@ mod tests {
     #[test]
     fn test_password_hash_uniqueness() {
         let password = "same_password";
-        
+
         let hash1 = hash(password, DEFAULT_COST).unwrap();
         let hash2 = hash(password, DEFAULT_COST).unwrap();
-        
+
         // Even with the same password, hashes should be different due to salt
         assert_ne!(hash1, hash2);
-        
+
         // But both should verify correctly
         assert!(verify(password, &hash1).unwrap());
         assert!(verify(password, &hash2).unwrap());
@@ -185,11 +182,11 @@ mod tests {
     #[test]
     fn test_empty_password_handling() {
         let empty_password = "";
-        
+
         // Should be able to hash empty password (though not recommended)
         let hash_result = hash(empty_password, DEFAULT_COST);
         assert!(hash_result.is_ok());
-        
+
         let password_hash = hash_result.unwrap();
         assert!(verify(empty_password, &password_hash).unwrap());
         assert!(!verify("not_empty", &password_hash).unwrap());
@@ -198,13 +195,13 @@ mod tests {
     #[test]
     fn test_long_password_handling() {
         let long_password = "a".repeat(100); // Long but reasonable password
-        
+
         let hash_result = hash(&long_password, DEFAULT_COST);
         assert!(hash_result.is_ok());
-        
+
         let password_hash = hash_result.unwrap();
         assert!(verify(&long_password, &password_hash).unwrap());
-        
+
         // Different password should not verify
         let different_password = "b".repeat(100);
         assert!(!verify(&different_password, &password_hash).unwrap());
@@ -213,13 +210,13 @@ mod tests {
     #[test]
     fn test_special_characters_in_password() {
         let special_password = "p@ssw0rd!#$%^&*()_+-=[]{}|;:'\",.<>?/~`";
-        
+
         let hash_result = hash(special_password, DEFAULT_COST);
         assert!(hash_result.is_ok());
-        
+
         let password_hash = hash_result.unwrap();
         assert!(verify(special_password, &password_hash).unwrap());
-        
+
         // Should not verify with different special characters
         let different_special = "p@ssw0rd!#$%^&*()_+-=[]{}|;:'\",.<>?/~";
         assert!(!verify(different_special, &password_hash).unwrap());
@@ -228,13 +225,13 @@ mod tests {
     #[test]
     fn test_unicode_password_handling() {
         let unicode_password = "pásswörd123🔒";
-        
+
         let hash_result = hash(unicode_password, DEFAULT_COST);
         assert!(hash_result.is_ok());
-        
+
         let password_hash = hash_result.unwrap();
         assert!(verify(unicode_password, &password_hash).unwrap());
-        
+
         // Different unicode should not verify
         let different_unicode = "pásswörd123🔓"; // Different emoji
         assert!(!verify(different_unicode, &password_hash).unwrap());
@@ -243,13 +240,13 @@ mod tests {
     #[test]
     fn test_case_sensitivity() {
         let password = "TestPassword123";
-        
+
         let hash_result = hash(password, DEFAULT_COST);
         assert!(hash_result.is_ok());
-        
+
         let password_hash = hash_result.unwrap();
         assert!(verify(password, &password_hash).unwrap());
-        
+
         // Different case should not verify
         assert!(!verify("testpassword123", &password_hash).unwrap());
         assert!(!verify("TESTPASSWORD123", &password_hash).unwrap());
@@ -260,7 +257,7 @@ mod tests {
     fn test_invalid_hash_format() {
         let password = "test_password";
         let invalid_hash = "not_a_valid_bcrypt_hash";
-        
+
         // Should handle invalid hash gracefully
         let verify_result = verify(password, invalid_hash);
         assert!(verify_result.is_err());

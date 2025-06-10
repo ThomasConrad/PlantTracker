@@ -1,6 +1,6 @@
+use chrono::Utc;
 use sqlx::Row;
 use uuid::Uuid;
-use chrono::Utc;
 
 use crate::database::DatabasePool;
 use crate::models::{Photo, PhotosResponse, UploadPhotoRequest};
@@ -13,13 +13,11 @@ pub async fn get_photos_for_plant(
     user_id: &str,
 ) -> Result<PhotosResponse, AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query(
-        "SELECT 1 FROM plants WHERE id = ? AND user_id = ?"
-    )
-    .bind(plant_id.to_string())
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(plant_id.to_string())
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -32,7 +30,7 @@ pub async fn get_photos_for_plant(
         "SELECT id, plant_id, filename, original_filename, size, content_type, created_at 
          FROM photos 
          WHERE plant_id = ? 
-         ORDER BY created_at DESC"
+         ORDER BY created_at DESC",
     )
     .bind(plant_id.to_string())
     .fetch_all(pool)
@@ -44,7 +42,7 @@ pub async fn get_photos_for_plant(
             let id_str: String = row.get("id");
             let plant_id_str: String = row.get("plant_id");
             let created_at_str: String = row.get("created_at");
-            
+
             Photo {
                 id: Uuid::parse_str(&id_str).expect("Invalid UUID"),
                 plant_id: Uuid::parse_str(&plant_id_str).expect("Invalid UUID"),
@@ -72,13 +70,11 @@ pub async fn get_photo_data(
     user_id: &str,
 ) -> Result<(Vec<u8>, String), AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query(
-        "SELECT 1 FROM plants WHERE id = ? AND user_id = ?"
-    )
-    .bind(plant_id.to_string())
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(plant_id.to_string())
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -87,13 +83,12 @@ pub async fn get_photo_data(
     }
 
     // Get photo data
-    let photo_row = sqlx::query(
-        "SELECT data, content_type FROM photos WHERE id = ? AND plant_id = ?"
-    )
-    .bind(photo_id.to_string())
-    .bind(plant_id.to_string())
-    .fetch_optional(pool)
-    .await?;
+    let photo_row =
+        sqlx::query("SELECT data, content_type FROM photos WHERE id = ? AND plant_id = ?")
+            .bind(photo_id.to_string())
+            .bind(plant_id.to_string())
+            .fetch_optional(pool)
+            .await?;
 
     match photo_row {
         Some(row) => {
@@ -115,13 +110,11 @@ pub async fn create_photo(
     request: &UploadPhotoRequest,
 ) -> Result<Photo, AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query(
-        "SELECT 1 FROM plants WHERE id = ? AND user_id = ?"
-    )
-    .bind(plant_id.to_string())
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(plant_id.to_string())
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -131,16 +124,14 @@ pub async fn create_photo(
 
     let photo_id = Uuid::new_v4();
     let now = Utc::now();
-    
+
     // Generate unique filename
     let extension = match request.content_type.as_str() {
         "image/jpeg" => "jpg",
         "image/png" => "png",
         "image/gif" => "gif",
         "image/webp" => "webp",
-        _ => return Err(AppError::Validation(
-            validator::ValidationErrors::new()
-        )),
+        _ => return Err(AppError::Validation(validator::ValidationErrors::new())),
     };
     let filename = format!("{}_{}.{}", plant_id, photo_id, extension);
 
@@ -179,13 +170,11 @@ pub async fn delete_photo(
     user_id: &str,
 ) -> Result<(), AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query(
-        "SELECT 1 FROM plants WHERE id = ? AND user_id = ?"
-    )
-    .bind(plant_id.to_string())
-    .bind(user_id)
-    .fetch_optional(pool)
-    .await?;
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(plant_id.to_string())
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -194,13 +183,11 @@ pub async fn delete_photo(
     }
 
     // Verify photo exists before deletion
-    let photo_row = sqlx::query(
-        "SELECT 1 FROM photos WHERE id = ? AND plant_id = ?"
-    )
-    .bind(photo_id.to_string())
-    .bind(plant_id.to_string())
-    .fetch_optional(pool)
-    .await?;
+    let photo_row = sqlx::query("SELECT 1 FROM photos WHERE id = ? AND plant_id = ?")
+        .bind(photo_id.to_string())
+        .bind(plant_id.to_string())
+        .fetch_optional(pool)
+        .await?;
 
     if photo_row.is_none() {
         return Err(AppError::NotFound {
@@ -211,13 +198,11 @@ pub async fn delete_photo(
     // Photo data will be automatically deleted with the record
 
     // Delete photo record
-    let result = sqlx::query(
-        "DELETE FROM photos WHERE id = ? AND plant_id = ?"
-    )
-    .bind(photo_id.to_string())
-    .bind(plant_id.to_string())
-    .execute(pool)
-    .await?;
+    let result = sqlx::query("DELETE FROM photos WHERE id = ? AND plant_id = ?")
+        .bind(photo_id.to_string())
+        .bind(plant_id.to_string())
+        .execute(pool)
+        .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound {
@@ -237,11 +222,11 @@ mod tests {
         let pool = create_pool_with_url("sqlite::memory:")
             .await
             .expect("Failed to create test database");
-        
+
         crate::database::run_migrations(&pool)
             .await
             .expect("Failed to run migrations");
-        
+
         pool
     }
 
@@ -253,7 +238,7 @@ mod tests {
         // Create user
         sqlx::query(
             "INSERT INTO users (id, email, name, password_hash, salt, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&user_id)
         .bind("test@example.com")
@@ -303,7 +288,7 @@ mod tests {
 
         let result = get_photos_for_plant(&pool, &plant_id, &user_id).await;
         assert!(result.is_ok());
-        
+
         let response = result.unwrap();
         assert_eq!(response.photos.len(), 0);
         assert_eq!(response.total, 0);
@@ -362,7 +347,8 @@ mod tests {
             data: vec![1, 2, 3, 4],
         };
 
-        let photo = create_photo(&pool, &plant_id, &user_id, &request).await
+        let photo = create_photo(&pool, &plant_id, &user_id, &request)
+            .await
             .expect("Failed to create photo");
 
         // Delete photo
@@ -370,7 +356,8 @@ mod tests {
         assert!(result.is_ok());
 
         // Verify photo is deleted
-        let photos = get_photos_for_plant(&pool, &plant_id, &user_id).await
+        let photos = get_photos_for_plant(&pool, &plant_id, &user_id)
+            .await
             .expect("Failed to get photos");
         assert_eq!(photos.photos.len(), 0);
     }
@@ -400,7 +387,8 @@ mod tests {
             data: fake_image_data.clone(),
         };
 
-        let photo = create_photo(&pool, &plant_id, &user_id, &request).await
+        let photo = create_photo(&pool, &plant_id, &user_id, &request)
+            .await
             .expect("Failed to create photo");
 
         // Get photo data

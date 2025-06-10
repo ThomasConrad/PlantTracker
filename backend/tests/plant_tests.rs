@@ -222,7 +222,13 @@ async fn test_plant_validation() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "validation@example.com", "Validation User", "password123").await;
+    common::create_test_user(
+        &app,
+        "validation@example.com",
+        "Validation User",
+        "password123",
+    )
+    .await;
 
     // Test invalid watering interval (too high)
     let response = app
@@ -302,7 +308,13 @@ async fn test_plant_pagination() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "pagination@example.com", "Pagination User", "password123").await;
+    common::create_test_user(
+        &app,
+        "pagination@example.com",
+        "Pagination User",
+        "password123",
+    )
+    .await;
 
     // Create multiple plants
     for i in 1..=25 {

@@ -2,28 +2,22 @@ import { Component, createEffect, createSignal, For, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { PlantCard } from '@/components/plants/PlantCard';
+import { PlantControls } from '@/components/plants/PlantControls';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Input } from '@/components/ui/Input';
 
 export const PlantsPage: Component = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
+  const [sortBy, setSortBy] = createSignal('date_desc');
 
   createEffect(() => {
-    plantsStore.loadPlants({ search: searchQuery() });
+    plantsStore.loadPlants({ 
+      search: searchQuery() || undefined,
+      sort: sortBy()
+    });
   });
 
-  const filteredPlants = () => {
-    const query = searchQuery().toLowerCase().trim();
-    if (!query) return plantsStore.plants;
-    
-    return plantsStore.plants.filter(plant =>
-      plant.name.toLowerCase().includes(query) ||
-      plant.genus.toLowerCase().includes(query)
-    );
-  };
-
   return (
-    <div class="space-y-6">
+    <div class="space-y-6 pb-20 sm:pb-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">My Plants</h1>
@@ -43,19 +37,12 @@ export const PlantsPage: Component = () => {
         </A>
       </div>
 
-      <div class="max-w-md">
-        <Input
-          placeholder="Search plants..."
-          value={searchQuery()}
-          onInput={(e) => setSearchQuery(e.currentTarget.value)}
-          class="pl-10"
-        />
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
-      </div>
+      <PlantControls
+        searchQuery={searchQuery()}
+        sortBy={sortBy()}
+        onSearchChange={setSearchQuery}
+        onSortChange={setSortBy}
+      />
 
       <Show
         when={!plantsStore.loading}
@@ -66,7 +53,7 @@ export const PlantsPage: Component = () => {
         }
       >
         <Show
-          when={filteredPlants().length > 0}
+          when={plantsStore.plants.length > 0}
           fallback={
             <div class="text-center py-12">
               <svg
@@ -100,7 +87,7 @@ export const PlantsPage: Component = () => {
           }
         >
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <For each={filteredPlants()}>
+            <For each={plantsStore.plants}>
               {(plant) => <PlantCard plant={plant} />}
             </For>
           </div>

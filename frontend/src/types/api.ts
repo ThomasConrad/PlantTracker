@@ -8,21 +8,9 @@ export interface CustomMetric {
   dataType: 'Number' | 'Text' | 'Boolean';
 }
 
-export interface Plant {
-  id: string;
-  name: string;
-  genus: string;
-  wateringIntervalDays: number;
-  fertilizingIntervalDays: number;
-  customMetrics: CustomMetric[];
-  lastWatered: string | null;
-  lastFertilized: string | null;
-  thumbnailId?: string | null;
-  thumbnailUrl?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  userId: string;
-}
+// Import and re-export the generated Plant type
+import type { components } from './api-generated';
+export type Plant = components['schemas']['PlantResponse'];
 
 export interface Photo {
   id: string;

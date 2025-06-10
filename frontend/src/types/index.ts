@@ -1,5 +1,6 @@
 export * from './api';
 import type { Plant, components } from './api';
+export type { Plant };
 
 type User = components['schemas']['UserResponse'];
 type EntryType = components['schemas']['EntryType'];

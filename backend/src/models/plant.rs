@@ -85,7 +85,7 @@ pub struct UpdateCustomMetricRequest {
     pub data_type: MetricDataType,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlantResponse {
     pub id: Uuid,
@@ -103,7 +103,7 @@ pub struct PlantResponse {
     pub user_id: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PlantsResponse {
     pub plants: Vec<PlantResponse>,
     pub total: i64,

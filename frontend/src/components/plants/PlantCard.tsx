@@ -8,11 +8,11 @@ interface PlantCardProps {
 }
 
 export const PlantCard: Component<PlantCardProps> = (props) => {
-  const wateringDays = () => calculateDaysUntil(props.plant.lastWatered, props.plant.wateringIntervalDays);
-  const fertilizingDays = () => calculateDaysUntil(props.plant.lastFertilized, props.plant.fertilizingIntervalDays);
+  const wateringDays = () => calculateDaysUntil(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
+  const fertilizingDays = () => calculateDaysUntil(props.plant.lastFertilized ?? null, props.plant.fertilizingIntervalDays);
   
-  const wateringOverdue = () => isOverdue(props.plant.lastWatered, props.plant.wateringIntervalDays);
-  const fertilizingOverdue = () => isOverdue(props.plant.lastFertilized, props.plant.fertilizingIntervalDays);
+  const wateringOverdue = () => isOverdue(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
+  const fertilizingOverdue = () => isOverdue(props.plant.lastFertilized ?? null, props.plant.fertilizingIntervalDays);
 
   const getStatusBadge = (days: number, overdue: boolean) => {
     if (overdue) return 'badge-red';

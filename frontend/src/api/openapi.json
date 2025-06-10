@@ -427,22 +427,29 @@
           }
         }
       },
-      "Plant": {
+      "PlantResponse": {
         "type": "object",
         "required": [
           "id",
-          "userId",
           "name",
           "genus",
           "wateringIntervalDays",
           "fertilizingIntervalDays",
+          "customMetrics",
           "createdAt",
-          "updatedAt"
+          "updatedAt",
+          "userId"
         ],
         "properties": {
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "customMetrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomMetric"
+            }
           },
           "fertilizingIntervalDays": {
             "type": "integer",
@@ -473,17 +480,49 @@
             "format": "uuid",
             "nullable": true
           },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
           },
           "userId": {
-            "type": "string",
-            "format": "uuid"
+            "type": "string"
           },
           "wateringIntervalDays": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "PlantsResponse": {
+        "type": "object",
+        "required": [
+          "plants",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "plants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlantResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },

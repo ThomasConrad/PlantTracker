@@ -7,11 +7,11 @@ interface PlantStatsProps {
 }
 
 export const PlantStats: Component<PlantStatsProps> = (props) => {
-  const wateringDays = () => calculateDaysUntil(props.plant.lastWatered, props.plant.wateringIntervalDays);
-  const fertilizingDays = () => calculateDaysUntil(props.plant.lastFertilized, props.plant.fertilizingIntervalDays);
+  const wateringDays = () => calculateDaysUntil(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
+  const fertilizingDays = () => calculateDaysUntil(props.plant.lastFertilized ?? null, props.plant.fertilizingIntervalDays);
   
-  const wateringOverdue = () => isOverdue(props.plant.lastWatered, props.plant.wateringIntervalDays);
-  const fertilizingOverdue = () => isOverdue(props.plant.lastFertilized, props.plant.fertilizingIntervalDays);
+  const wateringOverdue = () => isOverdue(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
+  const fertilizingOverdue = () => isOverdue(props.plant.lastFertilized ?? null, props.plant.fertilizingIntervalDays);
 
   const getStatusColor = (days: number, overdue: boolean) => {
     if (overdue) return 'text-red-600 bg-red-50';

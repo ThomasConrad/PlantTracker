@@ -1,11 +1,12 @@
 #[allow(unused_imports)]
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::Json,
     routing::{delete, get, post, put},
     Router,
 };
+use serde::Deserialize;
 use utoipa::OpenApi;
 use uuid::Uuid;
 
@@ -16,6 +17,14 @@ use crate::models::tracking_entry::{
     CreateTrackingEntryRequest, TrackingEntriesResponse, TrackingEntry,
 };
 use crate::utils::errors::{AppError, Result};
+
+#[derive(Debug, Deserialize)]
+struct ListEntriesQuery {
+    limit: Option<i64>,
+    offset: Option<i64>,
+    sort: Option<String>, // "date_asc", "date_desc" (default)
+    entry_type: Option<String>, // filter by entry type
+}
 
 pub fn routes() -> Router<DatabasePool> {
     Router::new()
@@ -45,18 +54,29 @@ async fn list_entries(
     auth_session: AuthSession,
     State(pool): State<DatabasePool>,
     Path(plant_id): Path<Uuid>,
+    Query(params): Query<ListEntriesQuery>,
 ) -> Result<Json<TrackingEntriesResponse>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
 
     tracing::info!(
-        "List tracking entries request for plant: {} by user: {}",
+        "List tracking entries request for plant: {} by user: {} with params: {:?}",
         plant_id,
-        user.id
+        user.id,
+        params
     );
 
-    let response = db_tracking::get_tracking_entries_for_plant(&pool, &plant_id, &user.id).await?;
+    let limit = params.limit.unwrap_or(50);
+    let offset = params.offset.unwrap_or(0);
+    let sort_desc = match params.sort.as_deref() {
+        Some("date_asc") => false,
+        _ => true, // default to date_desc
+    };
+
+    let response = db_tracking::get_tracking_entries_for_plant_paginated(
+        &pool, &plant_id, &user.id, limit, offset, sort_desc, params.entry_type.as_deref()
+    ).await?;
 
     tracing::debug!(
         "Returning {} tracking entries for plant: {}",

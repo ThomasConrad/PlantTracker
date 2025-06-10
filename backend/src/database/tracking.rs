@@ -8,6 +8,134 @@ use crate::models::tracking_entry::{
 };
 use crate::utils::errors::AppError;
 
+/// Get all tracking entries for a specific plant with pagination
+pub async fn get_tracking_entries_for_plant_paginated(
+    pool: &DatabasePool,
+    plant_id: &Uuid,
+    user_id: &str,
+    limit: i64,
+    offset: i64,
+    sort_desc: bool,
+    entry_type_filter: Option<&str>,
+) -> Result<TrackingEntriesResponse, AppError> {
+    // First verify the plant exists and belongs to the user
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(plant_id.to_string())
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
+
+    if plant_exists.is_none() {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    // Build sort order
+    let order_clause = if sort_desc {
+        "ORDER BY timestamp DESC"
+    } else {
+        "ORDER BY timestamp ASC"
+    };
+
+    // Build filter clause for entry type
+    let (filter_clause, count_filter_clause) = if let Some(entry_type) = entry_type_filter {
+        (" AND entry_type = ?", " AND entry_type = ?")
+    } else {
+        ("", "")
+    };
+
+    // Get total count
+    let count_query = format!(
+        "SELECT COUNT(*) as count FROM tracking_entries WHERE plant_id = ?{}",
+        count_filter_clause
+    );
+    
+    let total = if let Some(entry_type) = entry_type_filter {
+        sqlx::query(&count_query)
+            .bind(plant_id.to_string())
+            .bind(entry_type)
+            .fetch_one(pool)
+            .await?
+            .get::<i64, _>("count")
+    } else {
+        sqlx::query(&count_query)
+            .bind(plant_id.to_string())
+            .fetch_one(pool)
+            .await?
+            .get::<i64, _>("count")
+    };
+
+    // Get tracking entries with pagination
+    let entries_query = format!(
+        "SELECT id, plant_id, entry_type, timestamp, value, notes, metric_id, photo_ids, created_at, updated_at 
+         FROM tracking_entries 
+         WHERE plant_id = ?{} 
+         {} 
+         LIMIT ? OFFSET ?",
+        filter_clause, order_clause
+    );
+
+    let entries_rows = if let Some(entry_type) = entry_type_filter {
+        sqlx::query(&entries_query)
+            .bind(plant_id.to_string())
+            .bind(entry_type)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
+            .await?
+    } else {
+        sqlx::query(&entries_query)
+            .bind(plant_id.to_string())
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(pool)
+            .await?
+    };
+
+    let entries: Vec<TrackingEntry> = entries_rows
+        .into_iter()
+        .map(|row| {
+            let id_str: String = row.get("id");
+            let plant_id_str: String = row.get("plant_id");
+            let timestamp_str: String = row.get("timestamp");
+            let created_at_str: String = row.get("created_at");
+            let updated_at_str: String = row.get("updated_at");
+            let entry_type_str: String = row.get("entry_type");
+            let metric_id_str: Option<String> = row.get("metric_id");
+            let value_str: Option<String> = row.get("value");
+            let photo_ids_str: Option<String> = row.get("photo_ids");
+
+            TrackingEntry {
+                id: Uuid::parse_str(&id_str).expect("Invalid UUID"),
+                plant_id: Uuid::parse_str(&plant_id_str).expect("Invalid UUID"),
+                entry_type: match entry_type_str.as_str() {
+                    "watering" => EntryType::Watering,
+                    "fertilizing" => EntryType::Fertilizing,
+                    "measurement" => EntryType::CustomMetric,
+                    "note" => EntryType::Note,
+                    _ => EntryType::Watering, // fallback
+                },
+                timestamp: chrono::DateTime::parse_from_rfc3339(&timestamp_str)
+                    .expect("Invalid timestamp")
+                    .with_timezone(&Utc),
+                value: value_str.and_then(|v| serde_json::from_str(&v).ok()),
+                notes: row.get("notes"),
+                metric_id: metric_id_str.and_then(|id| Uuid::parse_str(&id).ok()),
+                photo_ids: photo_ids_str.and_then(|v| serde_json::from_str(&v).ok()),
+                created_at: chrono::DateTime::parse_from_rfc3339(&created_at_str)
+                    .expect("Invalid timestamp")
+                    .with_timezone(&Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(&updated_at_str)
+                    .expect("Invalid timestamp")
+                    .with_timezone(&Utc),
+            }
+        })
+        .collect();
+
+    Ok(TrackingEntriesResponse { entries, total })
+}
+
 /// Get all tracking entries for a specific plant
 pub async fn get_tracking_entries_for_plant(
     pool: &DatabasePool,

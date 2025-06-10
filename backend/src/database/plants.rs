@@ -160,22 +160,41 @@ pub async fn list_plants_for_user(
     offset: i64,
     search: Option<&str>,
 ) -> Result<(Vec<PlantResponse>, i64), AppError> {
+    list_plants_for_user_with_sort(pool, user_id, limit, offset, search, None).await
+}
+
+pub async fn list_plants_for_user_with_sort(
+    pool: &DatabasePool,
+    user_id: &str,
+    limit: i64,
+    offset: i64,
+    search: Option<&str>,
+    sort: Option<&str>,
+) -> Result<(Vec<PlantResponse>, i64), AppError> {
+    // Determine sort order
+    let order_clause = match sort {
+        Some("date_asc") => "ORDER BY created_at ASC",
+        Some("name_asc") => "ORDER BY name ASC",
+        Some("name_desc") => "ORDER BY name DESC",
+        _ => "ORDER BY created_at DESC", // default
+    };
+
     let (query, count_query, search_param) = search.map_or((
-            "SELECT * FROM plants WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            "SELECT COUNT(*) as count FROM plants WHERE user_id = ?",
+            format!("SELECT * FROM plants WHERE user_id = ? {} LIMIT ? OFFSET ?", order_clause),
+            "SELECT COUNT(*) as count FROM plants WHERE user_id = ?".to_string(),
             None
         ), |search_term| {
         let search_pattern = format!("%{search_term}%");
         (
-            "SELECT * FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            "SELECT COUNT(*) as count FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?)",
+            format!("SELECT * FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?) {} LIMIT ? OFFSET ?", order_clause),
+            "SELECT COUNT(*) as count FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?)".to_string(),
             Some(search_pattern)
         )
     });
 
     // Get total count
     let total = if let Some(search_param) = &search_param {
-        sqlx::query(count_query)
+        sqlx::query(&count_query)
             .bind(user_id)
             .bind(search_param)
             .bind(search_param)
@@ -187,7 +206,7 @@ pub async fn list_plants_for_user(
             })?
             .get::<i64, _>("count")
     } else {
-        sqlx::query(count_query)
+        sqlx::query(&count_query)
             .bind(user_id)
             .fetch_one(pool)
             .await
@@ -200,7 +219,7 @@ pub async fn list_plants_for_user(
 
     // Get plants
     let plant_rows = if let Some(search_param) = &search_param {
-        sqlx::query_as::<_, PlantRow>(query)
+        sqlx::query_as::<_, PlantRow>(&query)
             .bind(user_id)
             .bind(search_param)
             .bind(search_param)
@@ -209,7 +228,7 @@ pub async fn list_plants_for_user(
             .fetch_all(pool)
             .await
     } else {
-        sqlx::query_as::<_, PlantRow>(query)
+        sqlx::query_as::<_, PlantRow>(&query)
             .bind(user_id)
             .bind(limit)
             .bind(offset)

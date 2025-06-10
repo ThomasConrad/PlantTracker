@@ -1,17 +1,34 @@
 use axum::{
     body::Body,
-    extract::{Multipart, Path, State},
+    extract::{Multipart, Path, Query, State},
     http::{header, StatusCode},
     response::{Json, Response},
     routing::{delete, get, post},
     Router,
 };
+use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::auth::AuthSession;
 use crate::database::{photos as db_photos, DatabasePool};
 use crate::models::{PhotoWithThumbnail, UploadPhotoRequest};
 use crate::utils::errors::{AppError, Result};
+
+#[derive(Debug, Deserialize)]
+struct ListPhotosQuery {
+    limit: Option<i64>,
+    offset: Option<i64>,
+    sort: Option<String>, // "date_asc" or "date_desc" (default)
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PhotosResponse {
+    photos: Vec<PhotoWithThumbnail>,
+    total: i64,
+    limit: i64,
+    offset: i64,
+}
 
 pub fn routes() -> Router<DatabasePool> {
     Router::new()
@@ -24,7 +41,8 @@ async fn list_photos(
     auth_session: AuthSession,
     State(pool): State<DatabasePool>,
     Path(plant_id): Path<Uuid>,
-) -> Result<Json<Vec<PhotoWithThumbnail>>> {
+    Query(params): Query<ListPhotosQuery>,
+) -> Result<Json<PhotosResponse>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
@@ -35,7 +53,17 @@ async fn list_photos(
         user.id
     );
 
-    let response = db_photos::get_photos_for_plant(&pool, &plant_id, &user.id).await?;
+    // Parse query parameters
+    let limit = params.limit.unwrap_or(50);
+    let offset = params.offset.unwrap_or(0);
+    let sort_desc = match params.sort.as_deref() {
+        Some("date_asc") => false,
+        _ => true, // default to date_desc
+    };
+
+    let response = db_photos::get_photos_for_plant_paginated(
+        &pool, &plant_id, &user.id, Some(limit), Some(offset), Some(sort_desc)
+    ).await?;
 
     // Convert to PhotoWithThumbnail with URLs
     let photos_with_urls: Vec<PhotoWithThumbnail> = response.photos
@@ -65,11 +93,18 @@ async fn list_photos(
         .collect();
 
     tracing::debug!(
-        "Returning {} photos for plant: {}",
+        "Returning {} of {} photos for plant: {}",
         photos_with_urls.len(),
+        response.total,
         plant_id
     );
-    Ok(Json(photos_with_urls))
+    
+    Ok(Json(PhotosResponse {
+        photos: photos_with_urls,
+        total: response.total,
+        limit,
+        offset,
+    }))
 }
 
 async fn serve_photo(

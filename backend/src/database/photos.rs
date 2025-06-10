@@ -13,6 +13,18 @@ pub async fn get_photos_for_plant(
     plant_id: &Uuid,
     user_id: &str,
 ) -> Result<PhotosResponse, AppError> {
+    get_photos_for_plant_paginated(pool, plant_id, user_id, None, None, None).await
+}
+
+/// Get photos for a specific plant with pagination
+pub async fn get_photos_for_plant_paginated(
+    pool: &DatabasePool,
+    plant_id: &Uuid,
+    user_id: &str,
+    limit: Option<i64>,
+    offset: Option<i64>,
+    sort_desc: Option<bool>,
+) -> Result<PhotosResponse, AppError> {
     // First verify the plant exists and belongs to the user
     let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
         .bind(plant_id.to_string())
@@ -26,16 +38,41 @@ pub async fn get_photos_for_plant(
         });
     }
 
-    // Get photos (without data to save memory for listings)
-    let photos_rows = sqlx::query(
+    // Set default values
+    let limit = limit.unwrap_or(50);
+    let offset = offset.unwrap_or(0);
+    let sort_desc = sort_desc.unwrap_or(true);
+    
+    // Get total count
+    let total_row = sqlx::query("SELECT COUNT(*) as count FROM photos WHERE plant_id = ?")
+        .bind(plant_id.to_string())
+        .fetch_one(pool)
+        .await?;
+    let total: i64 = total_row.get("count");
+    
+    // Build sort order
+    let order_clause = if sort_desc {
+        "ORDER BY created_at DESC"
+    } else {
+        "ORDER BY created_at ASC"
+    };
+    
+    // Get photos (without data to save memory for listings) with pagination
+    let query = format!(
         "SELECT id, plant_id, filename, original_filename, size, content_type, thumbnail_width, thumbnail_height, created_at 
          FROM photos 
          WHERE plant_id = ? 
-         ORDER BY created_at DESC",
-    )
-    .bind(plant_id.to_string())
-    .fetch_all(pool)
-    .await?;
+         {} 
+         LIMIT ? OFFSET ?",
+        order_clause
+    );
+    
+    let photos_rows = sqlx::query(&query)
+        .bind(plant_id.to_string())
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pool)
+        .await?;
 
     let photos: Vec<Photo> = photos_rows
         .into_iter()
@@ -59,8 +96,6 @@ pub async fn get_photos_for_plant(
             }
         })
         .collect();
-
-    let total = photos.len() as i64;
 
     Ok(PhotosResponse { photos, total })
 }

@@ -9,6 +9,7 @@ import { PlantsPage } from '@/routes/PlantsPage';
 import { PlantDetailPage } from '@/routes/PlantDetailPage';
 import { CreatePlantPage } from '@/routes/CreatePlantPage';
 import { EditPlantPage } from '@/routes/EditPlantPage';
+import { CalendarPage } from '@/routes/CalendarPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const App: Component = () => {
@@ -100,6 +101,19 @@ const App: Component = () => {
             >
               <AppLayout>
                 <EditPlantPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/calendar"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated}
+              fallback={<Navigate href="/login" />}
+            >
+              <AppLayout>
+                <CalendarPage />
               </AppLayout>
             </Show>
           )}

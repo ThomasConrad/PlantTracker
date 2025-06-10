@@ -47,6 +47,7 @@ CREATE TABLE photos (
     original_filename TEXT NOT NULL,
     size INTEGER NOT NULL,
     content_type TEXT NOT NULL,
+    data BLOB NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
 );

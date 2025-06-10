@@ -1,4 +1,4 @@
-use serde_json::json;
+use reqwest::multipart::{Form, Part};
 
 mod common;
 use common::TestApp;
@@ -58,16 +58,18 @@ async fn test_upload_photo() {
     // Create fake image data (simulate a JPEG)
     let fake_image_data = vec![0xFF, 0xD8, 0xFF, 0xE0]; // JPEG header
     
-    // Upload photo
+    // Upload photo using multipart form
+    let part = Part::bytes(fake_image_data.clone())
+        .file_name("test-image.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
-        .json(&json!({
-            "originalFilename": "test-image.jpg",
-            "size": fake_image_data.len(),
-            "contentType": "image/jpeg",
-            "data": fake_image_data
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to send upload photo request");
@@ -96,47 +98,49 @@ async fn test_upload_photo_validation_errors() {
     let plant_id = plant["id"].as_str().unwrap();
 
     // Test invalid content type
+    let part = Part::bytes(vec![1, 2, 3, 4])
+        .file_name("test.txt")
+        .mime_str("text/plain")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
-        .json(&json!({
-            "originalFilename": "test.txt",
-            "size": 1024,
-            "contentType": "text/plain",
-            "data": vec![1, 2, 3, 4]
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to send request");
 
     assert_eq!(response.status(), 422);
 
-    // Test file too large
+    // Test file too large (11MB > 10MB limit)
+    let large_data = vec![0u8; 11_000_000]; // 11MB
+    let part = Part::bytes(large_data)
+        .file_name("huge.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
-        .json(&json!({
-            "originalFilename": "huge.jpg",
-            "size": 11_000_000, // 11MB > 10MB limit
-            "contentType": "image/jpeg",
-            "data": vec![1, 2, 3, 4]
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to send request");
 
     assert_eq!(response.status(), 422);
 
-    // Test empty filename
+    // Test no file provided
+    let form = Form::new(); // Empty form
+    
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
-        .json(&json!({
-            "originalFilename": "",
-            "size": 1024,
-            "contentType": "image/jpeg",
-            "data": vec![1, 2, 3, 4]
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to send request");
@@ -154,15 +158,17 @@ async fn test_upload_photo_for_nonexistent_plant() {
     let fake_plant_id = uuid::Uuid::new_v4();
 
     // Try to upload photo to nonexistent plant
+    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+        .file_name("test.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", fake_plant_id)))
-        .json(&json!({
-            "originalFilename": "test.jpg",
-            "size": 1024,
-            "contentType": "image/jpeg",
-            "data": vec![1, 2, 3, 4]
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to send request");
@@ -175,15 +181,17 @@ async fn test_upload_photo_unauthenticated() {
     let app = TestApp::new().await;
     let plant_id = uuid::Uuid::new_v4();
 
+    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+        .file_name("test.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
-        .json(&json!({
-            "originalFilename": "test.jpg",
-            "size": 1024,
-            "contentType": "image/jpeg",
-            "data": vec![1, 2, 3, 4]
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to send request");
@@ -203,15 +211,17 @@ async fn test_delete_photo() {
     let plant_id = plant["id"].as_str().unwrap();
 
     // Upload a photo first
+    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+        .file_name("to-delete.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
     let upload_response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
-        .json(&json!({
-            "originalFilename": "to-delete.jpg",
-            "size": 1024,
-            "contentType": "image/jpeg",
-            "data": vec![1, 2, 3, 4]
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to upload photo");
@@ -295,15 +305,17 @@ async fn test_user_isolation_photos() {
     let user1_plant_id = user1_plant["id"].as_str().unwrap();
 
     // Upload photo as user1
+    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+        .file_name("user1-photo.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
     let upload_response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", user1_plant_id)))
-        .json(&json!({
-            "originalFilename": "user1-photo.jpg",
-            "size": 1024,
-            "contentType": "image/jpeg",
-            "data": vec![1, 2, 3, 4]
-        }))
+        .multipart(form)
         .send()
         .await
         .expect("Failed to upload photo");
@@ -336,4 +348,78 @@ async fn test_user_isolation_photos() {
         .expect("Failed to delete photo");
 
     assert_eq!(delete_response.status(), 404); // Plant not found for user2
+}
+
+#[tokio::test]
+async fn test_serve_photo() {
+    let app = TestApp::new().await;
+
+    // Register and login user
+    common::create_test_user(&app, "serve@example.com", "Serve User", "password123").await;
+
+    // Create a plant
+    let plant = common::create_test_plant(&app, "Serve Plant", "Servicus").await;
+    let plant_id = plant["id"].as_str().unwrap();
+
+    // Create fake image data (simulate a JPEG)
+    let fake_image_data = vec![0xFF, 0xD8, 0xFF, 0xE0]; // JPEG header
+    
+    // Upload photo using multipart form
+    let part = Part::bytes(fake_image_data.clone())
+        .file_name("serve-test.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    
+    let form = Form::new().part("file", part);
+    
+    let upload_response = app
+        .client
+        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .multipart(form)
+        .send()
+        .await
+        .expect("Failed to send upload photo request");
+
+    assert_eq!(upload_response.status(), 201);
+    
+    let upload_body: serde_json::Value = upload_response.json().await.expect("Failed to parse upload response");
+    let photo_id = upload_body["id"].as_str().unwrap();
+
+    // Serve the photo
+    let serve_response = app
+        .client
+        .get(&app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
+        .send()
+        .await
+        .expect("Failed to send serve photo request");
+
+    assert_eq!(serve_response.status(), 200);
+    assert_eq!(serve_response.headers().get("content-type").unwrap(), "image/jpeg");
+    assert_eq!(serve_response.headers().get("content-length").unwrap(), &fake_image_data.len().to_string());
+    
+    let served_data = serve_response.bytes().await.expect("Failed to get photo data");
+    assert_eq!(served_data.to_vec(), fake_image_data);
+}
+
+#[tokio::test]
+async fn test_serve_nonexistent_photo() {
+    let app = TestApp::new().await;
+
+    // Register and login user
+    common::create_test_user(&app, "servenotfound@example.com", "Serve User", "password123").await;
+
+    // Create a plant
+    let plant = common::create_test_plant(&app, "Serve Plant", "Servicus").await;
+    let plant_id = plant["id"].as_str().unwrap();
+    let fake_photo_id = uuid::Uuid::new_v4();
+
+    // Try to serve nonexistent photo
+    let response = app
+        .client
+        .get(&app.url(&format!("/plants/{}/photos/{}", plant_id, fake_photo_id)))
+        .send()
+        .await
+        .expect("Failed to send serve photo request");
+
+    assert_eq!(response.status(), 404);
 }

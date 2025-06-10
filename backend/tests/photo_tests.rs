@@ -57,15 +57,15 @@ async fn test_upload_photo() {
 
     // Create fake image data (simulate a JPEG)
     let fake_image_data = vec![0xFF, 0xD8, 0xFF, 0xE0]; // JPEG header
-    
+
     // Upload photo using multipart form
     let part = Part::bytes(fake_image_data.clone())
         .file_name("test-image.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
@@ -91,7 +91,13 @@ async fn test_upload_photo_validation_errors() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "validation@example.com", "Validation User", "password123").await;
+    common::create_test_user(
+        &app,
+        "validation@example.com",
+        "Validation User",
+        "password123",
+    )
+    .await;
 
     // Create a plant
     let plant = common::create_test_plant(&app, "Validation Plant", "Validicus").await;
@@ -102,9 +108,9 @@ async fn test_upload_photo_validation_errors() {
         .file_name("test.txt")
         .mime_str("text/plain")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
@@ -121,9 +127,9 @@ async fn test_upload_photo_validation_errors() {
         .file_name("huge.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
@@ -136,7 +142,7 @@ async fn test_upload_photo_validation_errors() {
 
     // Test no file provided
     let form = Form::new(); // Empty form
-    
+
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
@@ -153,7 +159,13 @@ async fn test_upload_photo_for_nonexistent_plant() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "nonexistent@example.com", "Nonexistent User", "password123").await;
+    common::create_test_user(
+        &app,
+        "nonexistent@example.com",
+        "Nonexistent User",
+        "password123",
+    )
+    .await;
 
     let fake_plant_id = uuid::Uuid::new_v4();
 
@@ -162,9 +174,9 @@ async fn test_upload_photo_for_nonexistent_plant() {
         .file_name("test.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", fake_plant_id)))
@@ -185,9 +197,9 @@ async fn test_upload_photo_unauthenticated() {
         .file_name("test.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
@@ -215,9 +227,9 @@ async fn test_delete_photo() {
         .file_name("to-delete.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let upload_response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
@@ -227,8 +239,11 @@ async fn test_delete_photo() {
         .expect("Failed to upload photo");
 
     assert_eq!(upload_response.status(), 201);
-    
-    let upload_body: serde_json::Value = upload_response.json().await.expect("Failed to parse upload response");
+
+    let upload_body: serde_json::Value = upload_response
+        .json()
+        .await
+        .expect("Failed to parse upload response");
     let photo_id = upload_body["id"].as_str().unwrap();
 
     // Delete the photo
@@ -250,8 +265,11 @@ async fn test_delete_photo() {
         .expect("Failed to list photos");
 
     assert_eq!(list_response.status(), 200);
-    
-    let list_body: serde_json::Value = list_response.json().await.expect("Failed to parse list response");
+
+    let list_body: serde_json::Value = list_response
+        .json()
+        .await
+        .expect("Failed to parse list response");
     assert_eq!(list_body["photos"].as_array().unwrap().len(), 0);
     assert_eq!(list_body["total"], 0);
 }
@@ -261,7 +279,13 @@ async fn test_delete_nonexistent_photo() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "deletenonexistent@example.com", "Delete User", "password123").await;
+    common::create_test_user(
+        &app,
+        "deletenonexistent@example.com",
+        "Delete User",
+        "password123",
+    )
+    .await;
 
     // Create a plant
     let plant = common::create_test_plant(&app, "Delete Plant", "Deleticus").await;
@@ -309,9 +333,9 @@ async fn test_user_isolation_photos() {
         .file_name("user1-photo.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let upload_response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", user1_plant_id)))
@@ -321,12 +345,19 @@ async fn test_user_isolation_photos() {
         .expect("Failed to upload photo");
 
     assert_eq!(upload_response.status(), 201);
-    let upload_body: serde_json::Value = upload_response.json().await.expect("Failed to parse upload response");
+    let upload_body: serde_json::Value = upload_response
+        .json()
+        .await
+        .expect("Failed to parse upload response");
     let photo_id = upload_body["id"].as_str().unwrap();
 
     // Logout user1 and login as user2
-    app.client.post(&app.url("/auth/logout")).send().await.expect("Failed to logout");
-    
+    app.client
+        .post(&app.url("/auth/logout"))
+        .send()
+        .await
+        .expect("Failed to logout");
+
     common::create_test_user(&app, "user2@example.com", "User 2", "password123").await;
 
     // User2 should not be able to list user1's photos
@@ -363,15 +394,15 @@ async fn test_serve_photo() {
 
     // Create fake image data (simulate a JPEG)
     let fake_image_data = vec![0xFF, 0xD8, 0xFF, 0xE0]; // JPEG header
-    
+
     // Upload photo using multipart form
     let part = Part::bytes(fake_image_data.clone())
         .file_name("serve-test.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
-    
+
     let form = Form::new().part("file", part);
-    
+
     let upload_response = app
         .client
         .post(&app.url(&format!("/plants/{}/photos", plant_id)))
@@ -381,8 +412,11 @@ async fn test_serve_photo() {
         .expect("Failed to send upload photo request");
 
     assert_eq!(upload_response.status(), 201);
-    
-    let upload_body: serde_json::Value = upload_response.json().await.expect("Failed to parse upload response");
+
+    let upload_body: serde_json::Value = upload_response
+        .json()
+        .await
+        .expect("Failed to parse upload response");
     let photo_id = upload_body["id"].as_str().unwrap();
 
     // Serve the photo
@@ -394,10 +428,19 @@ async fn test_serve_photo() {
         .expect("Failed to send serve photo request");
 
     assert_eq!(serve_response.status(), 200);
-    assert_eq!(serve_response.headers().get("content-type").unwrap(), "image/jpeg");
-    assert_eq!(serve_response.headers().get("content-length").unwrap(), &fake_image_data.len().to_string());
-    
-    let served_data = serve_response.bytes().await.expect("Failed to get photo data");
+    assert_eq!(
+        serve_response.headers().get("content-type").unwrap(),
+        "image/jpeg"
+    );
+    assert_eq!(
+        serve_response.headers().get("content-length").unwrap(),
+        &fake_image_data.len().to_string()
+    );
+
+    let served_data = serve_response
+        .bytes()
+        .await
+        .expect("Failed to get photo data");
     assert_eq!(served_data.to_vec(), fake_image_data);
 }
 
@@ -406,7 +449,13 @@ async fn test_serve_nonexistent_photo() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "servenotfound@example.com", "Serve User", "password123").await;
+    common::create_test_user(
+        &app,
+        "servenotfound@example.com",
+        "Serve User",
+        "password123",
+    )
+    .await;
 
     // Create a plant
     let plant = common::create_test_plant(&app, "Serve Plant", "Servicus").await;

@@ -1,123 +1,149 @@
 #[allow(unused_imports)]
 use axum::{
-    extract::Path,
+    extract::{Path, State},
     http::StatusCode,
     response::Json,
     routing::{delete, get, post, put},
     Router,
 };
-use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::database::DatabasePool;
-use crate::utils::errors::Result;
+use crate::auth::AuthSession;
+use crate::database::{tracking as db_tracking, DatabasePool};
+use crate::middleware::validation::ValidatedJson;
+use crate::models::tracking_entry::{
+    CreateTrackingEntryRequest, TrackingEntriesResponse, TrackingEntry,
+};
+use crate::utils::errors::{AppError, Result};
 
 pub fn routes() -> Router<DatabasePool> {
     Router::new()
+        .route("/:plant_id/entries", get(list_entries).post(create_entry))
         .route(
-            "/plants/:plant_id/entries",
-            get(list_entries).post(create_entry),
-        )
-        .route(
-            "/plants/:plant_id/entries/:entry_id",
+            "/:plant_id/entries/:entry_id",
             get(get_entry).put(update_entry).delete(delete_entry),
         )
 }
 
-async fn list_entries(Path(plant_id): Path<Uuid>) -> Result<Json<Value>> {
-    // TODO: Implement actual tracking entry listing
-    tracing::info!("List tracking entries request for plant: {}", plant_id);
+async fn list_entries(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
+    Path(plant_id): Path<Uuid>,
+) -> Result<Json<TrackingEntriesResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
 
-    // Mock response for now
-    let response = json!({
-        "entries": [],
-        "total": 0
-    });
+    tracing::info!(
+        "List tracking entries request for plant: {} by user: {}",
+        plant_id,
+        user.id
+    );
 
+    let response = db_tracking::get_tracking_entries_for_plant(&pool, &plant_id, &user.id).await?;
+
+    tracing::debug!(
+        "Returning {} tracking entries for plant: {}",
+        response.total,
+        plant_id
+    );
     Ok(Json(response))
 }
 
-async fn create_entry(Path(plant_id): Path<Uuid>) -> Result<Json<Value>> {
-    // TODO: Implement actual tracking entry creation
-    tracing::info!("Create tracking entry request for plant: {}", plant_id);
+async fn create_entry(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
+    Path(plant_id): Path<Uuid>,
+    ValidatedJson(payload): ValidatedJson<CreateTrackingEntryRequest>,
+) -> Result<(StatusCode, Json<TrackingEntry>)> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
 
-    // Mock response for now
-    let response = json!({
-        "id": Uuid::new_v4(),
-        "type": "watering",
-        "timestamp": chrono::Utc::now(),
-        "value": null,
-        "notes": null,
-        "metric_id": null,
-        "plant_id": plant_id,
-        "created_at": chrono::Utc::now(),
-        "updated_at": chrono::Utc::now()
-    });
+    tracing::info!(
+        "Create tracking entry request for plant: {} by user: {}",
+        plant_id,
+        user.id
+    );
 
-    Ok(Json(response))
+    let entry = db_tracking::create_tracking_entry(&pool, &plant_id, &user.id, &payload).await?;
+
+    tracing::info!(
+        "Created tracking entry with id: {} for plant: {}",
+        entry.id,
+        plant_id
+    );
+    Ok((StatusCode::CREATED, Json(entry)))
 }
 
 async fn get_entry(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<Value>> {
-    // TODO: Implement actual tracking entry retrieval
+) -> Result<Json<TrackingEntry>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    // TODO: Implement get single tracking entry
     tracing::info!(
-        "Get tracking entry request for plant: {}, entry: {}",
+        "Get tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,
-        entry_id
+        entry_id,
+        user.id
     );
 
-    // Mock response for now
-    let response = json!({
-        "id": entry_id,
-        "type": "watering",
-        "timestamp": chrono::Utc::now(),
-        "value": null,
-        "notes": null,
-        "metric_id": null,
-        "plant_id": plant_id,
-        "created_at": chrono::Utc::now(),
-        "updated_at": chrono::Utc::now()
-    });
-
-    Ok(Json(response))
+    // For now, return error since we haven't implemented single entry retrieval
+    Err(AppError::NotFound {
+        resource: format!("Tracking entry with id {entry_id}"),
+    })
 }
 
 async fn update_entry(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
-) -> Result<Json<Value>> {
+) -> Result<Json<TrackingEntry>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
     // TODO: Implement actual tracking entry update
     tracing::info!(
-        "Update tracking entry request for plant: {}, entry: {}",
+        "Update tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,
-        entry_id
+        entry_id,
+        user.id
     );
 
-    // Mock response for now
-    let response = json!({
-        "id": entry_id,
-        "type": "watering",
-        "timestamp": chrono::Utc::now(),
-        "value": null,
-        "notes": null,
-        "metric_id": null,
-        "plant_id": plant_id,
-        "created_at": chrono::Utc::now(),
-        "updated_at": chrono::Utc::now()
-    });
-
-    Ok(Json(response))
+    // For now, return error since we haven't implemented entry updates
+    Err(AppError::NotFound {
+        resource: format!("Tracking entry with id {entry_id}"),
+    })
 }
 
 async fn delete_entry(
+    auth_session: AuthSession,
+    State(pool): State<DatabasePool>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
-    // TODO: Implement actual tracking entry deletion
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
     tracing::info!(
-        "Delete tracking entry request for plant: {}, entry: {}",
+        "Delete tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,
-        entry_id
+        entry_id,
+        user.id
     );
 
+    db_tracking::delete_tracking_entry(&pool, &plant_id, &entry_id, &user.id).await?;
+
+    tracing::info!(
+        "Deleted tracking entry: {} for plant: {}",
+        entry_id,
+        plant_id
+    );
     Ok(StatusCode::NO_CONTENT)
 }

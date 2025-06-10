@@ -1,7 +1,7 @@
-use sqlx::{Row, FromRow};
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
+use sqlx::{FromRow, Row};
+use uuid::Uuid;
 
 use crate::database::DatabasePool;
 use crate::models::{CreatePlantRequest, PlantResponse, UpdatePlantRequest};
@@ -30,31 +30,37 @@ impl PlantRow {
     #[allow(clippy::wrong_self_convention)]
     pub fn to_response(self) -> Result<PlantResponse, AppError> {
         Ok(PlantResponse {
-            id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal { 
-                message: "Invalid UUID in database".to_string() 
+            id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal {
+                message: "Invalid UUID in database".to_string(),
             })?,
             name: self.name,
             genus: self.genus,
             watering_interval_days: self.watering_interval_days,
             fertilizing_interval_days: self.fertilizing_interval_days,
-            last_watered: self.last_watered
+            last_watered: self
+                .last_watered
                 .map(|s| s.parse::<DateTime<Utc>>())
                 .transpose()
-                .map_err(|_| AppError::Internal { 
-                    message: "Invalid datetime in database".to_string() 
+                .map_err(|_| AppError::Internal {
+                    message: "Invalid datetime in database".to_string(),
                 })?,
-            last_fertilized: self.last_fertilized
+            last_fertilized: self
+                .last_fertilized
                 .map(|s| s.parse::<DateTime<Utc>>())
                 .transpose()
-                .map_err(|_| AppError::Internal { 
-                    message: "Invalid datetime in database".to_string() 
+                .map_err(|_| AppError::Internal {
+                    message: "Invalid datetime in database".to_string(),
                 })?,
             custom_metrics: vec![], // TODO: Load custom metrics
-            created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| AppError::Internal { 
-                message: "Invalid datetime in database".to_string() 
+            created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
+                AppError::Internal {
+                    message: "Invalid datetime in database".to_string(),
+                }
             })?,
-            updated_at: self.updated_at.parse::<DateTime<Utc>>().map_err(|_| AppError::Internal { 
-                message: "Invalid datetime in database".to_string() 
+            updated_at: self.updated_at.parse::<DateTime<Utc>>().map_err(|_| {
+                AppError::Internal {
+                    message: "Invalid datetime in database".to_string(),
+                }
             })?,
             user_id: self.user_id,
         })
@@ -83,7 +89,7 @@ pub async fn create_plant(
     let plant_id = Uuid::new_v4();
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
-    
+
     let result = sqlx::query!(
         r#"
         INSERT INTO plants (
@@ -118,22 +124,28 @@ pub async fn create_plant(
     get_plant_by_id(pool, plant_id).await
 }
 
-pub async fn get_plant_by_id(pool: &DatabasePool, plant_id: Uuid) -> Result<PlantResponse, AppError> {
+pub async fn get_plant_by_id(
+    pool: &DatabasePool,
+    plant_id: Uuid,
+) -> Result<PlantResponse, AppError> {
     let plant_id_str = plant_id.to_string();
-    let plant_row = sqlx::query_as::<_, PlantRow>(
-        "SELECT * FROM plants WHERE id = ?"
-    )
-    .bind(plant_id_str)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to fetch plant: {}", e);
-        AppError::Database(e)
-    })?;
+    let plant_row = sqlx::query_as::<_, PlantRow>("SELECT * FROM plants WHERE id = ?")
+        .bind(plant_id_str)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to fetch plant: {}", e);
+            AppError::Database(e)
+        })?;
 
-    plant_row.map_or_else(|| Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        }), PlantRow::to_response)
+    plant_row.map_or_else(
+        || {
+            Err(AppError::NotFound {
+                resource: format!("Plant with id {plant_id}"),
+            })
+        },
+        PlantRow::to_response,
+    )
 }
 
 pub async fn list_plants_for_user(
@@ -227,26 +239,26 @@ pub async fn update_plant(
     }
 
     let now = Utc::now().to_rfc3339();
-    
+
     // Build dynamic update query based on provided fields
     let mut set_clauses = vec!["updated_at = ?"];
     let mut params: Vec<String> = vec![now.clone()];
-    
+
     if let Some(name) = &request.name {
         set_clauses.push("name = ?");
         params.push(name.clone());
     }
-    
+
     if let Some(genus) = &request.genus {
         set_clauses.push("genus = ?");
         params.push(genus.clone());
     }
-    
+
     if let Some(watering_interval) = request.watering_interval_days {
         set_clauses.push("watering_interval_days = ?");
         params.push(watering_interval.to_string());
     }
-    
+
     if let Some(fertilizing_interval) = request.fertilizing_interval_days {
         set_clauses.push("fertilizing_interval_days = ?");
         params.push(fertilizing_interval.to_string());
@@ -256,7 +268,7 @@ pub async fn update_plant(
         "UPDATE plants SET {} WHERE id = ? AND user_id = ?",
         set_clauses.join(", ")
     );
-    
+
     params.push(plant_id.to_string());
     params.push(user_id.to_string());
 
@@ -265,13 +277,10 @@ pub async fn update_plant(
         query_builder = query_builder.bind(param);
     }
 
-    let result = query_builder
-        .execute(pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to update plant: {}", e);
-            AppError::Database(e)
-        })?;
+    let result = query_builder.execute(pool).await.map_err(|e| {
+        tracing::error!("Failed to update plant: {}", e);
+        AppError::Database(e)
+    })?;
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
@@ -289,7 +298,7 @@ pub async fn delete_plant(
     user_id: &str,
 ) -> Result<(), AppError> {
     let plant_id_str = plant_id.to_string();
-    
+
     let result = sqlx::query!(
         "DELETE FROM plants WHERE id = ? AND user_id = ?",
         plant_id_str,

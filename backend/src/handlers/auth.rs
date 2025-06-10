@@ -52,9 +52,7 @@ async fn login(
         });
     }
 
-    let response = AuthResponse {
-        user: user.into(),
-    };
+    let response = AuthResponse { user: user.into() };
 
     tracing::info!("Login successful for email: {}", payload.email);
     Ok(Json(response))
@@ -67,15 +65,17 @@ async fn register(
     tracing::info!("Registration attempt for email: {}", payload.email);
 
     // Create user in database
-    let user = db_users::create_user(&auth_session.backend.db, &payload).await.map_err(|e| {
-        match e {
-            AppError::Validation(_) => AppError::Validation(
-                // TODO: Create proper validation error for email already exists
-                validator::ValidationErrors::new()
-            ),
-            _ => e,
-        }
-    })?;
+    let user = db_users::create_user(&auth_session.backend.db, &payload)
+        .await
+        .map_err(|e| {
+            match e {
+                AppError::Validation(_) => AppError::Validation(
+                    // TODO: Create proper validation error for email already exists
+                    validator::ValidationErrors::new(),
+                ),
+                _ => e,
+            }
+        })?;
 
     // Log the user in immediately after registration
     if let Err(e) = auth_session.login(&user).await {
@@ -85,9 +85,7 @@ async fn register(
         });
     }
 
-    let response = AuthResponse {
-        user: user.into(),
-    };
+    let response = AuthResponse { user: user.into() };
 
     tracing::info!("Registration successful for email: {}", payload.email);
     Ok((axum::http::StatusCode::CREATED, Json(response)))

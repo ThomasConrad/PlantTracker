@@ -1,10 +1,10 @@
 use axum::{
+    body::Body,
     extract::{Multipart, Path, State},
     http::{header, StatusCode},
     response::{Json, Response},
     routing::{delete, get},
     Router,
-    body::Body,
 };
 use uuid::Uuid;
 
@@ -15,10 +15,7 @@ use crate::utils::errors::{AppError, Result};
 
 pub fn routes() -> Router<DatabasePool> {
     Router::new()
-        .route(
-            "/photos",
-            get(list_photos).post(upload_photo),
-        )
+        .route("/photos", get(list_photos).post(upload_photo))
         .route("/photos/:photo_id", get(serve_photo).delete(delete_photo))
 }
 
@@ -31,11 +28,19 @@ async fn list_photos(
         message: "Not authenticated".to_string(),
     })?;
 
-    tracing::info!("List photos request for plant: {} by user: {}", plant_id, user.id);
+    tracing::info!(
+        "List photos request for plant: {} by user: {}",
+        plant_id,
+        user.id
+    );
 
     let response = db_photos::get_photos_for_plant(&pool, &plant_id, &user.id).await?;
 
-    tracing::debug!("Returning {} photos for plant: {}", response.total, plant_id);
+    tracing::debug!(
+        "Returning {} photos for plant: {}",
+        response.total,
+        plant_id
+    );
     Ok(Json(response))
 }
 
@@ -48,9 +53,15 @@ async fn serve_photo(
         message: "Not authenticated".to_string(),
     })?;
 
-    tracing::info!("Serve photo request for plant: {}, photo: {} by user: {}", plant_id, photo_id, user.id);
+    tracing::info!(
+        "Serve photo request for plant: {}, photo: {} by user: {}",
+        plant_id,
+        photo_id,
+        user.id
+    );
 
-    let (data, content_type) = db_photos::get_photo_data(&pool, &plant_id, &photo_id, &user.id).await?;
+    let (data, content_type) =
+        db_photos::get_photo_data(&pool, &plant_id, &photo_id, &user.id).await?;
 
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -77,7 +88,11 @@ async fn upload_photo(
         message: "Not authenticated".to_string(),
     })?;
 
-    tracing::info!("Upload photo request for plant: {} by user: {}", plant_id, user.id);
+    tracing::info!(
+        "Upload photo request for plant: {} by user: {}",
+        plant_id,
+        user.id
+    );
 
     let mut file_data: Option<Vec<u8>> = None;
     let mut original_filename: Option<String> = None;
@@ -85,23 +100,32 @@ async fn upload_photo(
     let mut _caption: Option<String> = None;
 
     // Process multipart form data
-    while let Some(field) = multipart.next_field().await.map_err(|_e| AppError::Validation(
-        validator::ValidationErrors::new()
-    ))? {
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_e| AppError::Validation(validator::ValidationErrors::new()))?
+    {
         let name = field.name().unwrap_or("").to_string();
-        
+
         match name.as_str() {
             "file" => {
                 original_filename = field.file_name().map(|s| s.to_string());
                 content_type = field.content_type().map(|s| s.to_string());
-                file_data = Some(field.bytes().await.map_err(|_| AppError::Validation(
-                    validator::ValidationErrors::new()
-                ))?.to_vec());
+                file_data = Some(
+                    field
+                        .bytes()
+                        .await
+                        .map_err(|_| AppError::Validation(validator::ValidationErrors::new()))?
+                        .to_vec(),
+                );
             }
             "caption" => {
-                _caption = Some(field.text().await.map_err(|_| AppError::Validation(
-                    validator::ValidationErrors::new()
-                ))?);
+                _caption = Some(
+                    field
+                        .text()
+                        .await
+                        .map_err(|_| AppError::Validation(validator::ValidationErrors::new()))?,
+                );
             }
             _ => {
                 // Skip unknown fields
@@ -110,15 +134,12 @@ async fn upload_photo(
     }
 
     // Validate required fields
-    let file_data = file_data.ok_or_else(|| AppError::Validation(
-        validator::ValidationErrors::new()
-    ))?;
-    let original_filename = original_filename.ok_or_else(|| AppError::Validation(
-        validator::ValidationErrors::new()
-    ))?;
-    let content_type = content_type.ok_or_else(|| AppError::Validation(
-        validator::ValidationErrors::new()
-    ))?;
+    let file_data =
+        file_data.ok_or_else(|| AppError::Validation(validator::ValidationErrors::new()))?;
+    let original_filename = original_filename
+        .ok_or_else(|| AppError::Validation(validator::ValidationErrors::new()))?;
+    let content_type =
+        content_type.ok_or_else(|| AppError::Validation(validator::ValidationErrors::new()))?;
 
     // Validate content type
     if !content_type.starts_with("image/") {
@@ -140,7 +161,11 @@ async fn upload_photo(
 
     let photo = db_photos::create_photo(&pool, &plant_id, &user.id, &upload_request).await?;
 
-    tracing::info!("Photo uploaded with id: {} for plant: {}", photo.id, plant_id);
+    tracing::info!(
+        "Photo uploaded with id: {} for plant: {}",
+        photo.id,
+        plant_id
+    );
     Ok((StatusCode::CREATED, Json(photo)))
 }
 

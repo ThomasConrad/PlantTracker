@@ -8,7 +8,7 @@ use axum_login::AuthUser;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
-    pub id: String,  // Changed to String for SQLite compatibility
+    pub id: String, // Changed to String for SQLite compatibility
     pub email: String,
     pub name: String,
     pub password_hash: String,
@@ -133,7 +133,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("email"));
     }
@@ -148,7 +148,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("name"));
     }
@@ -163,7 +163,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("password"));
     }
@@ -187,7 +187,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("email"));
     }
@@ -222,7 +222,7 @@ mod tests {
         };
 
         let response = UserResponse::from(user.clone());
-        
+
         assert_eq!(response.id, user.id);
         assert_eq!(response.email, user.email);
         assert_eq!(response.name, user.name);
@@ -264,7 +264,7 @@ mod tests {
         };
 
         let user = user_row.to_user().unwrap();
-        
+
         assert_eq!(user.id, "test-id");
         assert_eq!(user.email, "test@example.com");
         assert_eq!(user.name, "Test User");
@@ -286,7 +286,7 @@ mod tests {
 
         let result = user_row.to_user();
         assert!(result.is_err());
-        
+
         if let Err(crate::utils::errors::AppError::Internal { message }) = result {
             assert_eq!(message, "Invalid datetime in database");
         } else {

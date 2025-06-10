@@ -5,6 +5,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct TrackingEntry {
     pub id: Uuid,
     pub plant_id: Uuid,
@@ -17,8 +18,8 @@ pub struct TrackingEntry {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(type_name = "entry_type", rename_all = "lowercase")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum EntryType {
     Watering,
     Fertilizing,
@@ -26,7 +27,7 @@ pub enum EntryType {
 }
 
 #[derive(Debug, Deserialize, Validate)]
-#[allow(dead_code)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTrackingEntryRequest {
     pub entry_type: EntryType,
     pub timestamp: DateTime<Utc>,

@@ -8,7 +8,8 @@ async fn test_user_can_only_see_own_plants() {
     let app = TestApp::new().await;
 
     // Create two users
-    let user1 = common::create_test_user(&app, "user1@example.com", "User One", "password123").await;
+    let user1 =
+        common::create_test_user(&app, "user1@example.com", "User One", "password123").await;
     let user1_id = user1["user"]["id"].as_str().unwrap();
 
     // Create plants for user1
@@ -16,9 +17,14 @@ async fn test_user_can_only_see_own_plants() {
     let plant2 = common::create_test_plant(&app, "User1 Plant2", "Genus2").await;
 
     // Logout user1 and create user2
-    app.client.post(&app.url("/auth/logout")).send().await.unwrap();
-    
-    let user2 = common::create_test_user(&app, "user2@example.com", "User Two", "password123").await;
+    app.client
+        .post(&app.url("/auth/logout"))
+        .send()
+        .await
+        .unwrap();
+
+    let user2 =
+        common::create_test_user(&app, "user2@example.com", "User Two", "password123").await;
     let user2_id = user2["user"]["id"].as_str().unwrap();
 
     // Create plants for user2
@@ -34,7 +40,7 @@ async fn test_user_can_only_see_own_plants() {
 
     assert_eq!(response.status(), 200);
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
-    
+
     assert_eq!(body["total"], 1);
     assert_eq!(body["plants"].as_array().unwrap().len(), 1);
     assert_eq!(body["plants"][0]["name"], "User2 Plant1");
@@ -52,7 +58,11 @@ async fn test_user_can_only_see_own_plants() {
     assert_eq!(response.status(), 404); // Not found (because it doesn't belong to user2)
 
     // Login as user1 again
-    app.client.post(&app.url("/auth/logout")).send().await.unwrap();
+    app.client
+        .post(&app.url("/auth/logout"))
+        .send()
+        .await
+        .unwrap();
     common::login_user(&app, "user1@example.com", "password123").await;
 
     // User1 should see their own plants
@@ -65,10 +75,10 @@ async fn test_user_can_only_see_own_plants() {
 
     assert_eq!(response.status(), 200);
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
-    
+
     assert_eq!(body["total"], 2);
     assert_eq!(body["plants"].as_array().unwrap().len(), 2);
-    
+
     // Verify both plants belong to user1
     let plants = body["plants"].as_array().unwrap();
     for plant in plants {
@@ -99,7 +109,11 @@ async fn test_user_cannot_modify_other_users_plants() {
     let plant_id = plant["id"].as_str().unwrap();
 
     // Logout and create user2
-    app.client.post(&app.url("/auth/logout")).send().await.unwrap();
+    app.client
+        .post(&app.url("/auth/logout"))
+        .send()
+        .await
+        .unwrap();
     common::create_test_user(&app, "hacker@example.com", "Plant Hacker", "password123").await;
 
     // User2 tries to update user1's plant
@@ -127,7 +141,11 @@ async fn test_user_cannot_modify_other_users_plants() {
     assert_eq!(response.status(), 404); // Not found (access denied)
 
     // Login as original owner to verify plant is unchanged
-    app.client.post(&app.url("/auth/logout")).send().await.unwrap();
+    app.client
+        .post(&app.url("/auth/logout"))
+        .send()
+        .await
+        .unwrap();
     common::login_user(&app, "owner@example.com", "password123").await;
 
     let response = app

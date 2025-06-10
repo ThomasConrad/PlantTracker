@@ -215,9 +215,9 @@ async fn test_session_persistence() {
             .send()
             .await
             .expect("Failed to send me request");
-        
+
         assert_eq!(response.status(), 200);
-        
+
         let body: serde_json::Value = response.json().await.expect("Failed to parse response");
         assert_eq!(body["email"], "session@example.com");
     }

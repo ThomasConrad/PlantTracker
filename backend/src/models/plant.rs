@@ -134,7 +134,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("name"));
     }
@@ -151,7 +151,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("name"));
     }
@@ -168,7 +168,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("genus"));
     }
@@ -185,7 +185,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("watering_interval_days"));
     }
@@ -202,9 +202,11 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
-        assert!(errors.field_errors().contains_key("fertilizing_interval_days"));
+        assert!(errors
+            .field_errors()
+            .contains_key("fertilizing_interval_days"));
     }
 
     #[test]
@@ -228,7 +230,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("name"));
     }
@@ -243,7 +245,7 @@ mod tests {
 
         let validation_result = request.validate();
         assert!(validation_result.is_err());
-        
+
         let errors = validation_result.unwrap_err();
         assert!(errors.field_errors().contains_key("unit"));
     }
@@ -301,7 +303,7 @@ mod tests {
         }"#;
 
         let request: UpdatePlantRequest = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(request.name, Some("Updated Plant Name".to_string()));
         assert_eq!(request.genus, None);
         assert_eq!(request.watering_interval_days, Some(5));

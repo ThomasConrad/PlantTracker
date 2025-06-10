@@ -589,20 +589,34 @@ class TestPerformance:
 class TestPhotoUpload:
     """Test photo upload functionality"""
     
+    @pytest.fixture(scope="function")
+    def photo_backend(self):
+        """Create a dedicated backend server instance for photo tests to ensure isolation"""
+        with BackendServer() as server:
+            yield server
+    
+    @pytest.fixture(scope="function")
+    def photo_client(self, photo_backend):
+        """Create a dedicated client for photo tests"""
+        return APIClient(photo_backend.base_url, photo_backend.api_prefix)
+    
     @pytest.fixture(autouse=True)
-    def login_user(self, client, test_users):
+    def login_user(self, photo_client, test_users):
         """Automatically login a user before each test"""
         user_data = test_users["user1"]
         
         # Register and login user
-        client.request("POST", "/auth/register", json=user_data)
-        response = client.request("POST", "/auth/login", json={
+        photo_client.request("POST", "/auth/register", json=user_data)
+        response = photo_client.request("POST", "/auth/login", json={
             "email": user_data["email"],
             "password": user_data["password"]
         })
         assert response.status_code == 200
+        
+        # Store client reference for test methods
+        self.client = photo_client
 
-    def test_upload_photo_multipart(self, client):
+    def test_upload_photo_multipart(self):
         """Test uploading a photo using multipart form data"""
         # Create a plant first
         plant_data = {
@@ -612,7 +626,7 @@ class TestPhotoUpload:
             "fertilizingIntervalDays": 14
         }
         
-        plant_response = client.request("POST", "/plants", json=plant_data)
+        plant_response = self.client.request("POST", "/plants", json=plant_data)
         assert plant_response.status_code == 201
         plant = plant_response.json()
         plant_id = plant["id"]
@@ -629,9 +643,9 @@ class TestPhotoUpload:
         # Use requests directly for multipart upload
         import requests
         response = requests.post(
-            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
             files=files,
-            cookies=client.session.cookies
+            cookies=self.client.session.cookies
         )
         
         assert response.status_code == 201
@@ -644,7 +658,7 @@ class TestPhotoUpload:
         assert photo_data["size"] == len(fake_image_data)
         assert "createdAt" in photo_data
 
-    def test_list_photos_after_upload(self, client):
+    def test_list_photos_after_upload(self):
         """Test listing photos after uploading one"""
         # Create a plant first
         plant_data = {
@@ -654,7 +668,7 @@ class TestPhotoUpload:
             "fertilizingIntervalDays": 14
         }
         
-        plant_response = client.request("POST", "/plants", json=plant_data)
+        plant_response = self.client.request("POST", "/plants", json=plant_data)
         assert plant_response.status_code == 201
         plant = plant_response.json()
         plant_id = plant["id"]
@@ -669,21 +683,22 @@ class TestPhotoUpload:
         }
         
         upload_response = requests.post(
-            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
             files=files,
-            cookies=client.session.cookies
+            cookies=self.client.session.cookies
         )
         assert upload_response.status_code == 201
         
         # List photos
-        list_response = client.request("GET", f"/plants/{plant_id}/photos")
+        list_response = self.client.request("GET", f"/plants/{plant_id}/photos")
         assert list_response.status_code == 200
         
-        photos_data = list_response.json()
-        assert len(photos_data) == 1
-        assert photos_data[0]["originalFilename"] == "list-test.jpg"
+        photos_response = list_response.json()
+        assert len(photos_response["photos"]) == 1
+        assert photos_response["total"] == 1
+        assert photos_response["photos"][0]["originalFilename"] == "list-test.jpg"
 
-    def test_delete_photo(self, client):
+    def test_delete_photo(self):
         """Test deleting a photo"""
         # Create a plant first
         plant_data = {
@@ -693,7 +708,7 @@ class TestPhotoUpload:
             "fertilizingIntervalDays": 14
         }
         
-        plant_response = client.request("POST", "/plants", json=plant_data)
+        plant_response = self.client.request("POST", "/plants", json=plant_data)
         assert plant_response.status_code == 201
         plant = plant_response.json()
         plant_id = plant["id"]
@@ -708,26 +723,27 @@ class TestPhotoUpload:
         }
         
         upload_response = requests.post(
-            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
             files=files,
-            cookies=client.session.cookies
+            cookies=self.client.session.cookies
         )
         assert upload_response.status_code == 201
         photo = upload_response.json()
         photo_id = photo["id"]
         
         # Delete the photo
-        delete_response = client.request("DELETE", f"/plants/{plant_id}/photos/{photo_id}")
+        delete_response = self.client.request("DELETE", f"/plants/{plant_id}/photos/{photo_id}")
         assert delete_response.status_code == 204
         
         # Verify photo is deleted
-        list_response = client.request("GET", f"/plants/{plant_id}/photos")
+        list_response = self.client.request("GET", f"/plants/{plant_id}/photos")
         assert list_response.status_code == 200
         
-        photos_data = list_response.json()
-        assert len(photos_data) == 0
+        photos_response = list_response.json()
+        assert len(photos_response["photos"]) == 0
+        assert photos_response["total"] == 0
 
-    def test_upload_photo_validation_errors(self, client):
+    def test_upload_photo_validation_errors(self):
         """Test photo upload validation"""
         # Create a plant first
         plant_data = {
@@ -737,7 +753,7 @@ class TestPhotoUpload:
             "fertilizingIntervalDays": 14
         }
         
-        plant_response = client.request("POST", "/plants", json=plant_data)
+        plant_response = self.client.request("POST", "/plants", json=plant_data)
         assert plant_response.status_code == 201
         plant = plant_response.json()
         plant_id = plant["id"]
@@ -750,18 +766,18 @@ class TestPhotoUpload:
         }
         
         response = requests.post(
-            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
             files=files,
-            cookies=client.session.cookies
+            cookies=self.client.session.cookies
         )
         assert response.status_code == 422
 
-    def test_upload_photo_unauthenticated(self, client):
+    def test_upload_photo_unauthenticated(self):
         """Test photo upload without authentication"""
         plant_id = str(uuid.uuid4())
         
         # Logout first
-        client.request("POST", "/auth/logout")
+        self.client.request("POST", "/auth/logout")
         
         fake_image_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb'
         
@@ -773,7 +789,7 @@ class TestPhotoUpload:
         
         # Create a new session without cookies
         response = requests.post(
-            f"{client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
             files=files
         )
         assert response.status_code == 401

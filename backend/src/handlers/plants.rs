@@ -33,6 +33,7 @@ struct ListPlantsQuery {
     limit: Option<i64>,
     offset: Option<i64>,
     search: Option<String>,
+    sort: Option<String>, // "date_asc", "date_desc" (default), "name_asc", "name_desc"
 }
 
 async fn list_plants(
@@ -54,7 +55,7 @@ async fn list_plants(
     let offset = params.offset.unwrap_or(0);
 
     let (plants, total) =
-        db_plants::list_plants_for_user(&pool, &user.id, limit, offset, params.search.as_deref())
+        db_plants::list_plants_for_user_with_sort(&pool, &user.id, limit, offset, params.search.as_deref(), params.sort.as_deref())
             .await?;
 
     let response = PlantsResponse {

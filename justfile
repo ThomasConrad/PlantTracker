@@ -42,9 +42,17 @@ dev-parallel:
     (cd frontend && npm run dev) &
     wait
 
-# Run only the backend API server
+
+
+# Run the backend API server in release mode
+backend-release:
+    @echo "🦀 starting rust backend..."
+    just build
+    cd backend && cargo run --release --bin plant-tracker-api
+
+# Run the backend API server
 backend:
-    @echo "🦀 Starting Rust backend..."
+    @echo "🦀 starting rust backend..."
     just build
     cd backend && cargo run --bin plant-tracker-api
 

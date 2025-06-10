@@ -137,6 +137,7 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
                 >
                   <option value="watering">Watering</option>
                   <option value="fertilizing">Fertilizing</option>
+                  <option value="note">Note</option>
                   {props.plant.customMetrics.length > 0 && (
                     <option value="customMetric">Custom Metric</option>
                   )}

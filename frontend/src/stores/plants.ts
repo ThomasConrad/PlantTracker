@@ -5,6 +5,7 @@ import type { Plant, Photo, components } from '@/types';
 type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
 type TrackingEntry = components['schemas']['TrackingEntry'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
+type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 
 interface UpdatePlantRequest {
   name?: string;
@@ -194,6 +195,17 @@ const plantsStore = {
       await apiClient.deleteTrackingEntry(plantId, entryId);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete tracking entry';
+      setError(errorMessage);
+      throw err;
+    }
+  },
+
+  async getTrackingEntries(plantId: string): Promise<TrackingEntriesResponse> {
+    try {
+      setError(null);
+      return await apiClient.getTrackingEntries(plantId);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get tracking entries';
       setError(errorMessage);
       throw err;
     }

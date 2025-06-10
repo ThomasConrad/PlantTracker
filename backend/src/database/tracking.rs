@@ -29,7 +29,7 @@ pub async fn get_tracking_entries_for_plant(
 
     // Get tracking entries
     let entries_rows = sqlx::query(
-        "SELECT id, plant_id, entry_type, timestamp, value, notes, metric_id, created_at, updated_at 
+        "SELECT id, plant_id, entry_type, timestamp, value, notes, metric_id, photo_ids, created_at, updated_at 
          FROM tracking_entries 
          WHERE plant_id = ? 
          ORDER BY timestamp DESC"
@@ -49,6 +49,7 @@ pub async fn get_tracking_entries_for_plant(
             let entry_type_str: String = row.get("entry_type");
             let metric_id_str: Option<String> = row.get("metric_id");
             let value_str: Option<String> = row.get("value");
+            let photo_ids_str: Option<String> = row.get("photo_ids");
 
             TrackingEntry {
                 id: Uuid::parse_str(&id_str).expect("Invalid UUID"),
@@ -57,6 +58,7 @@ pub async fn get_tracking_entries_for_plant(
                     "watering" => EntryType::Watering,
                     "fertilizing" => EntryType::Fertilizing,
                     "measurement" => EntryType::CustomMetric,
+                    "note" => EntryType::Note,
                     _ => EntryType::Watering, // fallback
                 },
                 timestamp: chrono::DateTime::parse_from_rfc3339(&timestamp_str)
@@ -65,6 +67,7 @@ pub async fn get_tracking_entries_for_plant(
                 value: value_str.and_then(|v| serde_json::from_str(&v).ok()),
                 notes: row.get("notes"),
                 metric_id: metric_id_str.and_then(|id| Uuid::parse_str(&id).ok()),
+                photo_ids: photo_ids_str.and_then(|v| serde_json::from_str(&v).ok()),
                 created_at: chrono::DateTime::parse_from_rfc3339(&created_at_str)
                     .expect("Invalid timestamp")
                     .with_timezone(&Utc),
@@ -107,6 +110,7 @@ pub async fn create_tracking_entry(
         EntryType::Watering => "watering",
         EntryType::Fertilizing => "fertilizing",
         EntryType::CustomMetric => "measurement",
+        EntryType::Note => "note",
     };
 
     let value_json = request
@@ -114,10 +118,15 @@ pub async fn create_tracking_entry(
         .as_ref()
         .map(|v| serde_json::to_string(v).unwrap_or_default());
 
+    let photo_ids_json = request
+        .photo_ids
+        .as_ref()
+        .map(|v| serde_json::to_string(v).unwrap_or_default());
+
     // Create the tracking entry
     sqlx::query(
-        "INSERT INTO tracking_entries (id, plant_id, entry_type, timestamp, value, notes, metric_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        "INSERT INTO tracking_entries (id, plant_id, entry_type, timestamp, value, notes, metric_id, photo_ids, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(entry_id.to_string())
     .bind(plant_id.to_string())
@@ -126,6 +135,7 @@ pub async fn create_tracking_entry(
     .bind(&value_json)
     .bind(&request.notes)
     .bind(request.metric_id.map(|id| id.to_string()))
+    .bind(&photo_ids_json)
     .bind(now.to_rfc3339())
     .bind(now.to_rfc3339())
     .execute(pool)
@@ -158,6 +168,9 @@ pub async fn create_tracking_entry(
         EntryType::CustomMetric => {
             // Custom metrics don't update plant care dates
         }
+        EntryType::Note => {
+            // Notes don't update plant care dates
+        }
     }
 
     Ok(TrackingEntry {
@@ -168,6 +181,7 @@ pub async fn create_tracking_entry(
         value: request.value.clone(),
         notes: request.notes.clone(),
         metric_id: request.metric_id,
+        photo_ids: request.photo_ids.as_ref().map(|v| serde_json::to_value(v).unwrap_or_default()),
         created_at: now,
         updated_at: now,
     })
@@ -305,6 +319,7 @@ mod tests {
             value: None,
             notes: Some("Test watering".to_string()),
             metric_id: None,
+            photo_ids: None,
         };
 
         let result = create_tracking_entry(&pool, &plant_id, &user_id, &request).await;
@@ -328,6 +343,7 @@ mod tests {
             value: None,
             notes: None,
             metric_id: None,
+            photo_ids: None,
         };
 
         let entry = create_tracking_entry(&pool, &plant_id, &user_id, &request)

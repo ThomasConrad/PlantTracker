@@ -1,11 +1,5 @@
 use chrono::{DateTime, Duration, Utc};
-use google_calendar3::{
-    api::{Event, EventDateTime},
-    CalendarHub,
-};
-use hyper::client::HttpConnector;
-use hyper_rustls::HttpsConnector;
-use yup_oauth2::AccessToken;
+use serde_json::Value;
 
 use crate::database::google_oauth;
 use crate::database::DatabasePool;
@@ -13,17 +7,15 @@ use crate::models::plant::PlantResponse;
 use crate::models::google_oauth::GoogleOAuthToken;
 use crate::utils::errors::{AppError, Result};
 
-type HttpsClient = hyper::Client<HttpsConnector<HttpConnector>>;
-
-/// Configuration for Google Calendar API
+/// Configuration for Google Tasks API
 #[derive(Debug, Clone)]
-pub struct GoogleCalendarConfig {
+pub struct GoogleTasksConfig {
     pub client_id: String,
     pub client_secret: String,
     pub redirect_uri: String,
 }
 
-impl GoogleCalendarConfig {
+impl GoogleTasksConfig {
     pub fn from_env() -> Result<Self> {
         let client_id = std::env::var("GOOGLE_CLIENT_ID")
             .map_err(|_| AppError::Configuration {
@@ -36,7 +28,7 @@ impl GoogleCalendarConfig {
             })?;
         
         let redirect_uri = std::env::var("GOOGLE_REDIRECT_URI")
-            .unwrap_or_else(|_| "http://localhost:3000/api/v1/google-calendar/callback".to_string());
+            .unwrap_or_else(|_| "http://localhost:3000/api/v1/google-tasks/callback".to_string());
         
         Ok(Self {
             client_id,
@@ -46,44 +38,15 @@ impl GoogleCalendarConfig {
     }
 }
 
-/// Create a Google Calendar Hub with authenticated access
-pub async fn create_calendar_hub(token: &GoogleOAuthToken) -> Result<CalendarHub<HttpsClient>> {
-    let https = hyper_rustls::HttpsConnectorBuilder::new()
-        .with_native_roots()
-        .https_only()
-        .enable_http1()
-        .build();
-    let client = hyper::Client::builder().build::<_, hyper::Body>(https);
-    
-    // Create access token from stored token
-    let access_token = AccessToken {
-        access_token: token.access_token.clone(),
-        refresh_token: token.refresh_token.clone(),
-        expires_in: token.expires_at.map(|exp| {
-            let now = Utc::now();
-            if exp > now {
-                Some((exp - now).num_seconds())
-            } else {
-                Some(0)
-            }
-        }).flatten(),
-        expires_in_timestamp: token.expires_at.map(|exp| exp.timestamp()),
-        scope: Some(token.scope.clone()),
-        token_type: Some(token.token_type.clone()),
-    };
-    
-    // Create authenticator with the access token
-    let auth = yup_oauth2::AccessTokenAuthenticator::builder(access_token)
-        .build()
-        .await?;
-    
-    let hub = CalendarHub::new(client, auth);
-    Ok(hub)
+/// Create an HTTP client for Google Tasks API calls
+async fn create_http_client() -> Result<reqwest::Client> {
+    let client = reqwest::Client::new();
+    Ok(client)
 }
 
 /// Generate Google OAuth authorization URL
-pub fn generate_auth_url(config: &GoogleCalendarConfig, state: &str) -> String {
-    let scope = "https://www.googleapis.com/auth/calendar.events";
+pub fn generate_auth_url(config: &GoogleTasksConfig, state: &str) -> String {
+    let scope = "https://www.googleapis.com/auth/tasks";
     
     format!(
         "https://accounts.google.com/o/oauth2/auth?\
@@ -103,7 +66,7 @@ pub fn generate_auth_url(config: &GoogleCalendarConfig, state: &str) -> String {
 
 /// Exchange authorization code for access and refresh tokens
 pub async fn exchange_code_for_tokens(
-    config: &GoogleCalendarConfig,
+    config: &GoogleTasksConfig,
     code: &str,
 ) -> Result<(String, Option<String>, Option<DateTime<Utc>>)> {
     let client = reqwest::Client::new();
@@ -176,7 +139,7 @@ pub async fn exchange_code_for_tokens(
 
 /// Refresh an access token using the refresh token
 pub async fn refresh_access_token(
-    config: &GoogleCalendarConfig,
+    config: &GoogleTasksConfig,
     refresh_token: &str,
 ) -> Result<(String, Option<DateTime<Utc>>)> {
     let client = reqwest::Client::new();
@@ -231,12 +194,12 @@ pub async fn refresh_access_token(
 pub async fn ensure_valid_token(
     pool: &DatabasePool,
     user_id: &str,
-    config: &GoogleCalendarConfig,
+    config: &GoogleTasksConfig,
 ) -> Result<GoogleOAuthToken> {
     let mut token = google_oauth::get_oauth_token(pool, user_id)
         .await?
         .ok_or_else(|| AppError::Authentication {
-            message: "No Google Calendar connection found".to_string(),
+            message: "No Google Tasks connection found".to_string(),
         })?;
     
     // Check if token is expired or expires soon (within 5 minutes)
@@ -271,79 +234,175 @@ pub async fn ensure_valid_token(
     Ok(token)
 }
 
-/// Create a calendar event for plant care
-pub async fn create_plant_care_event(
-    hub: &CalendarHub<HttpsClient>,
+/// Create a task for plant care using Google Tasks API
+pub async fn create_plant_care_task(
+    token: &GoogleOAuthToken,
     plant: &PlantResponse,
-    event_type: &str, // "watering" or "fertilizing"
+    task_type: &str, // "watering" or "fertilizing"
     due_time: DateTime<Utc>,
     base_url: &str,
+    task_list_id: &str,
 ) -> Result<String> {
-    let (summary, description, emoji) = match event_type {
+    let (title, notes) = match task_type {
         "watering" => (
             format!("💧 Water {}", plant.name),
             format!(
-                "Time to water your {} ({}). Water every {} days.\n\nView plant details: {}/plants/{}",
+                "Time to water your {} ({}).\nWater every {} days.\n\nView plant details: {}/plants/{}",
                 plant.name,
                 plant.genus,
                 plant.watering_interval_days,
                 base_url,
                 plant.id
             ),
-            "💧",
         ),
         "fertilizing" => (
             format!("🌱 Fertilize {}", plant.name),
             format!(
-                "Time to fertilize your {} ({}). Fertilize every {} days.\n\nView plant details: {}/plants/{}",
+                "Time to fertilize your {} ({}).\nFertilize every {} days.\n\nView plant details: {}/plants/{}",
                 plant.name,
                 plant.genus,
                 plant.fertilizing_interval_days,
                 base_url,
                 plant.id
             ),
-            "🌱",
         ),
         _ => return Err(AppError::Internal {
-            message: "Invalid event type".to_string(),
+            message: "Invalid task type".to_string(),
         }),
     };
     
-    let event = Event {
-        summary: Some(summary),
-        description: Some(description),
-        start: Some(EventDateTime {
-            date_time: Some(due_time.to_rfc3339()),
-            time_zone: Some("UTC".to_string()),
-            ..Default::default()
-        }),
-        end: Some(EventDateTime {
-            date_time: Some((due_time + Duration::hours(1)).to_rfc3339()),
-            time_zone: Some("UTC".to_string()),
-            ..Default::default()
-        }),
-        location: Some(format!("Plant: {} ({})", plant.name, plant.genus)),
-        ..Default::default()
-    };
+    let client = create_http_client().await?;
     
-    let result = hub
-        .events()
-        .insert(event, "primary")
-        .doit()
+    let task_data = serde_json::json!({
+        "title": title,
+        "notes": notes,
+        "due": due_time.to_rfc3339(),
+        "status": "needsAction"
+    });
+    
+    let response = client
+        .post(&format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", task_list_id))
+        .header("Authorization", format!("Bearer {}", token.access_token))
+        .header("Content-Type", "application/json")
+        .json(&task_data)
+        .send()
         .await
         .map_err(|e| {
-            tracing::error!("Failed to create calendar event: {}", e);
+            tracing::error!("Failed to create task: {}", e);
             AppError::External {
-                message: "Failed to create Google Calendar event".to_string(),
+                message: "Failed to create Google Task".to_string(),
             }
         })?;
     
-    let event_id = result.1.id.ok_or_else(|| AppError::External {
-        message: "No event ID returned from Google Calendar".to_string(),
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        tracing::error!("Google Tasks API error: {}", error_text);
+        return Err(AppError::External {
+            message: "Google Tasks API request failed".to_string(),
+        });
+    }
+    
+    let result: Value = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse Google Tasks response: {}", e);
+        AppError::External {
+            message: "Invalid response from Google Tasks".to_string(),
+        }
     })?;
     
-    tracing::info!("Created {} event for plant {}: {}", event_type, plant.name, event_id);
-    Ok(event_id)
+    let task_id = result["id"].as_str().ok_or_else(|| AppError::External {
+        message: "No task ID returned from Google Tasks".to_string(),
+    })?.to_string();
+    
+    tracing::info!("Created {} task for plant {}: {}", task_type, plant.name, task_id);
+    Ok(task_id)
+}
+
+/// Get or create a task list for plant care
+pub async fn get_or_create_plant_care_task_list(token: &GoogleOAuthToken) -> Result<String> {
+    let client = create_http_client().await?;
+    
+    // First, try to find existing "Plant Care" task list
+    let response = client
+        .get("https://tasks.googleapis.com/tasks/v1/users/@me/lists")
+        .header("Authorization", format!("Bearer {}", token.access_token))
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get task lists: {}", e);
+            AppError::External {
+                message: "Failed to get Google Task lists".to_string(),
+            }
+        })?;
+    
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        tracing::error!("Google Tasks API error: {}", error_text);
+        return Err(AppError::External {
+            message: "Google Tasks API request failed".to_string(),
+        });
+    }
+    
+    let result: Value = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse Google Tasks response: {}", e);
+        AppError::External {
+            message: "Invalid response from Google Tasks".to_string(),
+        }
+    })?;
+    
+    // Look for existing "Plant Care" task list
+    if let Some(items) = result["items"].as_array() {
+        for item in items {
+            if let Some(title) = item["title"].as_str() {
+                if title == "Plant Care" {
+                    if let Some(id) = item["id"].as_str() {
+                        tracing::info!("Found existing Plant Care task list: {}", id);
+                        return Ok(id.to_string());
+                    }
+                }
+            }
+        }
+    }
+    
+    // Create new task list if not found
+    let task_list_data = serde_json::json!({
+        "title": "Plant Care"
+    });
+    
+    let response = client
+        .post("https://tasks.googleapis.com/tasks/v1/users/@me/lists")
+        .header("Authorization", format!("Bearer {}", token.access_token))
+        .header("Content-Type", "application/json")
+        .json(&task_list_data)
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to create task list: {}", e);
+            AppError::External {
+                message: "Failed to create Google Task list".to_string(),
+            }
+        })?;
+    
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        tracing::error!("Google Tasks API error: {}", error_text);
+        return Err(AppError::External {
+            message: "Google Tasks API request failed".to_string(),
+        });
+    }
+    
+    let result: Value = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse Google Tasks response: {}", e);
+        AppError::External {
+            message: "Invalid response from Google Tasks".to_string(),
+        }
+    })?;
+    
+    let task_list_id = result["id"].as_str().ok_or_else(|| AppError::External {
+        message: "No task list ID returned from Google Tasks".to_string(),
+    })?.to_string();
+    
+    tracing::info!("Created Plant Care task list: {}", task_list_id);
+    Ok(task_list_id)
 }
 
 /// Generate a secure random state parameter for OAuth

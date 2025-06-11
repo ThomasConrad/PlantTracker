@@ -83,7 +83,19 @@ class ApiClient {
       );
     }
 
-    return response.json();
+    // Handle responses with no content (204 No Content, or empty response)
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return undefined as T;
+    }
+
+    // Check if response has content to parse
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return response.json();
+    }
+
+    // For non-JSON responses or empty responses, return undefined
+    return undefined as T;
   }
 
   async login(credentials: LoginRequest): Promise<AuthResponse> {

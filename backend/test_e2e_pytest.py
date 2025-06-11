@@ -131,7 +131,7 @@ class APIClient:
             endpoint = f"/{endpoint}"
         
         # For API endpoints, add the v1 prefix
-        if endpoint.startswith('/auth') or endpoint.startswith('/plants') or endpoint.startswith('/photos') or endpoint.startswith('/tracking'):
+        if endpoint.startswith('/auth') or endpoint.startswith('/plants') or endpoint.startswith('/photos') or endpoint.startswith('/tracking') or endpoint.startswith('/calendar'):
             endpoint = f"{self.api_prefix}{endpoint}"
             
         url = f"{self.base_url}{endpoint}"
@@ -1049,6 +1049,387 @@ class TestPhotoUpload:
             files=files
         )
         assert response.status_code == 401
+
+
+@pytest.mark.calendar
+class TestCalendarFunctionality:
+    """Test calendar subscription and iCal feed functionality"""
+    
+    @pytest.fixture(scope="function")
+    def calendar_backend(self):
+        """Create a dedicated backend server instance for calendar tests"""
+        with BackendServer() as server:
+            yield server
+    
+    @pytest.fixture(scope="function")
+    def calendar_client(self, calendar_backend):
+        """Create a dedicated client for calendar tests"""
+        return APIClient(calendar_backend.base_url, calendar_backend.api_prefix)
+    
+    @pytest.fixture(autouse=True)
+    def login_user(self, calendar_client, test_users):
+        """Automatically login a user before each test"""
+        user_data = test_users["user1"]
+        
+        # Register and login user
+        calendar_client.request("POST", "/auth/register", json=user_data)
+        response = calendar_client.request("POST", "/auth/login", json={
+            "email": user_data["email"],
+            "password": user_data["password"]
+        })
+        assert response.status_code == 200
+        
+        # Store client and user info for test methods
+        self.client = calendar_client
+        self.user_data = user_data
+        self.user_response = response.json()
+
+    def test_calendar_subscription_info_authenticated(self):
+        """Test getting calendar subscription info when authenticated"""
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        subscription_data = response.json()
+        
+        # Check required fields
+        assert "feedUrl" in subscription_data
+        assert "instructions" in subscription_data
+        assert "features" in subscription_data
+        
+        # Check instructions for different platforms
+        instructions = subscription_data["instructions"]
+        assert "general" in instructions
+        assert "iOS" in instructions
+        assert "android" in instructions
+        assert "outlook" in instructions
+        assert "apple" in instructions
+        
+        # Check features list
+        features = subscription_data["features"]
+        assert isinstance(features, list)
+        assert len(features) > 0
+        
+        # Check feed URL format
+        feed_url = subscription_data["feedUrl"]
+        assert "calendar/" in feed_url
+        assert ".ics" in feed_url
+        assert "token=" in feed_url
+
+    def test_calendar_subscription_info_unauthenticated(self):
+        """Test that calendar subscription info requires authentication"""
+        # Logout first
+        self.client.request("POST", "/auth/logout")
+        
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 401
+
+    def test_regenerate_calendar_token(self):
+        """Test regenerating calendar token"""
+        # Get initial subscription info
+        initial_response = self.client.request("GET", "/calendar/subscription")
+        assert initial_response.status_code == 200
+        initial_data = initial_response.json()
+        initial_url = initial_data["feedUrl"]
+        
+        # Regenerate token
+        regen_response = self.client.request("POST", "/calendar/regenerate-token")
+        assert regen_response.status_code == 200
+        
+        regen_data = regen_response.json()
+        assert "feedUrl" in regen_data
+        assert "message" in regen_data
+        
+        new_url = regen_data["feedUrl"]
+        
+        # URLs should be different (different tokens)
+        assert initial_url != new_url
+        assert "token=" in new_url
+
+    def test_calendar_feed_with_no_plants(self):
+        """Test calendar feed generation with no plants"""
+        # Get subscription info to get feed URL
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Extract just the path and query from the feed URL
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(feed_url)
+        calendar_path = f"{parsed_url.path}?{parsed_url.query}"
+        
+        # Request the calendar feed
+        import requests
+        full_url = f"{self.client.base_url}{calendar_path}"
+        calendar_response = requests.get(full_url)
+        assert calendar_response.status_code == 200
+        
+        # Should return valid iCalendar with no events
+        calendar_content = calendar_response.text
+        assert calendar_content.startswith("BEGIN:VCALENDAR")
+        assert calendar_content.endswith("END:VCALENDAR\r\n")
+        assert "Plant Care Schedule" in calendar_content
+        
+        # Should have no events since no plants
+        assert "BEGIN:VEVENT" not in calendar_content
+
+    def test_calendar_feed_with_plants(self):
+        """Test calendar feed generation with plants"""
+        # Create test plants with different schedules
+        plants_data = [
+            {
+                "name": "Fiddle Leaf Fig",
+                "genus": "Ficus",
+                "wateringIntervalDays": 7,
+                "fertilizingIntervalDays": 14
+            },
+            {
+                "name": "Snake Plant", 
+                "genus": "Sansevieria",
+                "wateringIntervalDays": 14,
+                "fertilizingIntervalDays": 30
+            }
+        ]
+        
+        created_plants = []
+        for plant_data in plants_data:
+            response = self.client.request("POST", "/plants", json=plant_data)
+            assert response.status_code == 201
+            created_plants.append(response.json())
+        
+        # Get calendar feed
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Extract path and query
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(feed_url)
+        calendar_path = f"{parsed_url.path}?{parsed_url.query}"
+        
+        # Request the calendar feed
+        import requests
+        calendar_response = requests.get(f"{self.client.base_url}{calendar_path}")
+        assert calendar_response.status_code == 200
+        
+        calendar_content = calendar_response.text
+        
+        # Should be valid iCalendar
+        assert calendar_content.startswith("BEGIN:VCALENDAR")
+        assert calendar_content.endswith("END:VCALENDAR\r\n")
+        assert "Plant Care Schedule" in calendar_content
+        
+        # Should have events for both plants
+        assert "BEGIN:VEVENT" in calendar_content
+        assert "💧 Water Fiddle Leaf Fig" in calendar_content
+        assert "💧 Water Snake Plant" in calendar_content
+        assert "🌱 Fertilize Fiddle Leaf Fig" in calendar_content
+        assert "🌱 Fertilize Snake Plant" in calendar_content
+        
+        # Check event details
+        assert "Water every 7 days" in calendar_content
+        assert "Water every 14 days" in calendar_content
+        assert "Fertilize every 14 days" in calendar_content
+        assert "Fertilize every 30 days" in calendar_content
+        
+        # Check categories
+        assert "CATEGORIES:Plant Care,Watering" in calendar_content
+        assert "CATEGORIES:Plant Care,Fertilizing" in calendar_content
+
+    def test_calendar_feed_invalid_token(self):
+        """Test calendar feed with invalid token"""
+        # Get a valid user ID from subscription info
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Extract user ID from URL
+        import urllib.parse
+        import re
+        parsed_url = urllib.parse.urlparse(feed_url)
+        user_id_match = re.search(r'calendar/([^.]+)\.ics', parsed_url.path)
+        assert user_id_match
+        user_id = user_id_match.group(1)
+        
+        # Try with invalid token
+        invalid_url = f"{self.client.base_url}/v1/calendar/{user_id}.ics?token=invalid_token"
+        
+        import requests
+        calendar_response = requests.get(invalid_url)
+        assert calendar_response.status_code == 401
+        
+        error_data = calendar_response.json()
+        assert error_data["error"] == "authentication_error"
+        assert "Invalid calendar token" in error_data["message"]
+
+    def test_calendar_feed_missing_token(self):
+        """Test calendar feed without token parameter"""
+        # Get user ID from subscription info
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Extract user ID
+        import urllib.parse
+        import re
+        parsed_url = urllib.parse.urlparse(feed_url)
+        user_id_match = re.search(r'calendar/([^.]+)\.ics', parsed_url.path)
+        assert user_id_match
+        user_id = user_id_match.group(1)
+        
+        # Try without token
+        no_token_url = f"{self.client.base_url}/v1/calendar/{user_id}.ics"
+        
+        import requests
+        calendar_response = requests.get(no_token_url)
+        assert calendar_response.status_code == 401
+        
+        error_data = calendar_response.json()
+        assert error_data["error"] == "authentication_error"
+        assert "Calendar token required" in error_data["message"]
+
+    def test_calendar_feed_content_type(self):
+        """Test that calendar feed returns correct content type"""
+        # Create a plant first
+        plant_data = {
+            "name": "Test Plant",
+            "genus": "Testicus",
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        response = self.client.request("POST", "/plants", json=plant_data)
+        assert response.status_code == 201
+        
+        # Get calendar feed
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Extract path and query
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(feed_url)
+        calendar_path = f"{parsed_url.path}?{parsed_url.query}"
+        
+        # Request with headers
+        import requests
+        calendar_response = requests.get(f"{self.client.base_url}{calendar_path}")
+        assert calendar_response.status_code == 200
+        
+        # Check content type
+        content_type = calendar_response.headers.get('content-type')
+        assert content_type == "text/calendar; charset=utf-8"
+        
+        # Check content disposition (should suggest download)
+        content_disposition = calendar_response.headers.get('content-disposition')
+        assert content_disposition is not None
+        assert "attachment" in content_disposition
+        assert ".ics" in content_disposition
+
+    def test_calendar_feed_caching_headers(self):
+        """Test that calendar feed has appropriate caching headers"""
+        # Get calendar feed URL
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Extract path and query
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(feed_url)
+        calendar_path = f"{parsed_url.path}?{parsed_url.query}"
+        
+        # Request the calendar
+        import requests
+        calendar_response = requests.get(f"{self.client.base_url}{calendar_path}")
+        assert calendar_response.status_code == 200
+        
+        # Check caching headers
+        cache_control = calendar_response.headers.get('cache-control')
+        assert cache_control is not None
+        assert "private" in cache_control  # Should be private (user-specific)
+        assert "max-age" in cache_control  # Should have max-age
+
+    def test_calendar_events_have_unique_uids(self):
+        """Test that calendar events have unique UIDs"""
+        # Create multiple plants
+        plants_data = [
+            {"name": "Plant 1", "genus": "Genus1", "wateringIntervalDays": 5, "fertilizingIntervalDays": 10},
+            {"name": "Plant 2", "genus": "Genus2", "wateringIntervalDays": 7, "fertilizingIntervalDays": 14},
+        ]
+        
+        for plant_data in plants_data:
+            response = self.client.request("POST", "/plants", json=plant_data)
+            assert response.status_code == 201
+        
+        # Get calendar feed
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Get calendar content
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(feed_url)
+        calendar_path = f"{parsed_url.path}?{parsed_url.query}"
+        
+        import requests
+        calendar_response = requests.get(f"{self.client.base_url}{calendar_path}")
+        assert calendar_response.status_code == 200
+        
+        calendar_content = calendar_response.text
+        
+        # Extract all UIDs
+        uids = []
+        for line in calendar_content.split('\n'):
+            if line.startswith('UID:'):
+                uids.append(line.strip())
+        
+        # Should have UIDs for watering and fertilizing events for each plant
+        assert len(uids) >= 4  # At least 2 plants × 2 event types
+        
+        # All UIDs should be unique
+        assert len(uids) == len(set(uids)), "Found duplicate UIDs in calendar"
+
+    def test_calendar_unicode_plant_names(self):
+        """Test calendar generation with unicode plant names"""
+        # Create plant with unicode characters
+        plant_data = {
+            "name": "🌿 Monstera Deliciosa",
+            "genus": "Mønstéra",
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 21
+        }
+        
+        response = self.client.request("POST", "/plants", json=plant_data)
+        assert response.status_code == 201
+        
+        # Get calendar feed
+        response = self.client.request("GET", "/calendar/subscription")
+        assert response.status_code == 200
+        
+        feed_url = response.json()["feedUrl"]
+        
+        # Get calendar content
+        import urllib.parse
+        parsed_url = urllib.parse.urlparse(feed_url)
+        calendar_path = f"{parsed_url.path}?{parsed_url.query}"
+        
+        import requests
+        calendar_response = requests.get(f"{self.client.base_url}{calendar_path}")
+        assert calendar_response.status_code == 200
+        
+        calendar_content = calendar_response.text
+        
+        # Should handle unicode properly
+        assert "🌿 Monstera Deliciosa" in calendar_content
+        assert "Mønstéra" in calendar_content
+        assert "💧 Water 🌿 Monstera Deliciosa" in calendar_content
+        assert "🌱 Fertilize 🌿 Monstera Deliciosa" in calendar_content
 
 
 if __name__ == "__main__":

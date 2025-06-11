@@ -10,6 +10,7 @@ import { PlantDetailPage } from '@/routes/PlantDetailPage';
 import { CreatePlantPage } from '@/routes/CreatePlantPage';
 import { EditPlantPage } from '@/routes/EditPlantPage';
 import { CalendarPage } from '@/routes/CalendarPage';
+import { CalendarSettingsPage } from '@/routes/CalendarSettingsPage';
 import { SearchPage } from '@/routes/SearchPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
@@ -115,6 +116,19 @@ const App: Component = () => {
             >
               <AppLayout>
                 <CalendarPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/calendar/settings"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated}
+              fallback={<Navigate href="/login" />}
+            >
+              <AppLayout>
+                <CalendarSettingsPage />
               </AppLayout>
             </Show>
           )}

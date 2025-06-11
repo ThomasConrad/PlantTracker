@@ -29,6 +29,8 @@ pub enum AppError {
     External { message: String },
     #[error("Configuration error: {message}")]
     Configuration { message: String },
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
 }
 
 #[derive(Serialize)]
@@ -121,6 +123,15 @@ impl IntoResponse for AppError {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "configuration_error",
                     "Server configuration error",
+                    None,
+                )
+            }
+            Self::Io(io_error) => {
+                tracing::error!("IO error: {}", io_error);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "io_error",
+                    "An I/O error occurred",
                     None,
                 )
             }

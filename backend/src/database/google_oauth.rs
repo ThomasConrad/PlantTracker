@@ -82,11 +82,11 @@ pub async fn get_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<Option<
             user_id: row.user_id,
             access_token: row.access_token,
             refresh_token: row.refresh_token,
-            expires_at: row.expires_at.map(|dt| DateTime::from_timestamp(dt.timestamp(), 0).unwrap_or_else(|| Utc::now())),
+            expires_at: row.expires_at.map(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(|| Utc::now())),
             scope: row.scope,
             token_type: row.token_type,
-            created_at: DateTime::from_timestamp(row.created_at.timestamp(), 0).unwrap_or_else(|| Utc::now()),
-            updated_at: DateTime::from_timestamp(row.updated_at.timestamp(), 0).unwrap_or_else(|| Utc::now()),
+            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0).unwrap_or_else(|| Utc::now()),
+            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0).unwrap_or_else(|| Utc::now()),
         })
     } else {
         None
@@ -141,7 +141,7 @@ pub async fn delete_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<()> 
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound {
-            resource: "Google Calendar connection".to_string(),
+            resource: "Google Tasks connection".to_string(),
         });
     }
 
@@ -169,15 +169,15 @@ pub async fn has_valid_token(pool: &SqlitePool, user_id: &str) -> Result<bool> {
     }
 }
 
-/// Get all users who have Google Calendar integration enabled
-pub async fn get_users_with_google_calendar(pool: &SqlitePool) -> Result<Vec<String>> {
+/// Get all users who have Google Tasks integration enabled
+pub async fn get_users_with_google_tasks(pool: &SqlitePool) -> Result<Vec<String>> {
     let user_ids = sqlx::query_scalar!(
         "SELECT user_id FROM google_oauth_tokens"
     )
     .fetch_all(pool)
     .await
     .map_err(|e| {
-        tracing::error!("Failed to get users with Google Calendar: {}", e);
+        tracing::error!("Failed to get users with Google Tasks: {}", e);
         AppError::Database(e)
     })?;
 

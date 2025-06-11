@@ -35,45 +35,41 @@ pub struct GoogleOAuthUrlResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct GoogleOAuthSuccessResponse {
     pub success: bool,
-    #[schema(example = "Google Calendar integration configured successfully")]
+    #[schema(example = "Google Tasks integration configured successfully")]
     pub message: String,
     pub connected_at: DateTime<Utc>,
     pub scopes: Vec<String>,
 }
 
-/// Google Calendar connection status
+/// Google Tasks connection status
 #[derive(Debug, Serialize, ToSchema)]
-pub struct GoogleCalendarStatus {
+pub struct GoogleTasksStatus {
     pub connected: bool,
     pub connected_at: Option<DateTime<Utc>>,
     pub scopes: Option<Vec<String>>,
     pub expires_at: Option<DateTime<Utc>>,
 }
 
-/// Google Calendar event creation request
+/// Google Tasks task creation request
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct CreateGoogleCalendarEventRequest {
+pub struct CreateGoogleTaskRequest {
     #[schema(example = "💧 Water Fiddle Leaf Fig")]
-    pub summary: String,
+    pub title: String,
     #[schema(example = "Time to water your Fiddle Leaf Fig. Remember to check soil moisture first.")]
-    pub description: Option<String>,
+    pub notes: Option<String>,
     #[schema(example = "2024-01-15T10:00:00Z")]
-    pub start_time: DateTime<Utc>,
-    #[schema(example = "2024-01-15T11:00:00Z")]
-    pub end_time: DateTime<Utc>,
+    pub due_time: DateTime<Utc>,
     #[schema(example = "Plant Care")]
-    pub calendar_id: Option<String>, // If None, uses primary calendar
-    #[schema(example = "Plant care reminder")]
-    pub location: Option<String>,
+    pub task_list_id: Option<String>, // If None, uses or creates "Plant Care" list
 }
 
-/// Google Calendar sync request
+/// Google Tasks sync request
 #[derive(Debug, Deserialize, ToSchema)]
-pub struct SyncPlantRemindersRequest {
-    /// Number of days in the future to sync events
+pub struct SyncPlantTasksRequest {
+    /// Number of days in the future to sync tasks
     #[schema(example = 365, minimum = 1, maximum = 730)]
     pub days_ahead: Option<i32>,
-    /// Whether to replace existing events or only add new ones
+    /// Whether to replace existing tasks or only add new ones
     #[schema(example = false)]
     pub replace_existing: Option<bool>,
 }

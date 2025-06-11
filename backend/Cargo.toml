@@ -49,8 +49,8 @@ image = { version = "0.24", features = ["jpeg", "png", "gif", "webp"] }
 # Calendar
 icalendar = "0.16"
 
-# Google Calendar API
-google-calendar3 = "5.0"
+# Google Tasks API
+google-tasks1 = "5.0"
 hyper = "0.14"
 hyper-rustls = { version = "0.24", features = ["http2"] }
 yup-oauth2 = "8.0"

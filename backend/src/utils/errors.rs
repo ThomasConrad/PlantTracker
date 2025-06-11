@@ -25,6 +25,10 @@ pub enum AppError {
     NotFound { resource: String },
     #[error("Internal server error: {message}")]
     Internal { message: String },
+    #[error("External service error: {message}")]
+    External { message: String },
+    #[error("Configuration error: {message}")]
+    Configuration { message: String },
 }
 
 #[derive(Serialize)]
@@ -99,6 +103,24 @@ impl IntoResponse for AppError {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal_error",
                     "An internal server error occurred",
+                    None,
+                )
+            }
+            Self::External { message } => {
+                tracing::error!("External service error: {}", message);
+                (
+                    StatusCode::BAD_GATEWAY,
+                    "external_error",
+                    message.as_str(),
+                    None,
+                )
+            }
+            Self::Configuration { message } => {
+                tracing::error!("Configuration error: {}", message);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "configuration_error",
+                    "Server configuration error",
                     None,
                 )
             }

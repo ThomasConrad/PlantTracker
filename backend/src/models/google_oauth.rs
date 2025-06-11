@@ -42,7 +42,7 @@ pub struct GoogleOAuthSuccessResponse {
 }
 
 /// Google Tasks connection status
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct GoogleTasksStatus {
     pub connected: bool,
     pub connected_at: Option<DateTime<Utc>>,
@@ -51,7 +51,7 @@ pub struct GoogleTasksStatus {
 }
 
 /// Google Tasks task creation request
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CreateGoogleTaskRequest {
     #[schema(example = "💧 Water Fiddle Leaf Fig")]
     pub title: String,
@@ -64,7 +64,7 @@ pub struct CreateGoogleTaskRequest {
 }
 
 /// Google Tasks sync request
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct SyncPlantTasksRequest {
     /// Number of days in the future to sync tasks
     #[schema(example = 365, minimum = 1, maximum = 730)]

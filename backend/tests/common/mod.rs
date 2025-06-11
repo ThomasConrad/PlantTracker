@@ -5,7 +5,7 @@ use tempfile::TempDir;
 use tokio::net::TcpListener;
 
 use plant_tracker_api::auth;
-use plant_tracker_api::handlers::{auth as auth_handlers, plants};
+use plant_tracker_api::handlers::{auth as auth_handlers, plants, google_tasks};
 
 pub struct TestApp {
     pub address: String,
@@ -37,6 +37,7 @@ impl TestApp {
         let app = Router::new()
             .nest("/auth", auth_handlers::routes())
             .nest("/plants", plants::routes())
+            .nest("/google-tasks", google_tasks::routes())
             .with_state(db_pool.clone())
             .layer(auth_layer)
             .layer(session_layer);

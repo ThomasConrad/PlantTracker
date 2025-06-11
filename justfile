@@ -46,12 +46,12 @@ build-backend:
 
 run:
     @echo "🦀 Starting backend..."
-    cd backend && cargo run
+    cd backend && cargo run --bin plant-tracker-api
 
 run-release:
     @echo "🦀 Starting backend (release)..."
     just build-backend-release
-    cd backend && cargo run --release
+    cd backend && cargo run --release --bin plant-tracker-api
 
 # === TEST COMMANDS ===
 

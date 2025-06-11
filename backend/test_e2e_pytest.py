@@ -743,6 +743,77 @@ class TestPhotoUpload:
         assert len(photos_response["photos"]) == 0
         assert photos_response["total"] == 0
 
+    def test_plant_thumbnail_functionality(self):
+        """Test that setting a plant thumbnail correctly updates the thumbnailUrl in plant responses"""
+        # Create a plant first
+        plant_data = {
+            "name": "Thumbnail Test Plant",
+            "genus": "Thumbnailicus", 
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        plant_response = self.client.request("POST", "/plants", json=plant_data)
+        assert plant_response.status_code == 201
+        plant = plant_response.json()
+        plant_id = plant["id"]
+        
+        # Initially, the plant should have no thumbnail
+        assert plant.get("thumbnailId") is None
+        assert plant.get("thumbnailUrl") is None
+        
+        # Upload a photo
+        import io
+        import requests
+        fake_image_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb'
+        
+        files = {
+            'file': ('thumbnail-test.jpg', io.BytesIO(fake_image_data), 'image/jpeg')
+        }
+        
+        upload_response = requests.post(
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            files=files,
+            cookies=self.client.session.cookies
+        )
+        assert upload_response.status_code == 201
+        photo = upload_response.json()
+        photo_id = photo["id"]
+        
+        # Set the uploaded photo as the plant's thumbnail
+        thumbnail_response = self.client.request("PUT", f"/plants/{plant_id}/thumbnail/{photo_id}")
+        assert thumbnail_response.status_code == 200
+        updated_plant = thumbnail_response.json()
+        
+        # Verify the thumbnail is set
+        assert updated_plant["thumbnailId"] == photo_id
+        assert updated_plant["thumbnailUrl"] is not None
+        assert updated_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}/thumbnail"
+        
+        # Verify that fetching the plant individually also returns the thumbnail
+        get_response = self.client.request("GET", f"/plants/{plant_id}")
+        assert get_response.status_code == 200
+        fetched_plant = get_response.json()
+        
+        assert fetched_plant["thumbnailId"] == photo_id
+        assert fetched_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}/thumbnail"
+        
+        # Verify that listing plants also returns the thumbnail
+        list_response = self.client.request("GET", "/plants")
+        assert list_response.status_code == 200
+        plants_response = list_response.json()
+        
+        # Find our plant in the list
+        our_plant = None
+        for p in plants_response["plants"]:
+            if p["id"] == plant_id:
+                our_plant = p
+                break
+        
+        assert our_plant is not None
+        assert our_plant["thumbnailId"] == photo_id
+        assert our_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}/thumbnail"
+
     def test_upload_photo_validation_errors(self):
         """Test photo upload validation"""
         # Create a plant first

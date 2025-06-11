@@ -10,6 +10,7 @@ type TrackingEntry = components['schemas']['TrackingEntry'];
 type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
 type PhotosResponse = components['schemas']['PhotosResponse'];
+type PlantsResponse = components['schemas']['PlantsResponse'];
 
 // Local types for compatibility
 interface RegisterRequest {
@@ -31,10 +32,6 @@ interface UpdateTrackingEntryRequest {
   notes?: string;
 }
 
-interface PlantsResponse {
-  plants: Plant[];
-  total: number;
-}
 
 const API_BASE_URL = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '/api/v1';
 

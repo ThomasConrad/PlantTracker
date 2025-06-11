@@ -22,7 +22,7 @@ mod middleware;
 mod models;
 mod utils;
 
-use handlers::{auth as auth_handlers, plants};
+use handlers::{auth as auth_handlers, calendar, plants};
 use plant_tracker_api::ApiDoc;
 
 #[derive(Parser, Debug)]
@@ -115,6 +115,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(health_check))
         .nest("/auth", auth_handlers::routes())
         .nest("/plants", plants::routes())
+        .nest("/calendar", calendar::routes())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/openapi.json", get(|| async { Json(ApiDoc::openapi()) }))
         .with_state(pool);

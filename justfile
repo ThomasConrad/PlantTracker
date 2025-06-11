@@ -46,6 +46,7 @@ build-backend:
 
 run:
     @echo "🦀 Starting backend..."
+    just build-backend
     cd backend && cargo run --bin plant-tracker-api
 
 run-release:

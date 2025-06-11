@@ -271,20 +271,34 @@ async fn serve_thumbnail(
         user.id
     );
 
-    let (data, content_type) =
-        db_photos::get_photo_thumbnail_data(&pool, &plant_id, &photo_id, &user.id).await?;
+    match db_photos::get_photo_thumbnail_data(&pool, &plant_id, &photo_id, &user.id).await {
+        Ok((data, content_type)) => {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, content_type)
+                .header(header::CONTENT_LENGTH, data.len())
+                .header(header::CACHE_CONTROL, "public, max-age=31536000") // Cache for 1 year
+                .header(header::ETAG, format!("\"thumb-{}-{}\"", plant_id, photo_id)) // ETag for caching
+                .body(Body::from(data))
+                .map_err(|_| AppError::Internal {
+                    message: "Failed to build response".to_string(),
+                })?;
 
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, content_type)
-        .header(header::CONTENT_LENGTH, data.len())
-        .header(header::CACHE_CONTROL, "public, max-age=31536000") // Cache for 1 year
-        .header(header::ETAG, format!("\"thumb-{}-{}\"", plant_id, photo_id)) // ETag for caching
-        .body(Body::from(data))
-        .map_err(|_| AppError::Internal {
-            message: "Failed to build response".to_string(),
-        })?;
-
-    tracing::debug!("Served thumbnail: {} for plant: {}", photo_id, plant_id);
-    Ok(response)
+            tracing::debug!("Served thumbnail: {} for plant: {}", photo_id, plant_id);
+            Ok(response)
+        }
+        Err(AppError::NotFound { .. }) => {
+            // Thumbnail not ready yet, return 202 Accepted to indicate processing
+            tracing::debug!("Thumbnail not ready for photo: {} in plant: {}", photo_id, plant_id);
+            let response = Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(r#"{"status":"processing","message":"Thumbnail is being generated"}"#))
+                .map_err(|_| AppError::Internal {
+                    message: "Failed to build response".to_string(),
+                })?;
+            Ok(response)
+        }
+        Err(e) => Err(e),
+    }
 }

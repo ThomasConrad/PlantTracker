@@ -173,20 +173,7 @@ pub async fn create_photo(
     };
     let filename = format!("{}_{}.{}", plant_id, photo_id, extension);
 
-    // Generate thumbnail if requested
-    let thumbnail_info = if request.generate_thumbnail.unwrap_or(true) {
-        match generate_thumbnail(&request.data, &request.content_type) {
-            Ok(info) => Some(info),
-            Err(e) => {
-                tracing::warn!("Failed to generate thumbnail: {:?}", e);
-                None
-            }
-        }
-    } else {
-        None
-    };
-
-    // Store photo data in database
+    // Store photo data in database first (without thumbnail)
     sqlx::query(
         "INSERT INTO photos (id, plant_id, filename, original_filename, size, content_type, data, thumbnail_data, thumbnail_width, thumbnail_height, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -198,12 +185,59 @@ pub async fn create_photo(
     .bind(request.size)
     .bind(&request.content_type)
     .bind(&request.data)
-    .bind(thumbnail_info.as_ref().map(|t| &t.data))
-    .bind(thumbnail_info.as_ref().map(|t| t.width))
-    .bind(thumbnail_info.as_ref().map(|t| t.height))
+    .bind(None::<Vec<u8>>) // thumbnail_data - will be updated later
+    .bind(None::<i32>) // thumbnail_width - will be updated later  
+    .bind(None::<i32>) // thumbnail_height - will be updated later
     .bind(now.to_rfc3339())
     .execute(pool)
     .await?;
+
+    // Generate thumbnail asynchronously if requested
+    if request.generate_thumbnail.unwrap_or(true) {
+        let pool_clone = pool.clone();
+        let photo_id_clone = photo_id;
+        let data_clone = request.data.clone();
+        let content_type_clone = request.content_type.clone();
+        
+        tokio::spawn(async move {
+            let thumbnail_start = std::time::Instant::now();
+            match generate_thumbnail(&data_clone, &content_type_clone) {
+                Ok(thumbnail_info) => {
+                    let duration = thumbnail_start.elapsed();
+                    tracing::info!(
+                        "Async thumbnail generation took {:.2}ms for {} bytes ({:.1}MB)",
+                        duration.as_millis(),
+                        data_clone.len(),
+                        data_clone.len() as f64 / (1024.0 * 1024.0)
+                    );
+                    
+                    // Update the photo record with thumbnail data
+                    if let Err(e) = sqlx::query(
+                        "UPDATE photos SET thumbnail_data = ?, thumbnail_width = ?, thumbnail_height = ? WHERE id = ?"
+                    )
+                    .bind(&thumbnail_info.data)
+                    .bind(thumbnail_info.width)
+                    .bind(thumbnail_info.height)
+                    .bind(photo_id_clone.to_string())
+                    .execute(&pool_clone)
+                    .await {
+                        tracing::error!("Failed to update photo with thumbnail data: {:?}", e);
+                    } else {
+                        tracing::debug!("Successfully updated photo {} with thumbnail", photo_id_clone);
+                    }
+                },
+                Err(e) => {
+                    let duration = thumbnail_start.elapsed();
+                    tracing::warn!(
+                        "Async thumbnail generation failed after {:.2}ms for photo {}: {:?}", 
+                        duration.as_millis(), 
+                        photo_id_clone, 
+                        e
+                    );
+                }
+            }
+        });
+    }
 
     Ok(Photo {
         id: photo_id,
@@ -212,8 +246,8 @@ pub async fn create_photo(
         original_filename: request.original_filename.clone(),
         size: request.size,
         content_type: request.content_type.clone(),
-        thumbnail_width: thumbnail_info.as_ref().map(|t| t.width),
-        thumbnail_height: thumbnail_info.as_ref().map(|t| t.height),
+        thumbnail_width: None, // Will be updated asynchronously
+        thumbnail_height: None, // Will be updated asynchronously
         created_at: now,
     })
 }

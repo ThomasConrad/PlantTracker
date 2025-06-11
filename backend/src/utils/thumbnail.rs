@@ -71,8 +71,23 @@ fn resize_image_to_thumbnail(img: &DynamicImage) -> DynamicImage {
         THUMBNAIL_MAX_HEIGHT,
     );
 
-    // Resize using high-quality Lanczos3 filter
-    img.resize(new_width, new_height, image::imageops::FilterType::Lanczos3)
+    // For large images (>2MP), use faster Triangle filter for better performance
+    // For smaller images, use higher quality Lanczos3
+    let total_pixels = original_width * original_height;
+    let filter = if total_pixels > 2_000_000 {
+        // For large images, use Triangle which is faster
+        image::imageops::FilterType::Triangle
+    } else {
+        // For smaller images, use high-quality Lanczos3
+        image::imageops::FilterType::Lanczos3
+    };
+
+    tracing::debug!(
+        "Resizing {}x{} image to {}x{} using {:?} filter", 
+        original_width, original_height, new_width, new_height, filter
+    );
+
+    img.resize(new_width, new_height, filter)
 }
 
 /// Calculate thumbnail dimensions while maintaining aspect ratio

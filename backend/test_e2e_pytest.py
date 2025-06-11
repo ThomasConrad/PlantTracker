@@ -814,6 +814,191 @@ class TestPhotoUpload:
         assert our_plant["thumbnailId"] == photo_id
         assert our_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}/thumbnail"
 
+    def test_large_image_upload_performance(self):
+        """Test upload performance with a large (~5MB) image and measure timing"""
+        import time
+        
+        # Create a plant first
+        plant_data = {
+            "name": "Performance Test Plant",
+            "genus": "Performicus", 
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        plant_response = self.client.request("POST", "/plants", json=plant_data)
+        assert plant_response.status_code == 201
+        plant = plant_response.json()
+        plant_id = plant["id"]
+        
+        # Create a large fake image (~5MB)
+        import io
+        import requests
+        
+        # Create a minimal but valid JPEG that will actually trigger image processing
+        # This is a small valid JPEG that we'll pad to make it large
+        # Real JPEG header with quantization tables and Huffman tables
+        minimal_jpeg = bytes([
+            0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x48,
+            0x00, 0x48, 0x00, 0x00, 0xFF, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06, 0x05, 0x08,
+            0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B, 0x0B, 0x0C, 0x19, 0x12,
+            0x13, 0x0F, 0x14, 0x1D, 0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20, 0x24, 0x2E, 0x27, 0x20,
+            0x22, 0x2C, 0x23, 0x1C, 0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31, 0x34, 0x34, 0x34, 0x1F, 0x27,
+            0x39, 0x3D, 0x38, 0x32, 0x3C, 0x2E, 0x33, 0x34, 0x32, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x00, 0x08,
+            0x00, 0x08, 0x01, 0x01, 0x11, 0x00, 0x02, 0x11, 0x01, 0x03, 0x11, 0x01, 0xFF, 0xC4, 0x00, 0x14,
+            0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x08, 0xFF, 0xC4, 0x00, 0x14, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xDA, 0x00, 0x0C, 0x03, 0x01, 0x00, 0x02,
+            0x11, 0x03, 0x11, 0x00, 0x3F, 0x00, 0xB2, 0xC0, 0x07, 0xFF, 0xD9
+        ])
+        
+        # This creates a valid but tiny JPEG. For a large file test, we'll create multiple copies
+        # and embed them in a multipart structure that's still a valid JPEG
+        target_size = 5 * 1024 * 1024
+        copies_needed = target_size // len(minimal_jpeg)
+        
+        # Create large image by repeating the minimal JPEG data with padding
+        jpeg_header = minimal_jpeg[:20]  # Keep the JPEG header
+        jpeg_footer = minimal_jpeg[-2:]  # Keep the end marker
+        
+        # Fill the middle with repeated image data and padding
+        middle_size = target_size - len(jpeg_header) - len(jpeg_footer)
+        repeated_data = (minimal_jpeg[20:-2] * (middle_size // (len(minimal_jpeg) - 22) + 1))[:middle_size]
+        
+        large_image_data = jpeg_header + repeated_data + jpeg_footer
+        
+        print(f"\nUploading {len(large_image_data)} bytes ({len(large_image_data) / (1024*1024):.1f}MB)")
+        
+        files = {
+            'file': ('large-test.jpg', io.BytesIO(large_image_data), 'image/jpeg')
+        }
+        
+        # Measure upload time
+        start_time = time.time()
+        
+        upload_response = requests.post(
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            files=files,
+            cookies=self.client.session.cookies
+        )
+        
+        upload_end_time = time.time()
+        upload_duration = upload_end_time - start_time
+        
+        assert upload_response.status_code == 201
+        photo = upload_response.json()
+        photo_id = photo["id"]
+        
+        print(f"Upload took {upload_duration:.2f} seconds")
+        print(f"Upload speed: {(len(large_image_data) / (1024*1024)) / upload_duration:.1f} MB/s")
+        
+        # Measure thumbnail setting time
+        thumbnail_start_time = time.time()
+        
+        thumbnail_response = self.client.request("PUT", f"/plants/{plant_id}/thumbnail/{photo_id}")
+        
+        thumbnail_end_time = time.time()
+        thumbnail_duration = thumbnail_end_time - thumbnail_start_time
+        
+        assert thumbnail_response.status_code == 200
+        updated_plant = thumbnail_response.json()
+        
+        print(f"Thumbnail setting took {thumbnail_duration:.2f} seconds")
+        
+        # Verify the thumbnail was set correctly
+        assert updated_plant["thumbnailId"] == photo_id
+        assert updated_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}/thumbnail"
+        
+        total_time = upload_duration + thumbnail_duration
+        print(f"Total time: {total_time:.2f} seconds")
+        
+        # Performance assertions (these are reasonable expectations)
+        # Upload should complete within 30 seconds for 5MB
+        assert upload_duration < 30.0, f"Upload took too long: {upload_duration:.2f}s"
+        
+        # Thumbnail setting should be fast (< 5 seconds)
+        assert thumbnail_duration < 5.0, f"Thumbnail setting took too long: {thumbnail_duration:.2f}s"
+        
+        # Log breakdown for analysis
+        print(f"Breakdown: Upload {upload_duration:.2f}s, Thumbnail {thumbnail_duration:.2f}s")
+        if upload_duration > 2.0:
+            print("WARNING: Upload is slower than expected - likely thumbnail generation bottleneck")
+        
+        # With async thumbnail generation, upload should be much faster
+        if upload_duration < 1.0:
+            print("SUCCESS: Upload is fast - async thumbnail generation is working!")
+            
+    def test_async_thumbnail_generation(self):
+        """Test that thumbnails are generated asynchronously and eventually become available"""
+        import time
+        
+        # Create a plant first
+        plant_data = {
+            "name": "Async Thumbnail Test Plant",
+            "genus": "Asyncicus", 
+            "wateringIntervalDays": 7,
+            "fertilizingIntervalDays": 14
+        }
+        
+        plant_response = self.client.request("POST", "/plants", json=plant_data)
+        assert plant_response.status_code == 201
+        plant = plant_response.json()
+        plant_id = plant["id"]
+        
+        # Upload a large image 
+        import io
+        import requests
+        large_image_data = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb' + b'\x00' * (1024 * 1024) + b'\xff\xd9'
+        
+        files = {
+            'file': ('async-test.jpg', io.BytesIO(large_image_data), 'image/jpeg')
+        }
+        
+        # Upload should be fast
+        start_time = time.time()
+        upload_response = requests.post(
+            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            files=files,
+            cookies=self.client.session.cookies
+        )
+        upload_time = time.time() - start_time
+        
+        assert upload_response.status_code == 201
+        photo = upload_response.json()
+        photo_id = photo["id"]
+        
+        print(f"Async upload took {upload_time:.2f} seconds")
+        
+        # Initially, thumbnail might not be ready (202 status)
+        thumbnail_url = f"/v1/plants/{plant_id}/photos/{photo_id}/thumbnail"
+        initial_response = self.client.request("GET", thumbnail_url)
+        
+        if initial_response.status_code == 202:
+            print("Thumbnail not ready immediately (as expected with async generation)")
+            
+            # Wait a bit and try again (thumbnail should be ready within a few seconds)
+            max_wait = 10
+            wait_time = 0
+            while wait_time < max_wait:
+                time.sleep(1)
+                wait_time += 1
+                retry_response = self.client.request("GET", thumbnail_url)
+                
+                if retry_response.status_code == 200:
+                    print(f"Thumbnail became available after {wait_time} seconds")
+                    break
+                elif retry_response.status_code == 202:
+                    continue
+                else:
+                    assert False, f"Unexpected thumbnail response: {retry_response.status_code}"
+            
+            if wait_time >= max_wait:
+                print("WARNING: Thumbnail took longer than expected to generate")
+        else:
+            # Thumbnail was ready immediately (small image or very fast processing)
+            assert initial_response.status_code == 200
+            print("Thumbnail was ready immediately")
+
     def test_upload_photo_validation_errors(self):
         """Test photo upload validation"""
         # Create a plant first

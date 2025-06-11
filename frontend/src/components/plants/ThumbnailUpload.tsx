@@ -13,6 +13,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
   const [isMobile, setIsMobile] = createSignal(false);
   const [showCamera, setShowCamera] = createSignal(false);
   const [stream, setStream] = createSignal<MediaStream | null>(null);
+  const [compressing, setCompressing] = createSignal(false);
   
   let fileInputRef: HTMLInputElement | undefined;
   let videoRef: HTMLVideoElement | undefined;
@@ -44,13 +45,75 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
     reader.readAsDataURL(file);
   };
 
+  // Compress image if it's too large
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      // If file is smaller than 1MB, don't compress
+      if (file.size < 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+
+      setCompressing(true);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculate new dimensions (max 1920x1920 for large images)
+        const maxDimension = 1920;
+        let { width, height } = img;
+        
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = (height * maxDimension) / width;
+            width = maxDimension;
+          } else {
+            width = (width * maxDimension) / height;
+            height = maxDimension;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Draw and compress
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+          setCompressing(false);
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            console.log(`Compressed ${file.size} bytes to ${compressedFile.size} bytes (${(compressedFile.size/file.size*100).toFixed(1)}%)`);
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', 0.8); // 80% quality
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // Handle file input change
-  const handleFileChange = (e: Event) => {
+  const handleFileChange = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      createPreview(file);
-      props.onFileSelect(file);
+      try {
+        const compressedFile = await compressImage(file);
+        createPreview(compressedFile);
+        props.onFileSelect(compressedFile);
+      } catch (error) {
+        console.error('Failed to process image:', error);
+        createPreview(file);
+        props.onFileSelect(file);
+      }
     }
   };
 
@@ -106,13 +169,20 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
     context.drawImage(video, 0, 0);
     
     // Convert canvas to blob
-    canvas.toBlob((blob) => {
+    canvas.toBlob(async (blob) => {
       if (blob) {
         const file = new File([blob], `plant-thumbnail-${Date.now()}.jpg`, { 
           type: 'image/jpeg' 
         });
-        createPreview(file);
-        props.onFileSelect(file);
+        try {
+          const compressedFile = await compressImage(file);
+          createPreview(compressedFile);
+          props.onFileSelect(compressedFile);
+        } catch (error) {
+          console.error('Failed to compress camera image:', error);
+          createPreview(file);
+          props.onFileSelect(file);
+        }
         stopCamera();
       }
     }, 'image/jpeg', 0.8);
@@ -264,6 +334,14 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
         onChange={handleFileChange}
         class="hidden"
       />
+
+      {/* Compression loading */}
+      <Show when={compressing()}>
+        <div class="text-center py-4">
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <p class="mt-2 text-sm text-gray-600">Compressing image...</p>
+        </div>
+      </Show>
 
       {/* Error message */}
       <Show when={props.error}>

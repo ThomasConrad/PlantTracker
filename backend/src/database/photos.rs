@@ -8,6 +8,7 @@ use crate::utils::errors::AppError;
 use crate::utils::thumbnail::generate_thumbnail;
 
 /// Get all photos for a specific plant
+#[allow(dead_code)]
 pub async fn get_photos_for_plant(
     pool: &DatabasePool,
     plant_id: &Uuid,

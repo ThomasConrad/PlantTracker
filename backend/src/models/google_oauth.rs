@@ -19,6 +19,7 @@ pub struct GoogleOAuthToken {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct GoogleOAuthCallbackRequest {
     pub code: String,
+    #[allow(dead_code)]
     pub state: Option<String>,
 }
 

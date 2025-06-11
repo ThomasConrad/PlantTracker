@@ -11,7 +11,7 @@ async fn test_google_tasks_auth_url_requires_authentication() {
     
     let response = app
         .client
-        .get(&format!("{}/google-tasks/auth-url", app.address))
+        .get(format!("{}/google-tasks/auth-url", app.address))
         .send()
         .await
         .expect("Failed to execute request");
@@ -27,7 +27,7 @@ async fn test_google_tasks_status_not_connected() {
     
     let response = app
         .client
-        .get(&format!("{}/google-tasks/status", app.address))
+        .get(format!("{}/google-tasks/status", app.address))
         .send()
         .await
         .expect("Failed to execute request");
@@ -56,7 +56,7 @@ async fn test_google_tasks_store_tokens() {
     
     let response = app
         .client
-        .post(&format!("{}/google-tasks/store-tokens", app.address))
+        .post(format!("{}/google-tasks/store-tokens", app.address))
         .json(&request_body)
         .send()
         .await
@@ -80,7 +80,7 @@ async fn test_google_tasks_disconnect_not_connected() {
     
     let response = app
         .client
-        .post(&format!("{}/google-tasks/disconnect", app.address))
+        .post(format!("{}/google-tasks/disconnect", app.address))
         .send()
         .await
         .expect("Failed to execute request");
@@ -104,7 +104,7 @@ async fn test_google_tasks_sync_requires_connection() {
     
     let response = app
         .client
-        .post(&format!("{}/google-tasks/sync-tasks", app.address))
+        .post(format!("{}/google-tasks/sync-tasks", app.address))
         .json(&sync_request)
         .send()
         .await
@@ -131,7 +131,7 @@ async fn test_google_tasks_create_task_requires_connection() {
     
     let response = app
         .client
-        .post(&format!("{}/google-tasks/create-task", app.address))
+        .post(format!("{}/google-tasks/create-task", app.address))
         .json(&task_request)
         .send()
         .await
@@ -153,7 +153,7 @@ async fn test_google_tasks_error_handling() {
     // Test invalid JSON in store tokens request
     let response = app
         .client
-        .post(&format!("{}/google-tasks/store-tokens", app.address))
+        .post(format!("{}/google-tasks/store-tokens", app.address))
         .header("content-type", "application/json")
         .body("invalid json")
         .send()
@@ -232,7 +232,7 @@ async fn test_google_tasks_database_integration() {
     // Test token validation
     let is_valid = google_oauth::has_valid_token(&app.db_pool, user_id).await;
     assert!(is_valid.is_ok());
-    assert_eq!(is_valid.unwrap(), true);
+    assert!(is_valid.unwrap());
     
     // Delete token
     let delete_result = google_oauth::delete_oauth_token(&app.db_pool, user_id).await;

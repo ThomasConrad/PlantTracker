@@ -135,7 +135,7 @@ pub async fn store_google_tokens(
 
     let expires_at = if request.expires_at > 0 {
         Some(chrono::DateTime::from_timestamp(request.expires_at, 0)
-            .unwrap_or_else(|| Utc::now()))
+            .unwrap_or_else(Utc::now))
     } else {
         None
     };
@@ -296,7 +296,7 @@ pub async fn sync_plant_tasks(
                 Ok(_task_id) => created_tasks += 1,
                 Err(e) => tracing::error!("Failed to create watering task for {}: {}", plant.name, e),
             }
-            next_watering = next_watering + chrono::Duration::days(plant.watering_interval_days as i64);
+            next_watering += chrono::Duration::days(plant.watering_interval_days as i64);
         }
 
         // Generate fertilizing tasks
@@ -311,7 +311,7 @@ pub async fn sync_plant_tasks(
                 Ok(_task_id) => created_tasks += 1,
                 Err(e) => tracing::error!("Failed to create fertilizing task for {}: {}", plant.name, e),
             }
-            next_fertilizing = next_fertilizing + chrono::Duration::days(plant.fertilizing_interval_days as i64);
+            next_fertilizing += chrono::Duration::days(plant.fertilizing_interval_days as i64);
         }
     }
 
@@ -371,7 +371,7 @@ pub async fn create_task(
     });
     
     let response = client
-        .post(&format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", task_list_id))
+        .post(format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", task_list_id))
         .header("Authorization", format!("Bearer {}", token.access_token))
         .header("Content-Type", "application/json")
         .json(&task_data)

@@ -86,7 +86,7 @@ pub async fn create_test_user(
 ) -> serde_json::Value {
     let response = app
         .client
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&serde_json::json!({
             "email": email,
             "name": name,
@@ -106,7 +106,7 @@ pub async fn create_test_user(
 pub async fn login_user(app: &TestApp, email: &str, password: &str) -> serde_json::Value {
     let response = app
         .client
-        .post(&app.url("/auth/login"))
+        .post(app.url("/auth/login"))
         .json(&serde_json::json!({
             "email": email,
             "password": password
@@ -125,7 +125,7 @@ pub async fn login_user(app: &TestApp, email: &str, password: &str) -> serde_jso
 pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_json::Value {
     let response = app
         .client
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&serde_json::json!({
             "name": name,
             "genus": genus,

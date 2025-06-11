@@ -9,7 +9,7 @@ async fn test_user_registration() {
 
     let response = app
         .client
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "test@example.com",
             "name": "Test User",
@@ -34,7 +34,7 @@ async fn test_user_registration_duplicate_email() {
     // First registration should succeed
     let response1 = app
         .client
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "duplicate@example.com",
             "name": "First User",
@@ -49,7 +49,7 @@ async fn test_user_registration_duplicate_email() {
     // Second registration with same email should fail
     let response2 = app
         .client
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "duplicate@example.com",
             "name": "Second User",
@@ -72,7 +72,7 @@ async fn test_user_login_success() {
     // Now try to login
     let response = app
         .client
-        .post(&app.url("/auth/login"))
+        .post(app.url("/auth/login"))
         .json(&json!({
             "email": "login@example.com",
             "password": "password123"
@@ -98,7 +98,7 @@ async fn test_user_login_invalid_credentials() {
     // Try to login with wrong password
     let response = app
         .client
-        .post(&app.url("/auth/login"))
+        .post(app.url("/auth/login"))
         .json(&json!({
             "email": "valid@example.com",
             "password": "wrong_password"
@@ -116,7 +116,7 @@ async fn test_user_login_nonexistent_user() {
 
     let response = app
         .client
-        .post(&app.url("/auth/login"))
+        .post(app.url("/auth/login"))
         .json(&json!({
             "email": "nonexistent@example.com",
             "password": "any_password"
@@ -138,7 +138,7 @@ async fn test_me_endpoint_authenticated() {
     // Get user profile
     let response = app
         .client
-        .get(&app.url("/auth/me"))
+        .get(app.url("/auth/me"))
         .send()
         .await
         .expect("Failed to send me request");
@@ -157,7 +157,7 @@ async fn test_me_endpoint_unauthenticated() {
     // Try to access /me without authentication
     let response = app
         .client
-        .get(&app.url("/auth/me"))
+        .get(app.url("/auth/me"))
         .send()
         .await
         .expect("Failed to send me request");
@@ -175,7 +175,7 @@ async fn test_logout() {
     // Verify we're authenticated
     let me_response = app
         .client
-        .get(&app.url("/auth/me"))
+        .get(app.url("/auth/me"))
         .send()
         .await
         .expect("Failed to send me request");
@@ -184,7 +184,7 @@ async fn test_logout() {
     // Logout
     let logout_response = app
         .client
-        .post(&app.url("/auth/logout"))
+        .post(app.url("/auth/logout"))
         .send()
         .await
         .expect("Failed to send logout request");
@@ -193,7 +193,7 @@ async fn test_logout() {
     // Verify we're no longer authenticated
     let me_response_after = app
         .client
-        .get(&app.url("/auth/me"))
+        .get(app.url("/auth/me"))
         .send()
         .await
         .expect("Failed to send me request after logout");
@@ -211,7 +211,7 @@ async fn test_session_persistence() {
     for _ in 0..3 {
         let response = app
             .client
-            .get(&app.url("/auth/me"))
+            .get(app.url("/auth/me"))
             .send()
             .await
             .expect("Failed to send me request");
@@ -230,7 +230,7 @@ async fn test_validation_errors() {
     // Test invalid email format
     let response = app
         .client
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "not-an-email",
             "name": "Test User",
@@ -245,7 +245,7 @@ async fn test_validation_errors() {
     // Test short password
     let response = app
         .client
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "valid@example.com",
             "name": "Test User",
@@ -260,7 +260,7 @@ async fn test_validation_errors() {
     // Test empty name
     let response = app
         .client
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "valid@example.com",
             "name": "",

@@ -281,7 +281,7 @@ pub async fn create_plant_care_task(
     });
     
     let response = client
-        .post(&format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", task_list_id))
+        .post(format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", task_list_id))
         .header("Authorization", format!("Bearer {}", token.access_token))
         .header("Content-Type", "application/json")
         .json(&task_data)

@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, Query, State, Request},
+    extract::{Path, Query, State},
     http::{header, StatusCode, Uri},
     response::{IntoResponse, Response},
     routing::get,
@@ -94,7 +94,7 @@ pub async fn get_calendar_feed(
     tracing::info!("Generated calendar feed for user: {} with {} plants", user_id, plants.len());
 
     // Return the calendar with proper headers
-    Ok(Response::builder()
+    Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "text/calendar; charset=utf-8")
         .header(header::CACHE_CONTROL, "private, max-age=3600") // Cache for 1 hour
@@ -102,7 +102,7 @@ pub async fn get_calendar_feed(
         .body(calendar_content.into())
         .map_err(|_| AppError::Internal {
             message: "Failed to build calendar response".to_string(),
-        })?)
+        })
 }
 
 /// Get calendar subscription information for the authenticated user

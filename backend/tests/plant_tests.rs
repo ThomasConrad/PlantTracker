@@ -14,7 +14,7 @@ async fn test_create_plant_authenticated() {
     // Create a plant
     let response = app
         .client
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&json!({
             "name": "My Fiddle Leaf Fig",
             "genus": "Ficus",
@@ -43,7 +43,7 @@ async fn test_create_plant_unauthenticated() {
 
     let response = app
         .client
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&json!({
             "name": "Unauthorized Plant",
             "genus": "Ficus",
@@ -72,7 +72,7 @@ async fn test_list_plants_authenticated() {
     // List plants
     let response = app
         .client
-        .get(&app.url("/plants"))
+        .get(app.url("/plants"))
         .send()
         .await
         .expect("Failed to send list plants request");
@@ -97,7 +97,7 @@ async fn test_list_plants_unauthenticated() {
 
     let response = app
         .client
-        .get(&app.url("/plants"))
+        .get(app.url("/plants"))
         .send()
         .await
         .expect("Failed to send list plants request");
@@ -119,7 +119,7 @@ async fn test_get_plant_by_id() {
     // Get the plant by ID
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to send get plant request");
@@ -142,7 +142,7 @@ async fn test_get_nonexistent_plant() {
     let fake_id = Uuid::new_v4();
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}", fake_id)))
+        .get(app.url(&format!("/plants/{}", fake_id)))
         .send()
         .await
         .expect("Failed to send get plant request");
@@ -164,7 +164,7 @@ async fn test_update_plant() {
     // Update the plant
     let response = app
         .client
-        .put(&app.url(&format!("/plants/{}", plant_id)))
+        .put(app.url(&format!("/plants/{}", plant_id)))
         .json(&json!({
             "name": "Updated Plant",
             "genus": "Updated Genus",
@@ -199,7 +199,7 @@ async fn test_delete_plant() {
     // Delete the plant
     let response = app
         .client
-        .delete(&app.url(&format!("/plants/{}", plant_id)))
+        .delete(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to send delete plant request");
@@ -209,7 +209,7 @@ async fn test_delete_plant() {
     // Verify plant is gone
     let get_response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to send get plant request");
@@ -233,7 +233,7 @@ async fn test_plant_validation() {
     // Test invalid watering interval (too high)
     let response = app
         .client
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&json!({
             "name": "Invalid Plant",
             "genus": "Invalid Genus",
@@ -250,7 +250,7 @@ async fn test_plant_validation() {
     // Test empty name
     let response = app
         .client
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&json!({
             "name": "",
             "genus": "Valid Genus",
@@ -280,7 +280,7 @@ async fn test_plant_search() {
     // Search by name
     let response = app
         .client
-        .get(&app.url("/plants?search=Snake"))
+        .get(app.url("/plants?search=Snake"))
         .send()
         .await
         .expect("Failed to send search request");
@@ -293,7 +293,7 @@ async fn test_plant_search() {
     // Search by genus
     let response = app
         .client
-        .get(&app.url("/plants?search=Ficus"))
+        .get(app.url("/plants?search=Ficus"))
         .send()
         .await
         .expect("Failed to send search request");
@@ -324,7 +324,7 @@ async fn test_plant_pagination() {
     // Test first page
     let response = app
         .client
-        .get(&app.url("/plants?limit=10&offset=0"))
+        .get(app.url("/plants?limit=10&offset=0"))
         .send()
         .await
         .expect("Failed to send pagination request");
@@ -339,7 +339,7 @@ async fn test_plant_pagination() {
     // Test second page
     let response = app
         .client
-        .get(&app.url("/plants?limit=10&offset=10"))
+        .get(app.url("/plants?limit=10&offset=10"))
         .send()
         .await
         .expect("Failed to send pagination request");

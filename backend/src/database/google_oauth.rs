@@ -82,11 +82,11 @@ pub async fn get_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<Option<
             user_id: row.user_id,
             access_token: row.access_token,
             refresh_token: row.refresh_token,
-            expires_at: row.expires_at.map(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(|| Utc::now())),
+            expires_at: row.expires_at.map(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(Utc::now)),
             scope: row.scope,
             token_type: row.token_type,
-            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0).unwrap_or_else(|| Utc::now()),
-            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0).unwrap_or_else(|| Utc::now()),
+            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
+            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
         })
     } else {
         None

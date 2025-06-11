@@ -50,6 +50,14 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
             alt={`${props.plant.name} thumbnail`}
             class="h-full w-full object-cover"
             loading="lazy"
+            onError={(e) => {
+              // If thumbnail fails to load, it might still be processing
+              // Try again in a few seconds
+              const img = e.currentTarget;
+              setTimeout(() => {
+                img.src = props.plant.thumbnailUrl! + `?retry=${Date.now()}`;
+              }, 3000);
+            }}
           />
         </Show>
       </div>

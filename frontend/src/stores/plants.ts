@@ -111,11 +111,21 @@ const plantsStore = {
       // Handle thumbnail upload if a file was provided
       if (thumbnailFile instanceof File) {
         try {
+          console.log(`Uploading ${thumbnailFile.size} byte file (${(thumbnailFile.size / (1024*1024)).toFixed(1)}MB): ${thumbnailFile.name}`);
+          const uploadStart = performance.now();
+          
           // Upload the photo
           const uploadedPhoto = await apiClient.uploadPlantPhoto(plantId, thumbnailFile);
+          const uploadEnd = performance.now();
+          console.log(`Photo upload took ${(uploadEnd - uploadStart).toFixed(0)}ms`);
           
+          const thumbnailStart = performance.now();
           // Set the uploaded photo as the plant's thumbnail
           finalPlant = await apiClient.setPlantThumbnail(plantId, uploadedPhoto.id);
+          const thumbnailEnd = performance.now();
+          console.log(`Thumbnail setting took ${(thumbnailEnd - thumbnailStart).toFixed(0)}ms`);
+          
+          console.log(`Total photo processing time: ${(thumbnailEnd - uploadStart).toFixed(0)}ms`);
         } catch (photoError) {
           console.error('Failed to upload/set thumbnail:', photoError);
           // Don't throw here - the plant update was successful, just the thumbnail failed

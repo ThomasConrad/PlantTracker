@@ -26,7 +26,7 @@ export const AuthLayout: Component<AuthLayoutProps> = (props) => {
           </div>
         </div>
         <h2 class="mt-6 text-center text-3xl font-bold text-gray-900">
-          Plant Tracker
+          Planty🪴
         </h2>
       </div>
 

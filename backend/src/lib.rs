@@ -51,9 +51,9 @@ use models::{
         (name = "photos", description = "Photo management endpoints"),
     ),
     info(
-        title = "Plant Tracker API",
+        title = "Planty API",
         version = "0.1.0",
-        description = "A REST API for tracking plant care and growth metrics",
+        description = "A REST API for Planty - tracking plant care and growth metrics",
         license(name = "MIT"),
     )
 )]

@@ -87,7 +87,7 @@ pub fn create_auth_layers(
         .with_secure(false) // Set to true in production with HTTPS
         .with_http_only(true) // Prevent XSS attacks
         .with_same_site(SameSite::Lax) // CSRF protection
-        .with_name("plant_tracker_session") // Custom cookie name
+        .with_name("planty_session") // Custom cookie name
         .with_expiry(Expiry::OnInactivity(Duration::days(7))); // 7 days
 
     let backend = AuthBackend::new(pool);

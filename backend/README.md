@@ -1,6 +1,6 @@
-# Plant Tracker API
+# Planty API
 
-Backend API for the Plant Tracker application, built with Rust and Axum.
+Backend API for the Planty application, built with Rust and Axum.
 
 ## Setup
 

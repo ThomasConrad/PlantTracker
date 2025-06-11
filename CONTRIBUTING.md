@@ -1,6 +1,6 @@
-# Contributing to Plant Tracker
+# Contributing to Planty
 
-Thank you for your interest in contributing to Plant Tracker! This document provides guidelines and information for contributors.
+Thank you for your interest in contributing to Planty! This document provides guidelines and information for contributors.
 
 ## 📋 Table of Contents
 

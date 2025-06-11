@@ -37,7 +37,7 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
                     />
                   </svg>
                 </div>
-                <span class="text-xl font-bold text-gray-900">Plant Tracker</span>
+                <span class="text-xl font-bold text-gray-900">Planty🪴</span>
               </A>
             </div>
 

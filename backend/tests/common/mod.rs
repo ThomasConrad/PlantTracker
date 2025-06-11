@@ -4,8 +4,8 @@ use sqlx::SqlitePool;
 use tempfile::TempDir;
 use tokio::net::TcpListener;
 
-use plant_tracker_api::auth;
-use plant_tracker_api::handlers::{auth as auth_handlers, plants, google_tasks};
+use planty_api::auth;
+use planty_api::handlers::{auth as auth_handlers, plants, google_tasks};
 
 pub struct TestApp {
     pub address: String,
@@ -21,12 +21,12 @@ impl TestApp {
         let database_url = "sqlite::memory:".to_string();
 
         // Set up database using the centralized pool creation function
-        let db_pool = plant_tracker_api::database::create_pool_with_url(&database_url)
+        let db_pool = planty_api::database::create_pool_with_url(&database_url)
             .await
             .expect("Failed to create test database pool");
 
         // Run migrations for tests
-        plant_tracker_api::database::run_migrations(&db_pool)
+        planty_api::database::run_migrations(&db_pool)
             .await
             .expect("Failed to run migrations");
 

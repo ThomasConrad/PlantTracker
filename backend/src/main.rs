@@ -23,7 +23,7 @@ mod models;
 mod utils;
 
 use handlers::{auth as auth_handlers, calendar, google_tasks, plants};
-use plant_tracker_api::ApiDoc;
+use planty_api::ApiDoc;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -37,7 +37,7 @@ struct Args {
         short,
         long,
         env = "DATABASE_URL",
-        default_value = "sqlite:plant_tracker.db"
+        default_value = "sqlite:planty.db"
     )]
     database_url: String,
 

@@ -1,8 +1,8 @@
 [package]
-name = "plant-tracker-api"
+name = "planty-api"
 version = "0.1.0"
 edition = "2021"
-description = "A REST API for tracking plant care and growth metrics"
+description = "A REST API for Planty - tracking plant care and growth metrics"
 license = "MIT"
 repository = "https://github.com/ThomasConrad/PlantTracker"
 keywords = ["plants", "api", "tracker", "gardening", "care"]

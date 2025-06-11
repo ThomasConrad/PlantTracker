@@ -3,7 +3,7 @@ use axum::{
     extract::{Multipart, Path, Query, State},
     http::{header, StatusCode},
     response::{Json, Response},
-    routing::{delete, get, post},
+    routing::get,
     Router,
 };
 use serde::Deserialize;
@@ -62,16 +62,33 @@ async fn list_photos(
     };
 
     let response = db_photos::get_photos_for_plant_paginated(
-        &pool, &plant_id, &user.id, Some(limit), Some(offset), Some(sort_desc)
-    ).await?;
+        &pool,
+        &plant_id,
+        &user.id,
+        Some(limit),
+        Some(offset),
+        Some(sort_desc),
+    )
+    .await?;
 
     // Convert to PhotoWithThumbnail with URLs
-    let photos_with_urls: Vec<PhotoWithThumbnail> = response.photos
+    let photos_with_urls: Vec<PhotoWithThumbnail> = response
+        .photos
         .into_iter()
         .map(|photo| {
-            let full_url = format!("/api/v1/plants/{}/photos/{}?v={}", plant_id, photo.id, photo.created_at.timestamp());
+            let full_url = format!(
+                "/api/v1/plants/{}/photos/{}?v={}",
+                plant_id,
+                photo.id,
+                photo.created_at.timestamp()
+            );
             let thumbnail_url = if photo.thumbnail_width.is_some() {
-                Some(format!("/api/v1/plants/{}/photos/{}/thumbnail?v={}", plant_id, photo.id, photo.created_at.timestamp()))
+                Some(format!(
+                    "/api/v1/plants/{}/photos/{}/thumbnail?v={}",
+                    plant_id,
+                    photo.id,
+                    photo.created_at.timestamp()
+                ))
             } else {
                 None
             };
@@ -98,7 +115,7 @@ async fn list_photos(
         response.total,
         plant_id
     );
-    
+
     Ok(Json(PhotosResponse {
         photos: photos_with_urls,
         total: response.total,
@@ -289,11 +306,17 @@ async fn serve_thumbnail(
         }
         Err(AppError::NotFound { .. }) => {
             // Thumbnail not ready yet, return 202 Accepted to indicate processing
-            tracing::debug!("Thumbnail not ready for photo: {} in plant: {}", photo_id, plant_id);
+            tracing::debug!(
+                "Thumbnail not ready for photo: {} in plant: {}",
+                photo_id,
+                plant_id
+            );
             let response = Response::builder()
                 .status(StatusCode::ACCEPTED)
                 .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(r#"{"status":"processing","message":"Thumbnail is being generated"}"#))
+                .body(Body::from(
+                    r#"{"status":"processing","message":"Thumbnail is being generated"}"#,
+                ))
                 .map_err(|_| AppError::Internal {
                     message: "Failed to build response".to_string(),
                 })?;

@@ -7,7 +7,6 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
-use utoipa::OpenApi;
 use uuid::Uuid;
 
 use crate::auth::AuthSession;
@@ -22,7 +21,7 @@ use crate::utils::errors::{AppError, Result};
 struct ListEntriesQuery {
     limit: Option<i64>,
     offset: Option<i64>,
-    sort: Option<String>, // "date_asc", "date_desc" (default)
+    sort: Option<String>,       // "date_asc", "date_desc" (default)
     entry_type: Option<String>, // filter by entry type
 }
 
@@ -75,8 +74,15 @@ async fn list_entries(
     };
 
     let response = db_tracking::get_tracking_entries_for_plant_paginated(
-        &pool, &plant_id, &user.id, limit, offset, sort_desc, params.entry_type.as_deref()
-    ).await?;
+        &pool,
+        &plant_id,
+        &user.id,
+        limit,
+        offset,
+        sort_desc,
+        params.entry_type.as_deref(),
+    )
+    .await?;
 
     tracing::debug!(
         "Returning {} tracking entries for plant: {}",
@@ -159,7 +165,9 @@ async fn update_entry(
     auth_session: AuthSession,
     State(pool): State<DatabasePool>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
-    ValidatedJson(payload): ValidatedJson<crate::models::tracking_entry::UpdateTrackingEntryRequest>,
+    ValidatedJson(payload): ValidatedJson<
+        crate::models::tracking_entry::UpdateTrackingEntryRequest,
+    >,
 ) -> Result<Json<TrackingEntry>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
@@ -172,7 +180,8 @@ async fn update_entry(
         user.id
     );
 
-    let entry = db_tracking::update_tracking_entry(&pool, &plant_id, &entry_id, &user.id, &payload).await?;
+    let entry =
+        db_tracking::update_tracking_entry(&pool, &plant_id, &entry_id, &user.id, &payload).await?;
 
     tracing::info!(
         "Updated tracking entry: {} for plant: {}",

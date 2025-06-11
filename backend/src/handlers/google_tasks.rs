@@ -11,36 +11,37 @@ use crate::auth::AuthSession;
 use crate::database::{google_oauth, plants as db_plants, DatabasePool};
 use crate::models::google_oauth::{
     GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse, GoogleOAuthUrlResponse,
-    GoogleCalendarStatus, SyncPlantRemindersRequest, CreateGoogleCalendarEventRequest,
+    GoogleTasksStatus, SyncPlantTasksRequest, CreateGoogleTaskRequest,
 };
 use crate::utils::errors::{AppError, Result};
-use crate::utils::google_calendar::{
-    GoogleCalendarConfig, generate_auth_url, exchange_code_for_tokens, 
-    generate_oauth_state, ensure_valid_token, create_calendar_hub,
+use crate::utils::google_tasks::{
+    GoogleTasksConfig, generate_auth_url, exchange_code_for_tokens, 
+    generate_oauth_state, ensure_valid_token, create_plant_care_task,
+    get_or_create_plant_care_task_list,
 };
 
-/// Create Google Calendar routes
+/// Create Google Tasks routes
 pub fn routes() -> Router<DatabasePool> {
     Router::new()
         .route("/auth-url", get(get_google_auth_url))
         .route("/callback", get(handle_google_oauth_callback))
         .route("/store-tokens", post(store_google_tokens))
-        .route("/status", get(get_google_calendar_status))
-        .route("/disconnect", post(disconnect_google_calendar))
-        .route("/sync-reminders", post(sync_plant_reminders))
-        .route("/create-event", post(create_calendar_event))
+        .route("/status", get(get_google_tasks_status))
+        .route("/disconnect", post(disconnect_google_tasks))
+        .route("/sync-tasks", post(sync_plant_tasks))
+        .route("/create-task", post(create_task))
 }
 
 /// Generate Google OAuth authorization URL
 #[utoipa::path(
     get,
-    path = "/google-calendar/auth-url",
+    path = "/google-tasks/auth-url",
     responses(
         (status = 200, description = "Google OAuth authorization URL", body = GoogleOAuthUrlResponse),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Configuration error")
     ),
-    tag = "google-calendar",
+    tag = "google-tasks",
     security(
         ("session" = [])
     )
@@ -52,7 +53,7 @@ pub async fn get_google_auth_url(
         message: "Not authenticated".to_string(),
     })?;
 
-    let config = GoogleCalendarConfig::from_env()?;
+    let config = GoogleTasksConfig::from_env()?;
     let state = generate_oauth_state();
     let auth_url = generate_auth_url(&config, &state);
 
@@ -67,7 +68,7 @@ pub async fn get_google_auth_url(
 /// Handle Google OAuth callback
 #[utoipa::path(
     get,
-    path = "/google-calendar/callback",
+    path = "/google-tasks/callback",
     params(
         ("code" = String, Query, description = "OAuth authorization code"),
         ("state" = Option<String>, Query, description = "OAuth state parameter")
@@ -82,7 +83,7 @@ pub async fn handle_google_oauth_callback(
     State(_pool): State<DatabasePool>,
     Query(params): Query<GoogleOAuthCallbackRequest>,
 ) -> Result<impl IntoResponse> {
-    let config = GoogleCalendarConfig::from_env()?;
+    let config = GoogleTasksConfig::from_env()?;
     
     // Exchange code for tokens
     let (access_token, refresh_token, expires_at) = 
@@ -97,7 +98,7 @@ pub async fn handle_google_oauth_callback(
         .unwrap_or_else(|_| "http://localhost:5173".to_string());
     
     let redirect_url = format!(
-        "{}/calendar-settings?google_auth=success&access_token={}&refresh_token={}&expires_at={}",
+        "{}/calendar-settings?google_tasks_auth=success&access_token={}&refresh_token={}&expires_at={}",
         frontend_url,
         urlencoding::encode(&access_token),
         urlencoding::encode(&refresh_token.unwrap_or_default()),
@@ -111,14 +112,14 @@ pub async fn handle_google_oauth_callback(
 /// Store Google OAuth tokens (called by frontend after callback)
 #[utoipa::path(
     post,
-    path = "/google-calendar/store-tokens",
+    path = "/google-tasks/store-tokens",
     request_body = StoreTokensRequest,
     responses(
         (status = 200, description = "Tokens stored successfully", body = GoogleOAuthSuccessResponse),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Failed to store tokens")
     ),
-    tag = "google-calendar",
+    tag = "google-tasks",
     security(
         ("session" = [])
     )
@@ -139,7 +140,7 @@ pub async fn store_google_tokens(
         None
     };
 
-    let scope = "https://www.googleapis.com/auth/calendar.events".to_string();
+    let scope = "https://www.googleapis.com/auth/tasks".to_string();
     
     google_oauth::save_oauth_token(
         &pool,
@@ -154,7 +155,7 @@ pub async fn store_google_tokens(
 
     Ok(Json(GoogleOAuthSuccessResponse {
         success: true,
-        message: "Google Calendar integration configured successfully".to_string(),
+        message: "Google Tasks integration configured successfully".to_string(),
         connected_at: Utc::now(),
         scopes: vec![scope],
     }))
@@ -167,20 +168,20 @@ pub struct StoreTokensRequest {
     pub expires_at: i64,
 }
 
-/// Get Google Calendar connection status
+/// Get Google Tasks connection status
 #[utoipa::path(
     get,
-    path = "/google-calendar/status",
+    path = "/google-tasks/status",
     responses(
-        (status = 200, description = "Google Calendar connection status", body = GoogleCalendarStatus),
+        (status = 200, description = "Google Tasks connection status", body = GoogleTasksStatus),
         (status = 401, description = "Unauthorized")
     ),
-    tag = "google-calendar",
+    tag = "google-tasks",
     security(
         ("session" = [])
     )
 )]
-pub async fn get_google_calendar_status(
+pub async fn get_google_tasks_status(
     State(pool): State<DatabasePool>,
     auth_session: AuthSession,
 ) -> Result<impl IntoResponse> {
@@ -191,13 +192,13 @@ pub async fn get_google_calendar_status(
     let token = google_oauth::get_oauth_token(&pool, &user.id).await?;
 
     let status = match token {
-        Some(token) => GoogleCalendarStatus {
+        Some(token) => GoogleTasksStatus {
             connected: true,
             connected_at: Some(token.created_at),
             scopes: Some(token.scope.split(',').map(|s| s.trim().to_string()).collect()),
             expires_at: token.expires_at,
         },
-        None => GoogleCalendarStatus {
+        None => GoogleTasksStatus {
             connected: false,
             connected_at: None,
             scopes: None,
@@ -208,21 +209,21 @@ pub async fn get_google_calendar_status(
     Ok(Json(status))
 }
 
-/// Disconnect Google Calendar integration
+/// Disconnect Google Tasks integration
 #[utoipa::path(
     post,
-    path = "/google-calendar/disconnect",
+    path = "/google-tasks/disconnect",
     responses(
-        (status = 200, description = "Google Calendar disconnected successfully"),
+        (status = 200, description = "Google Tasks disconnected successfully"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "No Google Calendar connection found")
+        (status = 404, description = "No Google Tasks connection found")
     ),
-    tag = "google-calendar",
+    tag = "google-tasks",
     security(
         ("session" = [])
     )
 )]
-pub async fn disconnect_google_calendar(
+pub async fn disconnect_google_tasks(
     State(pool): State<DatabasePool>,
     auth_session: AuthSession,
 ) -> Result<impl IntoResponse> {
@@ -232,42 +233,44 @@ pub async fn disconnect_google_calendar(
 
     google_oauth::delete_oauth_token(&pool, &user.id).await?;
 
-    tracing::info!("Disconnected Google Calendar for user: {}", user.id);
+    tracing::info!("Disconnected Google Tasks for user: {}", user.id);
 
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": "Google Calendar disconnected successfully"
+        "message": "Google Tasks disconnected successfully"
     })))
 }
 
-/// Sync plant care reminders to Google Calendar
+/// Sync plant care tasks to Google Tasks
 #[utoipa::path(
     post,
-    path = "/google-calendar/sync-reminders",
-    request_body = SyncPlantRemindersRequest,
+    path = "/google-tasks/sync-tasks",
+    request_body = SyncPlantTasksRequest,
     responses(
-        (status = 200, description = "Plant reminders synced successfully"),
+        (status = 200, description = "Plant tasks synced successfully"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "No Google Calendar connection found"),
-        (status = 500, description = "Failed to sync reminders")
+        (status = 404, description = "No Google Tasks connection found"),
+        (status = 500, description = "Failed to sync tasks")
     ),
-    tag = "google-calendar",
+    tag = "google-tasks",
     security(
         ("session" = [])
     )
 )]
-pub async fn sync_plant_reminders(
+pub async fn sync_plant_tasks(
     State(pool): State<DatabasePool>,
     auth_session: AuthSession,
-    Json(request): Json<SyncPlantRemindersRequest>,
+    Json(request): Json<SyncPlantTasksRequest>,
 ) -> Result<impl IntoResponse> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
 
-    let config = GoogleCalendarConfig::from_env()?;
+    let config = GoogleTasksConfig::from_env()?;
     let token = ensure_valid_token(&pool, &user.id, &config).await?;
-    let hub = create_calendar_hub(&token).await?;
+
+    // Get or create the "Plant Care" task list
+    let task_list_id = get_or_create_plant_care_task_list(&token).await?;
 
     // Get user's plants
     let (plants, _) = db_plants::list_plants_for_user(&pool, &user.id, 1000, 0, None).await?;
@@ -276,125 +279,136 @@ pub async fn sync_plant_reminders(
     let base_url = std::env::var("BASE_URL")
         .unwrap_or_else(|_| "https://your-domain.com".to_string());
 
-    let mut created_events = 0;
+    let mut created_tasks = 0;
     let now = Utc::now();
     let end_date = now + chrono::Duration::days(days_ahead as i64);
 
     for plant in &plants {
-        // Generate watering events
+        // Generate watering tasks
         let last_watered = plant.last_watered
             .unwrap_or_else(|| now - chrono::Duration::days(plant.watering_interval_days as i64));
         
         let mut next_watering = last_watered + chrono::Duration::days(plant.watering_interval_days as i64);
         while next_watering <= end_date && next_watering >= now {
-            match crate::utils::google_calendar::create_plant_care_event(
-                &hub, plant, "watering", next_watering, &base_url
+            match create_plant_care_task(
+                &token, plant, "watering", next_watering, &base_url, &task_list_id
             ).await {
-                Ok(_event_id) => created_events += 1,
-                Err(e) => tracing::error!("Failed to create watering event for {}: {}", plant.name, e),
+                Ok(_task_id) => created_tasks += 1,
+                Err(e) => tracing::error!("Failed to create watering task for {}: {}", plant.name, e),
             }
             next_watering = next_watering + chrono::Duration::days(plant.watering_interval_days as i64);
         }
 
-        // Generate fertilizing events
+        // Generate fertilizing tasks
         let last_fertilized = plant.last_fertilized
             .unwrap_or_else(|| now - chrono::Duration::days(plant.fertilizing_interval_days as i64));
         
         let mut next_fertilizing = last_fertilized + chrono::Duration::days(plant.fertilizing_interval_days as i64);
         while next_fertilizing <= end_date && next_fertilizing >= now {
-            match crate::utils::google_calendar::create_plant_care_event(
-                &hub, plant, "fertilizing", next_fertilizing, &base_url
+            match create_plant_care_task(
+                &token, plant, "fertilizing", next_fertilizing, &base_url, &task_list_id
             ).await {
-                Ok(_event_id) => created_events += 1,
-                Err(e) => tracing::error!("Failed to create fertilizing event for {}: {}", plant.name, e),
+                Ok(_task_id) => created_tasks += 1,
+                Err(e) => tracing::error!("Failed to create fertilizing task for {}: {}", plant.name, e),
             }
             next_fertilizing = next_fertilizing + chrono::Duration::days(plant.fertilizing_interval_days as i64);
         }
     }
 
-    tracing::info!("Synced {} plant care events to Google Calendar for user: {}", created_events, user.id);
+    tracing::info!("Synced {} plant care tasks to Google Tasks for user: {}", created_tasks, user.id);
 
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": format!("Created {} plant care reminders in your Google Calendar", created_events),
-        "events_created": created_events,
+        "message": format!("Created {} plant care tasks in your Google Tasks", created_tasks),
+        "tasks_created": created_tasks,
         "plants_processed": plants.len(),
         "days_ahead": days_ahead
     })))
 }
 
-/// Create a single calendar event
+/// Create a single task
 #[utoipa::path(
     post,
-    path = "/google-calendar/create-event",
-    request_body = CreateGoogleCalendarEventRequest,
+    path = "/google-tasks/create-task",
+    request_body = CreateGoogleTaskRequest,
     responses(
-        (status = 200, description = "Calendar event created successfully"),
+        (status = 200, description = "Task created successfully"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "No Google Calendar connection found"),
-        (status = 500, description = "Failed to create event")
+        (status = 404, description = "No Google Tasks connection found"),
+        (status = 500, description = "Failed to create task")
     ),
-    tag = "google-calendar",
+    tag = "google-tasks",
     security(
         ("session" = [])
     )
 )]
-pub async fn create_calendar_event(
+pub async fn create_task(
     State(pool): State<DatabasePool>,
     auth_session: AuthSession,
-    Json(request): Json<CreateGoogleCalendarEventRequest>,
+    Json(request): Json<CreateGoogleTaskRequest>,
 ) -> Result<impl IntoResponse> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
 
-    let config = GoogleCalendarConfig::from_env()?;
+    let config = GoogleTasksConfig::from_env()?;
     let token = ensure_valid_token(&pool, &user.id, &config).await?;
-    let hub = create_calendar_hub(&token).await?;
 
-    use google_calendar3::api::{Event, EventDateTime};
-
-    let event = Event {
-        summary: Some(request.summary),
-        description: request.description,
-        start: Some(EventDateTime {
-            date_time: Some(request.start_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
-            time_zone: Some("UTC".to_string()),
-            ..Default::default()
-        }),
-        end: Some(EventDateTime {
-            date_time: Some(request.end_time.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string()),
-            time_zone: Some("UTC".to_string()),
-            ..Default::default()
-        }),
-        location: request.location,
-        ..Default::default()
+    // Get or create task list
+    let task_list_id = if let Some(list_id) = request.task_list_id {
+        list_id
+    } else {
+        get_or_create_plant_care_task_list(&token).await?
     };
-
-    let calendar_id = request.calendar_id.as_deref().unwrap_or("primary");
     
-    let result = hub
-        .events()
-        .insert(event, calendar_id)
-        .doit()
+    let client = reqwest::Client::new();
+    
+    let task_data = serde_json::json!({
+        "title": request.title,
+        "notes": request.notes,
+        "due": request.due_time.to_rfc3339(),
+        "status": "needsAction"
+    });
+    
+    let response = client
+        .post(&format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", task_list_id))
+        .header("Authorization", format!("Bearer {}", token.access_token))
+        .header("Content-Type", "application/json")
+        .json(&task_data)
+        .send()
         .await
         .map_err(|e| {
-            tracing::error!("Failed to create calendar event: {}", e);
+            tracing::error!("Failed to create task: {}", e);
             AppError::External {
-                message: "Failed to create Google Calendar event".to_string(),
+                message: "Failed to create Google Task".to_string(),
             }
         })?;
-
-    let event_id = result.1.id.ok_or_else(|| AppError::External {
-        message: "No event ID returned from Google Calendar".to_string(),
+    
+    if !response.status().is_success() {
+        let error_text = response.text().await.unwrap_or_default();
+        tracing::error!("Google Tasks API error: {}", error_text);
+        return Err(AppError::External {
+            message: "Google Tasks API request failed".to_string(),
+        });
+    }
+    
+    let result: serde_json::Value = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse Google Tasks response: {}", e);
+        AppError::External {
+            message: "Invalid response from Google Tasks".to_string(),
+        }
     })?;
 
-    tracing::info!("Created calendar event for user {}: {}", user.id, event_id);
+    let task_id = result["id"].as_str().ok_or_else(|| AppError::External {
+        message: "No task ID returned from Google Tasks".to_string(),
+    })?.to_string();
+
+    tracing::info!("Created task for user {}: {}", user.id, task_id);
 
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": "Calendar event created successfully",
-        "event_id": event_id,
-        "calendar_id": calendar_id
+        "message": "Task created successfully",
+        "task_id": task_id,
+        "task_list_id": task_list_id
     })))
 }

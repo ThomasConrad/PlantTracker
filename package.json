@@ -1,8 +1,8 @@
 {
-  "name": "plant-tracker",
+  "name": "planty",
   "private": true,
   "version": "1.0.0",
-  "description": "A full-stack Progressive Web Application for tracking plant care, growth, and health",
+  "description": "Planty🪴 - A full-stack Progressive Web Application for tracking plant care, growth, and health",
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
@@ -33,6 +33,7 @@
     "concurrently": "^8.2.2"
   },
   "keywords": [
+    "planty",
     "plant-tracker",
     "pwa",
     "solidjs",
@@ -42,7 +43,7 @@
     "plant-care",
     "gardening"
   ],
-  "author": "Plant Tracker Team",
+  "author": "Planty Team",
   "license": "MIT",
   "repository": {
     "type": "git",

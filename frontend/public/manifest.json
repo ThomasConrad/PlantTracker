@@ -1,7 +1,7 @@
 {
-  "name": "Plant Tracker",
-  "short_name": "PlantTracker",
-  "description": "Track your plants watering, fertilizing, and growth",
+  "name": "Planty🪴",
+  "short_name": "Planty",
+  "description": "Track your plants watering, fertilizing, and growth with Planty",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

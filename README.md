@@ -1,8 +1,8 @@
-# 🌱 Plant Tracker
+# 🪴 Planty
 
 A full-stack Progressive Web Application for tracking plant care, growth, and health. Built with SolidJS frontend and Rust backend.
 
-![Plant Tracker](https://img.shields.io/badge/status-in%20development-yellow)
+![Planty](https://img.shields.io/badge/status-in%20development-yellow)
 ![Frontend](https://img.shields.io/badge/frontend-SolidJS-blue)
 ![Backend](https://img.shields.io/badge/backend-Rust-orange)
 ![Database](https://img.shields.io/badge/database-PostgreSQL-green)
@@ -21,7 +21,7 @@ A full-stack Progressive Web Application for tracking plant care, growth, and he
 
 ## 🌟 Overview
 
-Plant Tracker is a comprehensive plant care management system that helps users:
+Planty is a comprehensive plant care management system that helps users:
 - Track watering and fertilizing schedules
 - Monitor custom plant metrics (height, leaf count, etc.)
 - Document growth with photo galleries

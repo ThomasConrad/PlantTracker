@@ -1,4 +1,4 @@
-use plant_tracker_api::ApiDoc;
+use planty_api::ApiDoc;
 use utoipa::OpenApi;
 
 fn main() {

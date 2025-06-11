@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Plant Tracker API",
-    "description": "A REST API for tracking plant care and growth metrics",
+    "title": "Planty API",
+    "description": "A REST API for Planty - tracking plant care and growth metrics",
     "license": {
       "name": "MIT"
     },

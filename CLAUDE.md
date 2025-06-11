@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-Plant Tracker is a full-stack Progressive Web Application with a clear separation between frontend and backend:
+Planty is a full-stack Progressive Web Application with a clear separation between frontend and backend:
 
 - **Frontend**: SolidJS-based PWA with TypeScript, Tailwind CSS, and Vite
 - **Backend**: Rust/Axum REST API with PostgreSQL database and JWT authentication

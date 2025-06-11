@@ -195,7 +195,7 @@ async fn test_google_tasks_database_integration() {
     let user_id = user_response["user"]["id"].as_str().unwrap();
     
     // Test storing and retrieving OAuth tokens directly from database
-    use plant_tracker_api::database::google_oauth;
+    use planty_api::database::google_oauth;
     use chrono::Utc;
     
     let scope = "https://www.googleapis.com/auth/tasks";

@@ -18,7 +18,7 @@ async fn test_user_can_only_see_own_plants() {
 
     // Logout user1 and create user2
     app.client
-        .post(&app.url("/auth/logout"))
+        .post(app.url("/auth/logout"))
         .send()
         .await
         .unwrap();
@@ -33,7 +33,7 @@ async fn test_user_can_only_see_own_plants() {
     // User2 should only see their own plant
     let response = app
         .client
-        .get(&app.url("/plants"))
+        .get(app.url("/plants"))
         .send()
         .await
         .expect("Failed to list plants");
@@ -50,7 +50,7 @@ async fn test_user_can_only_see_own_plants() {
     let plant1_id = plant1["id"].as_str().unwrap();
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant1_id)))
+        .get(app.url(&format!("/plants/{}", plant1_id)))
         .send()
         .await
         .expect("Failed to get plant");
@@ -59,7 +59,7 @@ async fn test_user_can_only_see_own_plants() {
 
     // Login as user1 again
     app.client
-        .post(&app.url("/auth/logout"))
+        .post(app.url("/auth/logout"))
         .send()
         .await
         .unwrap();
@@ -68,7 +68,7 @@ async fn test_user_can_only_see_own_plants() {
     // User1 should see their own plants
     let response = app
         .client
-        .get(&app.url("/plants"))
+        .get(app.url("/plants"))
         .send()
         .await
         .expect("Failed to list plants");
@@ -88,7 +88,7 @@ async fn test_user_can_only_see_own_plants() {
     // User1 should be able to access their own plants
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant1_id)))
+        .get(app.url(&format!("/plants/{}", plant1_id)))
         .send()
         .await
         .expect("Failed to get plant");
@@ -110,7 +110,7 @@ async fn test_user_cannot_modify_other_users_plants() {
 
     // Logout and create user2
     app.client
-        .post(&app.url("/auth/logout"))
+        .post(app.url("/auth/logout"))
         .send()
         .await
         .unwrap();
@@ -119,7 +119,7 @@ async fn test_user_cannot_modify_other_users_plants() {
     // User2 tries to update user1's plant
     let response = app
         .client
-        .put(&app.url(&format!("/plants/{}", plant_id)))
+        .put(app.url(&format!("/plants/{}", plant_id)))
         .json(&json!({
             "name": "Hacked Plant",
             "genus": "HackerGenus"
@@ -133,7 +133,7 @@ async fn test_user_cannot_modify_other_users_plants() {
     // User2 tries to delete user1's plant
     let response = app
         .client
-        .delete(&app.url(&format!("/plants/{}", plant_id)))
+        .delete(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to delete plant");
@@ -142,7 +142,7 @@ async fn test_user_cannot_modify_other_users_plants() {
 
     // Login as original owner to verify plant is unchanged
     app.client
-        .post(&app.url("/auth/logout"))
+        .post(app.url("/auth/logout"))
         .send()
         .await
         .unwrap();
@@ -150,7 +150,7 @@ async fn test_user_cannot_modify_other_users_plants() {
 
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to get plant");
@@ -178,7 +178,7 @@ async fn test_concurrent_users_isolated_sessions() {
 
     // Register and login user1 with client1
     let _user1_register = client1
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "concurrent1@example.com",
             "name": "Concurrent User 1",
@@ -190,7 +190,7 @@ async fn test_concurrent_users_isolated_sessions() {
 
     // Register and login user2 with client2
     let _user2_register = client2
-        .post(&app.url("/auth/register"))
+        .post(app.url("/auth/register"))
         .json(&json!({
             "email": "concurrent2@example.com",
             "name": "Concurrent User 2",
@@ -202,7 +202,7 @@ async fn test_concurrent_users_isolated_sessions() {
 
     // Create plants with both clients
     let plant1_response = client1
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&json!({
             "name": "Client1 Plant",
             "genus": "Client1Genus",
@@ -215,7 +215,7 @@ async fn test_concurrent_users_isolated_sessions() {
         .expect("Failed to create plant with client1");
 
     let plant2_response = client2
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&json!({
             "name": "Client2 Plant",
             "genus": "Client2Genus",
@@ -232,7 +232,7 @@ async fn test_concurrent_users_isolated_sessions() {
 
     // Verify each client only sees their own plants
     let client1_plants = client1
-        .get(&app.url("/plants"))
+        .get(app.url("/plants"))
         .send()
         .await
         .expect("Failed to list plants with client1")
@@ -241,7 +241,7 @@ async fn test_concurrent_users_isolated_sessions() {
         .expect("Failed to parse client1 plants");
 
     let client2_plants = client2
-        .get(&app.url("/plants"))
+        .get(app.url("/plants"))
         .send()
         .await
         .expect("Failed to list plants with client2")
@@ -257,7 +257,7 @@ async fn test_concurrent_users_isolated_sessions() {
 
     // Verify each client can access their own profile
     let client1_me = client1
-        .get(&app.url("/auth/me"))
+        .get(app.url("/auth/me"))
         .send()
         .await
         .expect("Failed to get client1 profile")
@@ -266,7 +266,7 @@ async fn test_concurrent_users_isolated_sessions() {
         .expect("Failed to parse client1 profile");
 
     let client2_me = client2
-        .get(&app.url("/auth/me"))
+        .get(app.url("/auth/me"))
         .send()
         .await
         .expect("Failed to get client2 profile")
@@ -290,7 +290,7 @@ async fn test_session_isolation_after_logout() {
     // Verify authenticated access works
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to get plant");
@@ -299,7 +299,7 @@ async fn test_session_isolation_after_logout() {
     // Logout
     let logout_response = app
         .client
-        .post(&app.url("/auth/logout"))
+        .post(app.url("/auth/logout"))
         .send()
         .await
         .expect("Failed to logout");
@@ -308,7 +308,7 @@ async fn test_session_isolation_after_logout() {
     // Verify access is denied after logout
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to get plant after logout");
@@ -317,7 +317,7 @@ async fn test_session_isolation_after_logout() {
     // Verify listing is also denied
     let response = app
         .client
-        .get(&app.url("/plants"))
+        .get(app.url("/plants"))
         .send()
         .await
         .expect("Failed to list plants after logout");
@@ -326,7 +326,7 @@ async fn test_session_isolation_after_logout() {
     // Verify creating plants is denied
     let response = app
         .client
-        .post(&app.url("/plants"))
+        .post(app.url("/plants"))
         .json(&json!({
             "name": "Unauthorized Plant",
             "genus": "UnauthorizedGenus",

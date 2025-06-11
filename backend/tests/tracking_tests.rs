@@ -8,7 +8,7 @@ async fn test_list_tracking_entries_unauthenticated() {
 
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .get(app.url(&format!("/plants/{}/entries", plant_id)))
         .send()
         .await
         .expect("Failed to send request");
@@ -30,7 +30,7 @@ async fn test_list_tracking_entries_authenticated() {
     // List tracking entries
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .get(app.url(&format!("/plants/{}/entries", plant_id)))
         .send()
         .await
         .expect("Failed to send list tracking entries request");
@@ -62,7 +62,7 @@ async fn test_create_tracking_entry() {
     // Create tracking entry
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "watering",
             "timestamp": "2024-01-01T12:00:00Z",
@@ -94,7 +94,7 @@ async fn test_watering_updates_plant_last_watered() {
     // Verify plant initially has no last_watered date
     let get_response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to get plant");
@@ -108,7 +108,7 @@ async fn test_watering_updates_plant_last_watered() {
     let watering_time = "2024-01-01T12:00:00Z";
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "watering",
             "timestamp": watering_time,
@@ -123,7 +123,7 @@ async fn test_watering_updates_plant_last_watered() {
     // Get plant again and verify last_watered is updated
     let get_response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to get plant after watering");
@@ -157,7 +157,7 @@ async fn test_fertilizing_updates_plant_last_fertilized() {
     let fertilizing_time = "2024-01-01T14:00:00Z";
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "fertilizing",
             "timestamp": fertilizing_time,
@@ -172,7 +172,7 @@ async fn test_fertilizing_updates_plant_last_fertilized() {
     // Get plant and verify last_fertilized is updated
     let get_response = app
         .client
-        .get(&app.url(&format!("/plants/{}", plant_id)))
+        .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
         .expect("Failed to get plant after fertilizing");
@@ -199,7 +199,7 @@ async fn test_create_note_entry() {
     // Create note tracking entry
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "note",
             "timestamp": "2024-01-01T16:00:00Z",
@@ -234,7 +234,7 @@ async fn test_create_note_entry_with_photo_ids() {
     let photo_id2 = uuid::Uuid::new_v4();
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "note",
             "timestamp": "2024-01-01T16:00:00Z",
@@ -272,7 +272,7 @@ async fn test_get_tracking_entry() {
     // Create tracking entry
     let create_response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "watering",
             "timestamp": "2024-01-01T12:00:00Z",
@@ -289,7 +289,7 @@ async fn test_get_tracking_entry() {
     // Get the tracking entry
     let get_response = app
         .client
-        .get(&app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
+        .get(app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
         .send()
         .await
         .expect("Failed to get tracking entry");
@@ -318,7 +318,7 @@ async fn test_get_tracking_entry_not_found() {
     let non_existent_id = uuid::Uuid::new_v4();
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}/entries/{}", plant_id, non_existent_id)))
+        .get(app.url(&format!("/plants/{}/entries/{}", plant_id, non_existent_id)))
         .send()
         .await
         .expect("Failed to send get request");
@@ -340,7 +340,7 @@ async fn test_update_tracking_entry() {
     // Create tracking entry
     let create_response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "note",
             "timestamp": "2024-01-01T12:00:00Z",
@@ -358,7 +358,7 @@ async fn test_update_tracking_entry() {
     let photo_id = uuid::Uuid::new_v4();
     let update_response = app
         .client
-        .put(&app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
+        .put(app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
         .json(&serde_json::json!({
             "notes": "Updated note with more details",
             "photoIds": [photo_id]
@@ -392,7 +392,7 @@ async fn test_delete_tracking_entry() {
     // Create tracking entry
     let create_response = app
         .client
-        .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
             "entryType": "watering",
             "timestamp": "2024-01-01T12:00:00Z",
@@ -409,7 +409,7 @@ async fn test_delete_tracking_entry() {
     // Delete the tracking entry
     let delete_response = app
         .client
-        .delete(&app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
+        .delete(app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
         .send()
         .await
         .expect("Failed to delete tracking entry");
@@ -419,7 +419,7 @@ async fn test_delete_tracking_entry() {
     // Verify entry is deleted by trying to get it
     let get_response = app
         .client
-        .get(&app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
+        .get(app.url(&format!("/plants/{}/entries/{}", plant_id, entry_id)))
         .send()
         .await
         .expect("Failed to get deleted tracking entry");
@@ -461,7 +461,7 @@ async fn test_list_tracking_entries_with_various_types() {
     for entry in entries {
         let response = app
             .client
-            .post(&app.url(&format!("/plants/{}/entries", plant_id)))
+            .post(app.url(&format!("/plants/{}/entries", plant_id)))
             .json(&entry)
             .send()
             .await
@@ -472,7 +472,7 @@ async fn test_list_tracking_entries_with_various_types() {
     // List all tracking entries
     let list_response = app
         .client
-        .get(&app.url(&format!("/plants/{}/entries", plant_id)))
+        .get(app.url(&format!("/plants/{}/entries", plant_id)))
         .send()
         .await
         .expect("Failed to list tracking entries");

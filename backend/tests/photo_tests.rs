@@ -10,7 +10,7 @@ async fn test_list_photos_unauthenticated() {
 
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .get(app.url(&format!("/plants/{}/photos", plant_id)))
         .send()
         .await
         .expect("Failed to send request");
@@ -32,7 +32,7 @@ async fn test_list_photos_for_empty_plant() {
     // List photos
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .get(app.url(&format!("/plants/{}/photos", plant_id)))
         .send()
         .await
         .expect("Failed to send list photos request");
@@ -68,7 +68,7 @@ async fn test_upload_photo() {
 
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
         .await
@@ -113,7 +113,7 @@ async fn test_upload_photo_validation_errors() {
 
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
         .await
@@ -132,7 +132,7 @@ async fn test_upload_photo_validation_errors() {
 
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
         .await
@@ -145,7 +145,7 @@ async fn test_upload_photo_validation_errors() {
 
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
         .await
@@ -179,7 +179,7 @@ async fn test_upload_photo_for_nonexistent_plant() {
 
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", fake_plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", fake_plant_id)))
         .multipart(form)
         .send()
         .await
@@ -202,7 +202,7 @@ async fn test_upload_photo_unauthenticated() {
 
     let response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
         .await
@@ -232,7 +232,7 @@ async fn test_delete_photo() {
 
     let upload_response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
         .await
@@ -249,7 +249,7 @@ async fn test_delete_photo() {
     // Delete the photo
     let response = app
         .client
-        .delete(&app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
+        .delete(app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
         .send()
         .await
         .expect("Failed to send delete photo request");
@@ -259,7 +259,7 @@ async fn test_delete_photo() {
     // Verify photo is deleted by listing photos
     let list_response = app
         .client
-        .get(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .get(app.url(&format!("/plants/{}/photos", plant_id)))
         .send()
         .await
         .expect("Failed to list photos");
@@ -295,7 +295,7 @@ async fn test_delete_nonexistent_photo() {
     // Try to delete nonexistent photo
     let response = app
         .client
-        .delete(&app.url(&format!("/plants/{}/photos/{}", plant_id, fake_photo_id)))
+        .delete(app.url(&format!("/plants/{}/photos/{}", plant_id, fake_photo_id)))
         .send()
         .await
         .expect("Failed to send delete photo request");
@@ -311,7 +311,7 @@ async fn test_delete_photo_unauthenticated() {
 
     let response = app
         .client
-        .delete(&app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
+        .delete(app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
         .send()
         .await
         .expect("Failed to send request");
@@ -338,7 +338,7 @@ async fn test_user_isolation_photos() {
 
     let upload_response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", user1_plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", user1_plant_id)))
         .multipart(form)
         .send()
         .await
@@ -353,7 +353,7 @@ async fn test_user_isolation_photos() {
 
     // Logout user1 and login as user2
     app.client
-        .post(&app.url("/auth/logout"))
+        .post(app.url("/auth/logout"))
         .send()
         .await
         .expect("Failed to logout");
@@ -363,7 +363,7 @@ async fn test_user_isolation_photos() {
     // User2 should not be able to list user1's photos
     let list_response = app
         .client
-        .get(&app.url(&format!("/plants/{}/photos", user1_plant_id)))
+        .get(app.url(&format!("/plants/{}/photos", user1_plant_id)))
         .send()
         .await
         .expect("Failed to list photos");
@@ -373,7 +373,7 @@ async fn test_user_isolation_photos() {
     // User2 should not be able to delete user1's photos
     let delete_response = app
         .client
-        .delete(&app.url(&format!("/plants/{}/photos/{}", user1_plant_id, photo_id)))
+        .delete(app.url(&format!("/plants/{}/photos/{}", user1_plant_id, photo_id)))
         .send()
         .await
         .expect("Failed to delete photo");
@@ -405,7 +405,7 @@ async fn test_serve_photo() {
 
     let upload_response = app
         .client
-        .post(&app.url(&format!("/plants/{}/photos", plant_id)))
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
         .await
@@ -422,7 +422,7 @@ async fn test_serve_photo() {
     // Serve the photo
     let serve_response = app
         .client
-        .get(&app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
+        .get(app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
         .send()
         .await
         .expect("Failed to send serve photo request");
@@ -465,7 +465,7 @@ async fn test_serve_nonexistent_photo() {
     // Try to serve nonexistent photo
     let response = app
         .client
-        .get(&app.url(&format!("/plants/{}/photos/{}", plant_id, fake_photo_id)))
+        .get(app.url(&format!("/plants/{}/photos/{}", plant_id, fake_photo_id)))
         .send()
         .await
         .expect("Failed to send serve photo request");

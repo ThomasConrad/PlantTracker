@@ -44,7 +44,7 @@ fn generate_watering_events(
 
     // Ensure we start from a future date
     while next_watering <= start_date {
-        next_watering = next_watering + interval_duration;
+        next_watering += interval_duration;
     }
 
     let mut event_count = 0;
@@ -68,7 +68,7 @@ fn generate_watering_events(
             .done();
 
         calendar.push(event);
-        next_watering = next_watering + interval_duration;
+        next_watering += interval_duration;
         event_count += 1;
     }
 
@@ -91,7 +91,7 @@ fn generate_fertilizing_events(
 
     // Ensure we start from a future date
     while next_fertilizing <= start_date {
-        next_fertilizing = next_fertilizing + interval_duration;
+        next_fertilizing += interval_duration;
     }
 
     let mut event_count = 0;
@@ -115,7 +115,7 @@ fn generate_fertilizing_events(
             .done();
 
         calendar.push(event);
-        next_fertilizing = next_fertilizing + interval_duration;
+        next_fertilizing += interval_duration;
         event_count += 1;
     }
 

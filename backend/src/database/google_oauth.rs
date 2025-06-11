@@ -150,6 +150,7 @@ pub async fn delete_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<()> 
 }
 
 /// Check if a user has a valid (non-expired) Google OAuth token
+#[allow(dead_code)]
 pub async fn has_valid_token(pool: &SqlitePool, user_id: &str) -> Result<bool> {
     let token = get_oauth_token(pool, user_id).await?;
     
@@ -170,6 +171,7 @@ pub async fn has_valid_token(pool: &SqlitePool, user_id: &str) -> Result<bool> {
 }
 
 /// Get all users who have Google Tasks integration enabled
+#[allow(dead_code)]
 pub async fn get_users_with_google_tasks(pool: &SqlitePool) -> Result<Vec<String>> {
     let user_ids = sqlx::query_scalar!(
         "SELECT user_id FROM google_oauth_tokens"

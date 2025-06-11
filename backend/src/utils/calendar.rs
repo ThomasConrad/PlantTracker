@@ -123,6 +123,7 @@ fn generate_fertilizing_events(
 }
 
 /// Generate a calendar feed URL for a user
+#[allow(dead_code)]
 pub fn generate_calendar_feed_url(base_url: &str, user_id: &str, calendar_token: &str) -> String {
     format!("{}/api/v1/calendar/{}.ics?token={}", base_url, user_id, calendar_token)
 }

@@ -39,7 +39,7 @@ pub async fn get_tracking_entries_for_plant_paginated(
     };
 
     // Build filter clause for entry type
-    let (filter_clause, count_filter_clause) = if let Some(entry_type) = entry_type_filter {
+    let (filter_clause, count_filter_clause) = if let Some(_entry_type) = entry_type_filter {
         (" AND entry_type = ?", " AND entry_type = ?")
     } else {
         ("", "")
@@ -137,6 +137,7 @@ pub async fn get_tracking_entries_for_plant_paginated(
 }
 
 /// Get all tracking entries for a specific plant
+#[allow(dead_code)]
 pub async fn get_tracking_entries_for_plant(
     pool: &DatabasePool,
     plant_id: &Uuid,

@@ -46,6 +46,9 @@ multer = "3.0"
 # Image processing
 image = { version = "0.24", features = ["jpeg", "png", "gif", "webp"] }
 
+# Calendar
+icalendar = "0.16"
+
 # Validation
 validator = { version = "0.18", features = ["derive"] }
 regex = "1.10"

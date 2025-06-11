@@ -3,7 +3,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use utoipa::OpenApi;
 
 use crate::auth::{AuthSession, Credentials};
 use crate::database::{users as db_users, DatabasePool};

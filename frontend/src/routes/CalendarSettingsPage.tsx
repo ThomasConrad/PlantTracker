@@ -1,5 +1,4 @@
 import { Component, createSignal, onMount, Show } from 'solid-js';
-import { AppLayout } from '@/components/layouts/AppLayout';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { apiClient } from '@/api/client';
@@ -16,7 +15,7 @@ interface CalendarSubscriptionInfo {
   features: string[];
 }
 
-interface GoogleCalendarStatus {
+interface GoogleTasksStatus {
   connected: boolean;
   connected_at?: string;
   scopes?: string[];
@@ -30,8 +29,8 @@ export const CalendarSettingsPage: Component = () => {
   const [copied, setCopied] = createSignal(false);
   const [regenerating, setRegenerating] = createSignal(false);
   
-  // Google Calendar state
-  const [googleStatus, setGoogleStatus] = createSignal<GoogleCalendarStatus | null>(null);
+  // Google Tasks state
+  const [googleStatus, setGoogleStatus] = createSignal<GoogleTasksStatus | null>(null);
   const [googleLoading, setGoogleLoading] = createSignal(false);
   const [googleError, setGoogleError] = createSignal<string | null>(null);
   const [syncing, setSyncing] = createSignal(false);
@@ -92,28 +91,28 @@ export const CalendarSettingsPage: Component = () => {
     }
   };
 
-  // Google Calendar functions
+  // Google Tasks functions
   const loadGoogleStatus = async () => {
     try {
       setGoogleLoading(true);
       setGoogleError(null);
       
-      const response = await apiClient.request<GoogleCalendarStatus>('/google-calendar/status');
+      const response = await apiClient.request<GoogleTasksStatus>('/google-tasks/status');
       setGoogleStatus(response);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load Google Calendar status';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load Google Tasks status';
       setGoogleError(errorMessage);
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  const connectGoogleCalendar = async () => {
+  const connectGoogleTasks = async () => {
     try {
       setGoogleLoading(true);
       setGoogleError(null);
       
-      const response = await apiClient.request<{ auth_url: string; state: string }>('/google-calendar/auth-url');
+      const response = await apiClient.request<{ auth_url: string; state: string }>('/google-tasks/auth-url');
       
       // Redirect to Google OAuth
       window.location.href = response.auth_url;
@@ -124,30 +123,30 @@ export const CalendarSettingsPage: Component = () => {
     }
   };
 
-  const disconnectGoogleCalendar = async () => {
+  const disconnectGoogleTasks = async () => {
     try {
       setGoogleLoading(true);
       setGoogleError(null);
       
-      await apiClient.request('/google-calendar/disconnect', {
+      await apiClient.request('/google-tasks/disconnect', {
         method: 'POST'
       });
       
       setGoogleStatus({ connected: false });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect Google Calendar';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect Google Tasks';
       setGoogleError(errorMessage);
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  const syncPlantReminders = async () => {
+  const syncPlantTasks = async () => {
     try {
       setSyncing(true);
       setGoogleError(null);
       
-      const response = await apiClient.request<{ success: boolean; message: string; events_created: number }>('/google-calendar/sync-reminders', {
+      const response = await apiClient.request<{ success: boolean; message: string; tasks_created: number }>('/google-tasks/sync-tasks', {
         method: 'POST',
         body: JSON.stringify({
           days_ahead: 365,
@@ -158,7 +157,7 @@ export const CalendarSettingsPage: Component = () => {
       // Show success message
       alert(`Success! ${response.message}`);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to sync plant reminders';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sync plant tasks';
       setGoogleError(errorMessage);
     } finally {
       setSyncing(false);
@@ -171,12 +170,11 @@ export const CalendarSettingsPage: Component = () => {
   });
 
   return (
-    <AppLayout>
-      <div class="max-w-4xl mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto px-4 py-8">
         <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900 mb-4">Calendar Subscription</h1>
+          <h1 class="text-3xl font-bold text-gray-900 mb-4">Calendar & Task Integration</h1>
           <p class="text-lg text-gray-600">
-            Subscribe to your plant care schedule in any calendar application to get automatic watering and fertilizing reminders.
+            Connect with Google Tasks for actionable plant care reminders, or subscribe to an iCalendar feed for your calendar application.
           </p>
         </div>
 
@@ -197,13 +195,13 @@ export const CalendarSettingsPage: Component = () => {
           </div>
         </Show>
 
-        {/* Google Calendar Integration */}
+        {/* Google Tasks Integration */}
         <div class="bg-white shadow rounded-lg p-6">
           <div class="flex items-center justify-between mb-4">
             <div>
-              <h2 class="text-xl font-semibold text-gray-900">Google Calendar Integration</h2>
+              <h2 class="text-xl font-semibold text-gray-900">Google Tasks Integration</h2>
               <p class="text-sm text-gray-600 mt-1">
-                Automatically add plant care reminders directly to your Google Calendar
+                Automatically create plant care tasks in your Google Tasks that you can check off when completed
               </p>
             </div>
             <div class="flex items-center">
@@ -242,25 +240,25 @@ export const CalendarSettingsPage: Component = () => {
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                   </svg>
                   <div class="flex-1">
-                    <h3 class="text-lg font-medium text-gray-900">Connect with Google Calendar</h3>
+                    <h3 class="text-lg font-medium text-gray-900">Connect with Google Tasks</h3>
                     <p class="text-sm text-gray-600 mt-1">
-                      Connect your Google Calendar to automatically create plant care reminders as events.
-                      This provides better integration than iCalendar subscriptions, allowing you to:
+                      Connect your Google Tasks to automatically create actionable plant care tasks.
+                      This provides better task management than calendar events, allowing you to:
                     </p>
                     <ul class="mt-2 text-sm text-gray-600 space-y-1">
-                      <li>• Get notifications on your devices</li>
-                      <li>• Mark tasks as complete</li>
-                      <li>• Have events appear immediately</li>
-                      <li>• Customize event details</li>
+                      <li>• Check off completed tasks</li>
+                      <li>• Get task notifications on your devices</li>
+                      <li>• Organize tasks in dedicated plant care lists</li>
+                      <li>• Access tasks from any Google service</li>
                     </ul>
                   </div>
                 </div>
                 <Button
-                  onClick={connectGoogleCalendar}
+                  onClick={connectGoogleTasks}
                   disabled={googleLoading()}
                   class="w-full sm:w-auto"
                 >
-                  <Show when={googleLoading()} fallback="Connect Google Calendar">
+                  <Show when={googleLoading()} fallback="Connect Google Tasks">
                     <LoadingSpinner size="sm" class="mr-2" />
                     Connecting...
                   </Show>
@@ -280,7 +278,7 @@ export const CalendarSettingsPage: Component = () => {
                     </Show>
                   </div>
                   <Button
-                    onClick={disconnectGoogleCalendar}
+                    onClick={disconnectGoogleTasks}
                     variant="outline"
                     disabled={googleLoading()}
                     class="text-red-600 border-red-300 hover:bg-red-50"
@@ -291,11 +289,11 @@ export const CalendarSettingsPage: Component = () => {
 
                 <div class="flex space-x-4">
                   <Button
-                    onClick={syncPlantReminders}
+                    onClick={syncPlantTasks}
                     disabled={syncing()}
                     class="flex-1 sm:flex-none"
                   >
-                    <Show when={syncing()} fallback="Sync Plant Reminders">
+                    <Show when={syncing()} fallback="Sync Plant Tasks">
                       <LoadingSpinner size="sm" class="mr-2" />
                       Syncing...
                     </Show>
@@ -305,10 +303,11 @@ export const CalendarSettingsPage: Component = () => {
                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 class="text-sm font-medium text-blue-900 mb-2">How it works:</h4>
                   <ul class="text-sm text-blue-800 space-y-1">
-                    <li>• Click "Sync Plant Reminders" to create events for the next year</li>
-                    <li>• Events will appear in your Google Calendar immediately</li>
-                    <li>• Re-sync anytime to update your schedule with new plants</li>
-                    <li>• Events include plant details and care instructions</li>
+                    <li>• Click "Sync Plant Tasks" to create actionable tasks for the next year</li>
+                    <li>• Tasks will appear in your Google Tasks immediately</li>
+                    <li>• Check off tasks when you complete plant care activities</li>
+                    <li>• Re-sync anytime to update your tasks with new plants</li>
+                    <li>• Tasks include plant details and care instructions</li>
                   </ul>
                 </div>
               </div>
@@ -419,28 +418,26 @@ export const CalendarSettingsPage: Component = () => {
                 </div>
               </div>
 
-                {/* Help */}
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-                  <h4 class="text-sm font-medium text-blue-900 mb-2">📋 Quick Setup</h4>
-                  <ol class="list-decimal list-inside space-y-1 text-sm text-blue-800">
-                    <li>Copy the calendar subscription URL above</li>
-                    <li>Open your calendar application</li>
-                    <li>Look for "Add Calendar", "Subscribe to Calendar", or "Import Calendar"</li>
-                    <li>Paste the URL when prompted</li>
-                    <li>Your plant care reminders will now appear in your calendar!</li>
-                  </ol>
-                  
-                  <div class="mt-3 pt-3 border-t border-blue-200">
-                    <p class="text-xs text-blue-700">
-                      <strong>Note:</strong> Events will be created for the next 365 days and will update automatically when you modify your plant care schedules.
-                    </p>
-                  </div>
+              {/* Help */}
+              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+                <h4 class="text-sm font-medium text-blue-900 mb-2">📋 Quick Setup</h4>
+                <ol class="list-decimal list-inside space-y-1 text-sm text-blue-800">
+                  <li>Copy the calendar subscription URL above</li>
+                  <li>Open your calendar application</li>
+                  <li>Look for "Add Calendar", "Subscribe to Calendar", or "Import Calendar"</li>
+                  <li>Paste the URL when prompted</li>
+                  <li>Your plant care reminders will now appear in your calendar!</li>
+                </ol>
+                
+                <div class="mt-3 pt-3 border-t border-blue-200">
+                  <p class="text-xs text-blue-700">
+                    <strong>Note:</strong> Events will be created for the next 365 days and will update automatically when you modify your plant care schedules.
+                  </p>
                 </div>
               </div>
             </div>
           )}
         </Show>
       </div>
-    </AppLayout>
   );
 };

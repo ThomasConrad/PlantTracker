@@ -53,7 +53,7 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
-  private async request<T>(
+  async request<T>(
     endpoint: string,
     options: Partial<{
       method: string;
@@ -274,6 +274,7 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
 }
 
 export const apiClient = new ApiClient();

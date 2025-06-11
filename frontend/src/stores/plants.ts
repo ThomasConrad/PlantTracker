@@ -2,17 +2,9 @@ import { createSignal } from 'solid-js';
 import { apiClient } from '@/api/client';
 import type { Plant, Photo, components } from '@/types';
 
-type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
 type TrackingEntry = components['schemas']['TrackingEntry'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
 type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
-
-interface UpdatePlantRequest {
-  name?: string;
-  genus?: string;
-  wateringIntervalDays?: number;
-  fertilizingIntervalDays?: number;
-}
 
 interface UpdateTrackingEntryRequest {
   timestamp?: string;
@@ -69,13 +61,33 @@ const plantsStore = {
     }
   },
 
-  async createPlant(plantData: CreatePlantRequest): Promise<Plant> {
+  async createPlant(plantData: any): Promise<Plant> {
     try {
       setLoading(true);
       setError(null);
-      const newPlant = await apiClient.createPlant(plantData);
-      setPlants(prev => [...prev, newPlant]);
-      return newPlant;
+      
+      // First create the plant with basic data
+      const { thumbnailFile, ...createData } = plantData;
+      const newPlant = await apiClient.createPlant(createData);
+      
+      let finalPlant = newPlant;
+      
+      // Handle thumbnail upload if a file was provided
+      if (thumbnailFile instanceof File) {
+        try {
+          // Upload the photo
+          const uploadedPhoto = await apiClient.uploadPlantPhoto(newPlant.id, thumbnailFile);
+          
+          // Set the uploaded photo as the plant's thumbnail
+          finalPlant = await apiClient.setPlantThumbnail(newPlant.id, uploadedPhoto.id);
+        } catch (photoError) {
+          console.error('Failed to upload/set thumbnail for new plant:', photoError);
+          // Don't throw here - the plant creation was successful, just the thumbnail failed
+        }
+      }
+      
+      setPlants(prev => [...prev, finalPlant]);
+      return finalPlant;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create plant';
       setError(errorMessage);
@@ -85,21 +97,40 @@ const plantsStore = {
     }
   },
 
-  async updatePlant(plantId: string, plantData: UpdatePlantRequest): Promise<Plant> {
+  async updatePlant(plantId: string, plantData: any): Promise<Plant> {
     try {
       setLoading(true);
       setError(null);
-      const updatedPlant = await apiClient.updatePlant(plantId, plantData);
+      
+      // First update the basic plant data
+      const { thumbnailFile, ...updateData } = plantData;
+      const updatedPlant = await apiClient.updatePlant(plantId, updateData);
+      
+      let finalPlant = updatedPlant;
+      
+      // Handle thumbnail upload if a file was provided
+      if (thumbnailFile instanceof File) {
+        try {
+          // Upload the photo
+          const uploadedPhoto = await apiClient.uploadPlantPhoto(plantId, thumbnailFile);
+          
+          // Set the uploaded photo as the plant's thumbnail
+          finalPlant = await apiClient.setPlantThumbnail(plantId, uploadedPhoto.id);
+        } catch (photoError) {
+          console.error('Failed to upload/set thumbnail:', photoError);
+          // Don't throw here - the plant update was successful, just the thumbnail failed
+        }
+      }
       
       setPlants(prev =>
-        prev.map(plant => plant.id === plantId ? updatedPlant : plant)
+        prev.map(plant => plant.id === plantId ? finalPlant : plant)
       );
       
       if (selectedPlant()?.id === plantId) {
-        setSelectedPlant(updatedPlant);
+        setSelectedPlant(finalPlant);
       }
       
-      return updatedPlant;
+      return finalPlant;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update plant';
       setError(errorMessage);

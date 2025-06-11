@@ -40,7 +40,7 @@ echo "📦 Installing Python dependencies..."
 if [ -f "requirements-e2e.txt" ]; then
     pip install -r requirements-e2e.txt --quiet
 else
-    pip install requests --quiet
+    pip install requests pytest --quiet
 fi
 
 # Build the backend in release mode for better performance
@@ -60,7 +60,7 @@ export DATABASE_URL="sqlite://test_plant_tracker.db"
 export RUST_LOG="info"
 
 # Run the Python test suite with virtual environment
-venv-e2e/bin/python e2e_tests.py
+venv-e2e/bin/python -m pytest test_e2e_pytest.py -v
 
 echo ""
 echo "✅ E2E tests completed successfully!"

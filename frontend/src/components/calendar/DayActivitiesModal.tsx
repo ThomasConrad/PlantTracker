@@ -84,7 +84,7 @@ export const DayActivitiesModal: Component<DayActivitiesModalProps> = (props) =>
   };
 
   const formatDateHeader = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-GB', { 
       weekday: 'long', 
       year: 'numeric', 
       month: 'long', 
@@ -154,7 +154,7 @@ export const DayActivitiesModal: Component<DayActivitiesModalProps> = (props) =>
                           </span>
                         </div>
                         <time class="text-xs text-gray-500">
-                          {new Date(event.entry.timestamp).toLocaleTimeString('en-US', {
+                          {new Date(event.entry.timestamp).toLocaleTimeString('en-GB', {
                             hour: '2-digit',
                             minute: '2-digit'
                           })}

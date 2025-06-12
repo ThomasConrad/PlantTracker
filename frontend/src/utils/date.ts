@@ -1,18 +1,18 @@
 export function formatDate(date: string | Date): string {
   const d = new Date(date);
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('en-GB', {
     year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(d);
 }
 
 export function formatDateTime(date: string | Date): string {
   const d = new Date(date);
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('en-GB', {
     year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
     hour: 'numeric',
     minute: '2-digit',
   }).format(d);

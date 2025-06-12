@@ -270,11 +270,11 @@ export const CalendarSettingsPage: Component = () => {
                 <div class="flex items-center justify-between">
                   <div>
                     <p class="text-sm text-gray-600">
-                      Connected on {googleStatus()?.connected_at ? new Date(googleStatus()!.connected_at!).toLocaleDateString() : 'Unknown'}
+                      Connected on {googleStatus()?.connected_at ? new Date(googleStatus()!.connected_at!).toLocaleDateString('en-GB') : 'Unknown'}
                     </p>
                     <Show when={googleStatus()?.expires_at}>
                       <p class="text-xs text-gray-500">
-                        Access expires: {new Date(googleStatus()!.expires_at!).toLocaleDateString()}
+                        Access expires: {new Date(googleStatus()!.expires_at!).toLocaleDateString('en-GB')}
                       </p>
                     </Show>
                   </div>

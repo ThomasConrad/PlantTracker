@@ -107,6 +107,7 @@ export const CalendarSettingsPage: Component = () => {
     }
   };
 
+
   const connectGoogleTasks = async () => {
     try {
       setGoogleLoading(true);

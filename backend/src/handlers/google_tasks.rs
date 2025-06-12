@@ -5,19 +5,19 @@ use axum::{
     Json, Router,
 };
 use chrono::Utc;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::auth::AuthSession;
 use crate::database::{google_oauth, plants as db_plants, DatabasePool};
 use crate::models::google_oauth::{
-    GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse, GoogleOAuthUrlResponse,
-    GoogleTasksStatus, SyncPlantTasksRequest, CreateGoogleTaskRequest,
+    CreateGoogleTaskRequest, GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse,
+    GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
 };
 use crate::utils::errors::{AppError, Result};
 use crate::utils::google_tasks::{
-    GoogleTasksConfig, generate_auth_url, exchange_code_for_tokens, 
-    generate_oauth_state, ensure_valid_token, create_plant_care_task,
-    get_or_create_plant_care_task_list,
+    create_plant_care_task, ensure_valid_token, exchange_code_for_tokens, generate_auth_url,
+    generate_oauth_state, get_or_create_plant_care_task_list, GoogleTasksConfig,
 };
 
 /// Create Google Tasks routes
@@ -46,9 +46,7 @@ pub fn routes() -> Router<DatabasePool> {
         ("session" = [])
     )
 )]
-pub async fn get_google_auth_url(
-    auth_session: AuthSession,
-) -> Result<impl IntoResponse> {
+pub async fn get_google_auth_url(auth_session: AuthSession) -> Result<impl IntoResponse> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
@@ -59,10 +57,7 @@ pub async fn get_google_auth_url(
 
     tracing::info!("Generated Google OAuth URL for user: {}", user.id);
 
-    Ok(Json(GoogleOAuthUrlResponse {
-        auth_url,
-        state,
-    }))
+    Ok(Json(GoogleOAuthUrlResponse { auth_url, state }))
 }
 
 /// Handle Google OAuth callback
@@ -77,26 +72,35 @@ pub async fn get_google_auth_url(
         (status = 302, description = "Redirect to frontend with success/error"),
         (status = 400, description = "Invalid callback parameters")
     ),
-    tag = "google-calendar"
+    tag = "google-tasks"
 )]
 pub async fn handle_google_oauth_callback(
     State(_pool): State<DatabasePool>,
     Query(params): Query<GoogleOAuthCallbackRequest>,
 ) -> Result<impl IntoResponse> {
+    tracing::info!("Handling Google OAuth callback with code: {}", params.code);
     let config = GoogleTasksConfig::from_env()?;
-    
+    tracing::info!("Google OAuth config loaded successfully");
+
     // Exchange code for tokens
-    let (access_token, refresh_token, expires_at) = 
+    let (access_token, refresh_token, expires_at) =
         exchange_code_for_tokens(&config, &params.code).await?;
+
+    tracing::info!(
+        "Google OAuth callback received, access token: {}",
+        access_token
+    );
 
     // For now, we need to get the user ID from the state or session
     // In a real implementation, you'd want to store the state with the user ID
     // For this demo, we'll redirect to the frontend with the tokens as query params
     // The frontend should then call an authenticated endpoint to store the tokens
-    
-    let frontend_url = std::env::var("FRONTEND_URL")
-        .unwrap_or_else(|_| "http://localhost:5173".to_string());
-    
+
+    let frontend_url =
+        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+
+    tracing::info!("Redirecting to frontend URL: {}", frontend_url);
+
     let redirect_url = format!(
         "{}/calendar-settings?google_tasks_auth=success&access_token={}&refresh_token={}&expires_at={}",
         frontend_url,
@@ -104,6 +108,8 @@ pub async fn handle_google_oauth_callback(
         urlencoding::encode(&refresh_token.unwrap_or_default()),
         expires_at.map(|dt| dt.timestamp()).unwrap_or(0)
     );
+
+    tracing::info!("Redirect URL: {}", redirect_url);
 
     tracing::info!("Google OAuth callback successful, redirecting to frontend");
     Ok(Redirect::temporary(&redirect_url))
@@ -134,14 +140,13 @@ pub async fn store_google_tokens(
     })?;
 
     let expires_at = if request.expires_at > 0 {
-        Some(chrono::DateTime::from_timestamp(request.expires_at, 0)
-            .unwrap_or_else(Utc::now))
+        Some(chrono::DateTime::from_timestamp(request.expires_at, 0).unwrap_or_else(Utc::now))
     } else {
         None
     };
 
     let scope = "https://www.googleapis.com/auth/tasks".to_string();
-    
+
     google_oauth::save_oauth_token(
         &pool,
         &user.id,
@@ -149,7 +154,8 @@ pub async fn store_google_tokens(
         request.refresh_token.as_deref(),
         expires_at,
         &scope,
-    ).await?;
+    )
+    .await?;
 
     tracing::info!("Stored Google OAuth tokens for user: {}", user.id);
 
@@ -161,10 +167,13 @@ pub async fn store_google_tokens(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, ToSchema)]
 pub struct StoreTokensRequest {
+    /// The access token from Google OAuth
     pub access_token: String,
+    /// The refresh token from Google OAuth (optional)
     pub refresh_token: Option<String>,
+    /// Unix timestamp when the token expires
     pub expires_at: i64,
 }
 
@@ -192,12 +201,29 @@ pub async fn get_google_tasks_status(
     let token = google_oauth::get_oauth_token(&pool, &user.id).await?;
 
     let status = match token {
-        Some(token) => GoogleTasksStatus {
-            connected: true,
-            connected_at: Some(token.created_at),
-            scopes: Some(token.scope.split(',').map(|s| s.trim().to_string()).collect()),
-            expires_at: token.expires_at,
-        },
+        Some(token) => {
+            // Check if token is actually valid (not expired)
+            let is_valid = if let Some(expires_at) = token.expires_at {
+                // Consider token expired if it expires within the next 5 minutes
+                expires_at > chrono::Utc::now() + chrono::Duration::minutes(5)
+            } else {
+                // If no expiration time, assume it's valid
+                true
+            };
+
+            GoogleTasksStatus {
+                connected: is_valid,
+                connected_at: Some(token.created_at),
+                scopes: Some(
+                    token
+                        .scope
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .collect(),
+                ),
+                expires_at: token.expires_at,
+            }
+        }
         None => GoogleTasksStatus {
             connected: false,
             connected_at: None,
@@ -274,10 +300,10 @@ pub async fn sync_plant_tasks(
 
     // Get user's plants
     let (plants, _) = db_plants::list_plants_for_user(&pool, &user.id, 1000, 0, None).await?;
-    
+
     let days_ahead = request.days_ahead.unwrap_or(365);
-    let base_url = std::env::var("BASE_URL")
-        .unwrap_or_else(|_| "https://your-domain.com".to_string());
+    let base_url =
+        std::env::var("BASE_URL").unwrap_or_else(|_| "https://your-domain.com".to_string());
 
     let mut created_tasks = 0;
     let now = Utc::now();
@@ -285,37 +311,65 @@ pub async fn sync_plant_tasks(
 
     for plant in &plants {
         // Generate watering tasks
-        let last_watered = plant.last_watered
+        let last_watered = plant
+            .last_watered
             .unwrap_or_else(|| now - chrono::Duration::days(plant.watering_interval_days as i64));
-        
-        let mut next_watering = last_watered + chrono::Duration::days(plant.watering_interval_days as i64);
+
+        let mut next_watering =
+            last_watered + chrono::Duration::days(plant.watering_interval_days as i64);
         while next_watering <= end_date && next_watering >= now {
             match create_plant_care_task(
-                &token, plant, "watering", next_watering, &base_url, &task_list_id
-            ).await {
+                &token,
+                plant,
+                "watering",
+                next_watering,
+                &base_url,
+                &task_list_id,
+            )
+            .await
+            {
                 Ok(_task_id) => created_tasks += 1,
-                Err(e) => tracing::error!("Failed to create watering task for {}: {}", plant.name, e),
+                Err(e) => {
+                    tracing::error!("Failed to create watering task for {}: {}", plant.name, e)
+                }
             }
             next_watering += chrono::Duration::days(plant.watering_interval_days as i64);
         }
 
         // Generate fertilizing tasks
-        let last_fertilized = plant.last_fertilized
-            .unwrap_or_else(|| now - chrono::Duration::days(plant.fertilizing_interval_days as i64));
-        
-        let mut next_fertilizing = last_fertilized + chrono::Duration::days(plant.fertilizing_interval_days as i64);
+        let last_fertilized = plant.last_fertilized.unwrap_or_else(|| {
+            now - chrono::Duration::days(plant.fertilizing_interval_days as i64)
+        });
+
+        let mut next_fertilizing =
+            last_fertilized + chrono::Duration::days(plant.fertilizing_interval_days as i64);
         while next_fertilizing <= end_date && next_fertilizing >= now {
             match create_plant_care_task(
-                &token, plant, "fertilizing", next_fertilizing, &base_url, &task_list_id
-            ).await {
+                &token,
+                plant,
+                "fertilizing",
+                next_fertilizing,
+                &base_url,
+                &task_list_id,
+            )
+            .await
+            {
                 Ok(_task_id) => created_tasks += 1,
-                Err(e) => tracing::error!("Failed to create fertilizing task for {}: {}", plant.name, e),
+                Err(e) => tracing::error!(
+                    "Failed to create fertilizing task for {}: {}",
+                    plant.name,
+                    e
+                ),
             }
             next_fertilizing += chrono::Duration::days(plant.fertilizing_interval_days as i64);
         }
     }
 
-    tracing::info!("Synced {} plant care tasks to Google Tasks for user: {}", created_tasks, user.id);
+    tracing::info!(
+        "Synced {} plant care tasks to Google Tasks for user: {}",
+        created_tasks,
+        user.id
+    );
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -360,18 +414,21 @@ pub async fn create_task(
     } else {
         get_or_create_plant_care_task_list(&token).await?
     };
-    
+
     let client = reqwest::Client::new();
-    
+
     let task_data = serde_json::json!({
         "title": request.title,
         "notes": request.notes,
         "due": request.due_time.to_rfc3339(),
         "status": "needsAction"
     });
-    
+
     let response = client
-        .post(format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", task_list_id))
+        .post(format!(
+            "https://tasks.googleapis.com/tasks/v1/lists/{}/tasks",
+            task_list_id
+        ))
         .header("Authorization", format!("Bearer {}", token.access_token))
         .header("Content-Type", "application/json")
         .json(&task_data)
@@ -383,7 +440,7 @@ pub async fn create_task(
                 message: "Failed to create Google Task".to_string(),
             }
         })?;
-    
+
     if !response.status().is_success() {
         let error_text = response.text().await.unwrap_or_default();
         tracing::error!("Google Tasks API error: {}", error_text);
@@ -391,7 +448,7 @@ pub async fn create_task(
             message: "Google Tasks API request failed".to_string(),
         });
     }
-    
+
     let result: serde_json::Value = response.json().await.map_err(|e| {
         tracing::error!("Failed to parse Google Tasks response: {}", e);
         AppError::External {
@@ -399,9 +456,12 @@ pub async fn create_task(
         }
     })?;
 
-    let task_id = result["id"].as_str().ok_or_else(|| AppError::External {
-        message: "No task ID returned from Google Tasks".to_string(),
-    })?.to_string();
+    let task_id = result["id"]
+        .as_str()
+        .ok_or_else(|| AppError::External {
+            message: "No task ID returned from Google Tasks".to_string(),
+        })?
+        .to_string();
 
     tracing::info!("Created task for user {}: {}", user.id, task_id);
 

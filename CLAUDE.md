@@ -29,7 +29,6 @@ Planty is a full-stack Progressive Web Application with a clear separation betwe
 ### Development (Recommended: use Just)
 - `just dev` - Start both frontend and backend in parallel
 - `just dev-hot` - Start with hot-reload (requires cargo-watch)
-- `just frontend` - Start only frontend dev server (localhost:5173)
 - `just backend` - Start only backend API server (localhost:3000)
 
 ### Building and Production
@@ -79,7 +78,6 @@ Planty is a full-stack Progressive Web Application with a clear separation betwe
 - Always run `just generate-types` after modifying backend API schemas
 - E2E tests automatically set up Python virtual environment
 - Backend supports both development (separate servers) and production (integrated) modes
-- CORS is configured for localhost:5173 (Vite) and localhost:3000 (backend)
 - File uploads are limited to 10MB with custom upload directory support
 - Use `cargo watch -x run` in backend/ for auto-reload during Rust development
 

@@ -52,7 +52,8 @@ pub async fn get_google_auth_url(auth_session: AuthSession) -> Result<impl IntoR
     })?;
 
     let config = GoogleTasksConfig::from_env()?;
-    let state = generate_oauth_state();
+    // Include user ID in the state parameter
+    let state = format!("{}:{}", generate_oauth_state(), user.id);
     let auth_url = generate_auth_url(&config, &state);
 
     tracing::info!("Generated Google OAuth URL for user: {}", user.id);
@@ -75,43 +76,73 @@ pub async fn get_google_auth_url(auth_session: AuthSession) -> Result<impl IntoR
     tag = "google-tasks"
 )]
 pub async fn handle_google_oauth_callback(
-    State(_pool): State<DatabasePool>,
+    State(pool): State<DatabasePool>,
     Query(params): Query<GoogleOAuthCallbackRequest>,
 ) -> Result<impl IntoResponse> {
     tracing::info!("Handling Google OAuth callback with code: {}", params.code);
+    
     let config = GoogleTasksConfig::from_env()?;
     tracing::info!("Google OAuth config loaded successfully");
+
+    // Extract user ID from state parameter
+    let user_id = if let Some(state) = &params.state {
+        // URL decode the state parameter first
+        let decoded_state = urlencoding::decode(state).map_err(|e| {
+            tracing::error!("Failed to decode state parameter: {}", e);
+            AppError::Authentication {
+                message: "Invalid OAuth state parameter encoding".to_string(),
+            }
+        })?;
+        
+        // State format is "random_string:user_id"
+        if let Some((_, user_id)) = decoded_state.split_once(':') {
+            user_id.to_string()
+        } else {
+            tracing::error!("Invalid state parameter format: {}", decoded_state);
+            return Err(AppError::Authentication {
+                message: "Invalid OAuth state parameter".to_string(),
+            });
+        }
+    } else {
+        tracing::error!("Missing state parameter in OAuth callback");
+        return Err(AppError::Authentication {
+            message: "Missing OAuth state parameter".to_string(),
+        });
+    };
+
+    tracing::info!("Extracted user ID from state: {}", user_id);
 
     // Exchange code for tokens
     let (access_token, refresh_token, expires_at) =
         exchange_code_for_tokens(&config, &params.code).await?;
 
     tracing::info!(
-        "Google OAuth callback received, access token: {}",
-        access_token
+        "Successfully exchanged OAuth code for tokens for user: {}",
+        user_id
     );
 
-    // For now, we need to get the user ID from the state or session
-    // In a real implementation, you'd want to store the state with the user ID
-    // For this demo, we'll redirect to the frontend with the tokens as query params
-    // The frontend should then call an authenticated endpoint to store the tokens
+    // Store tokens directly in the database
+    let scope = "https://www.googleapis.com/auth/tasks".to_string();
 
+    google_oauth::save_oauth_token(
+        &pool,
+        &user_id,
+        &access_token,
+        refresh_token.as_deref(),
+        expires_at,
+        &scope,
+    )
+    .await?;
+
+    tracing::info!("Stored Google OAuth tokens for user: {}", user_id);
+
+    // Redirect back to calendar settings without any parameters
     let frontend_url =
-        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:5173".to_string());
+        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
 
-    tracing::info!("Redirecting to frontend URL: {}", frontend_url);
+    let redirect_url = format!("{}/calendar-settings", frontend_url);
 
-    let redirect_url = format!(
-        "{}/calendar-settings?google_tasks_auth=success&access_token={}&refresh_token={}&expires_at={}",
-        frontend_url,
-        urlencoding::encode(&access_token),
-        urlencoding::encode(&refresh_token.unwrap_or_default()),
-        expires_at.map(|dt| dt.timestamp()).unwrap_or(0)
-    );
-
-    tracing::info!("Redirect URL: {}", redirect_url);
-
-    tracing::info!("Google OAuth callback successful, redirecting to frontend");
+    tracing::info!("Google OAuth callback successful, redirecting to: {}", redirect_url);
     Ok(Redirect::temporary(&redirect_url))
 }
 

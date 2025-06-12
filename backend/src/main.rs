@@ -85,9 +85,9 @@ async fn main() -> anyhow::Result<()> {
     let cors = CorsLayer::new()
         .allow_origin([
             "http://localhost:3000".parse().unwrap(), // Frontend dev server
-            "http://localhost:5173".parse().unwrap(), // Vite dev server
+            "http://localhost:3000".parse().unwrap(), // Vite dev server
             "http://127.0.0.1:3000".parse().unwrap(), // Alternative localhost
-            "http://127.0.0.1:5173".parse().unwrap(), // Alternative Vite
+            "http://127.0.0.1:3000".parse().unwrap(), // Alternative Vite
         ])
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
         .allow_headers([

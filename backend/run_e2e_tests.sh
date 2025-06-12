@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# PlantTracker E2E Test Runner
+# Planty E2E Test Runner
 # This script sets up the environment and runs the end-to-end test suite
 
 set -e
 
-echo "🧪 PlantTracker E2E Test Runner"
+echo "🧪 Planty E2E Test Runner"
 echo "================================"
 
 # Check if we're in the right directory
@@ -49,14 +49,14 @@ cargo build --release --quiet
 
 # Clean up any existing test database
 echo "🧹 Cleaning up test environment..."
-rm -f test_plant_tracker.db
+rm -f test_planty.db
 
 # Run the e2e tests
 echo "🚀 Running E2E tests..."
 echo ""
 
 # Set environment variables for the test
-export DATABASE_URL="sqlite://test_plant_tracker.db"
+export DATABASE_URL="sqlite://test_planty.db"
 export RUST_LOG="info"
 
 # Run the Python test suite with virtual environment
@@ -70,4 +70,4 @@ echo "  source venv-e2e/bin/activate"
 echo "  python e2e_tests.py"
 echo ""
 echo "To run tests with custom port:"
-echo "  # Modify the PlantTrackerE2ETest(backend_port=XXXX) in e2e_tests.py"
+echo "  # Modify the Planty E2ETest(backend_port=XXXX) in e2e_tests.py"

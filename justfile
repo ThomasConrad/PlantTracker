@@ -1,4 +1,4 @@
-# Plant Tracker - Development Commands
+# Planty - Development Commands
 
 # Default recipe - show help
 default:
@@ -47,12 +47,12 @@ build-backend:
 run:
     @echo "🦀 Starting backend..."
     just build-backend
-    cd backend && cargo run --bin plant-tracker-api
+    cd backend && cargo run --bin planty-api
 
 run-release:
     @echo "🦀 Starting backend (release)..."
     just build-backend-release
-    cd backend && cargo run --release --bin plant-tracker-api
+    cd backend && cargo run --release --bin planty-api
 
 # === TEST COMMANDS ===
 

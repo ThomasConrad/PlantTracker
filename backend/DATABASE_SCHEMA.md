@@ -1,6 +1,6 @@
-# Plant Tracker Database Schema
+# Planty Database Schema
 
-This document describes the database schema for the Plant Tracker application. The schema is designed to be compatible with both SQLite (for development) and PostgreSQL (for production).
+This document describes the database schema for the Planty application. The schema is designed to be compatible with both SQLite (for development) and PostgreSQL (for production).
 
 ## Entity Relationship Diagram
 

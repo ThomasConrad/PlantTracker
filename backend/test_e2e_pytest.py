@@ -1,7 +1,7 @@
 """
-End-to-End Test Suite for PlantTracker Backend using pytest
+End-to-End Test Suite for Planty Backend using pytest
 
-This module tests the complete PlantTracker API by:
+This module tests the complete Planty API by:
 1. Starting the backend server
 2. Creating users and authenticating
 3. Creating, reading, updating, and deleting plants
@@ -45,7 +45,7 @@ class BackendServer:
         
     def start(self):
         """Start the backend server"""
-        print(f"Starting PlantTracker backend on port {self.port}...")
+        print(f"Starting Planty backend on port {self.port}...")
         
         # Change to backend directory
         backend_dir = Path(__file__).parent
@@ -57,7 +57,7 @@ class BackendServer:
         
         try:
             self.process = subprocess.Popen([
-                "cargo", "run", "--release", "--bin", "plant-tracker-api", "--",
+                "cargo", "run", "--release", "--bin", "planty-api", "--",
                 "--port", str(self.port),
                 "--database-url", "sqlite::memory:",
                 "--frontend-dir", "/nonexistent"  # Force API-only mode

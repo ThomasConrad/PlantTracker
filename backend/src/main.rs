@@ -151,7 +151,7 @@ async fn main() -> anyhow::Result<()> {
     // Start server
     let addr = format!("0.0.0.0:{}", args.port);
 
-    tracing::info!("Plant Tracker API starting on {}", addr);
+    tracing::info!("Planty API starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app).await?;
@@ -162,7 +162,7 @@ async fn main() -> anyhow::Result<()> {
 async fn health_check() -> Json<Value> {
     Json(json!({
         "status": "ok",
-        "service": "plant-tracker-api",
+        "service": "planty-api",
         "version": env!("CARGO_PKG_VERSION")
     }))
 }

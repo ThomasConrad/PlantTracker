@@ -1,4 +1,4 @@
--- Initial database schema for Plant Tracker
+-- Initial database schema for Planty
 -- Compatible with both SQLite and PostgreSQL
 
 -- Users table

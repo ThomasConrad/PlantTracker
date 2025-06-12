@@ -75,7 +75,7 @@ const authStore = {
       setIsAuthenticated(true);
     } catch (err: unknown) {
       // No session found or session expired
-      console.debug('No active session found');
+      // No active session found
     } finally {
       setLoading(false);
     }

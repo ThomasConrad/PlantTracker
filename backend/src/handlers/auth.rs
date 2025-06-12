@@ -4,13 +4,14 @@ use axum::{
     Router,
 };
 
+use crate::app_state::AppState;
 use crate::auth::{AuthSession, Credentials};
-use crate::database::{users as db_users, DatabasePool};
+use crate::database::users as db_users;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{AuthResponse, CreateUserRequest, LoginRequest, UserResponse};
 use crate::utils::errors::{AppError, Result};
 
-pub fn routes() -> Router<DatabasePool> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/login", post(login))
         .route("/register", post(register))

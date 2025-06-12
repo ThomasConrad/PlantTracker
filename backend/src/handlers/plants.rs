@@ -9,14 +9,15 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::app_state::AppState;
 use crate::auth::AuthSession;
-use crate::database::{plants as db_plants, DatabasePool};
+use crate::database::plants as db_plants;
 use crate::handlers::{photos, tracking};
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{CreatePlantRequest, PlantResponse, PlantsResponse, UpdatePlantRequest};
 use crate::utils::errors::{AppError, Result};
 
-pub fn routes() -> Router<DatabasePool> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/", get(list_plants).post(create_plant))
         .route(
@@ -38,7 +39,7 @@ struct ListPlantsQuery {
 
 async fn list_plants(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Query(params): Query<ListPlantsQuery>,
 ) -> Result<Json<PlantsResponse>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -55,7 +56,7 @@ async fn list_plants(
     let offset = params.offset.unwrap_or(0);
 
     let (plants, total) =
-        db_plants::list_plants_for_user_with_sort(&pool, &user.id, limit, offset, params.search.as_deref(), params.sort.as_deref())
+        db_plants::list_plants_for_user_with_sort(&app_state.pool, &user.id, limit, offset, params.search.as_deref(), params.sort.as_deref())
             .await?;
 
     let response = PlantsResponse {
@@ -75,7 +76,7 @@ async fn list_plants(
 
 async fn create_plant(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<CreatePlantRequest>,
 ) -> Result<(StatusCode, Json<PlantResponse>)> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -89,7 +90,7 @@ async fn create_plant(
         payload.genus
     );
 
-    let plant = db_plants::create_plant(&pool, &user.id, &payload).await?;
+    let plant = db_plants::create_plant(&app_state.pool, &user.id, &payload).await?;
 
     tracing::info!("Created plant with id: {} for user: {}", plant.id, user.id);
     Ok((StatusCode::CREATED, Json(plant)))
@@ -97,7 +98,7 @@ async fn create_plant(
 
 async fn get_plant(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -106,7 +107,7 @@ async fn get_plant(
 
     tracing::info!("Get plant request for id: {} by user: {}", id, user.id);
 
-    let plant = db_plants::get_plant_by_id(&pool, id).await?;
+    let plant = db_plants::get_plant_by_id(&app_state.pool, id).await?;
 
     // Verify the plant belongs to the authenticated user
     if plant.user_id != user.id {
@@ -121,7 +122,7 @@ async fn get_plant(
 
 async fn update_plant(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdatePlantRequest>,
 ) -> Result<Json<PlantResponse>> {
@@ -132,7 +133,7 @@ async fn update_plant(
     tracing::info!("Update plant request for id: {} by user: {}", id, user.id);
     tracing::debug!("Update payload: {:?}", payload);
 
-    let plant = db_plants::update_plant(&pool, id, &user.id, &payload).await?;
+    let plant = db_plants::update_plant(&app_state.pool, id, &user.id, &payload).await?;
 
     tracing::info!("Updated plant: {} for user: {}", plant.name, user.id);
     Ok(Json(plant))
@@ -140,7 +141,7 @@ async fn update_plant(
 
 async fn delete_plant(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -149,7 +150,7 @@ async fn delete_plant(
 
     tracing::info!("Delete plant request for id: {} by user: {}", id, user.id);
 
-    db_plants::delete_plant(&pool, id, &user.id).await?;
+    db_plants::delete_plant(&app_state.pool, id, &user.id).await?;
 
     tracing::info!("Deleted plant with id: {} for user: {}", id, user.id);
     Ok(StatusCode::NO_CONTENT)
@@ -157,7 +158,7 @@ async fn delete_plant(
 
 async fn set_plant_thumbnail(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path((id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<PlantResponse>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -171,7 +172,7 @@ async fn set_plant_thumbnail(
         user.id
     );
 
-    let plant = db_plants::set_plant_thumbnail(&pool, id, photo_id, &user.id).await?;
+    let plant = db_plants::set_plant_thumbnail(&app_state.pool, id, photo_id, &user.id).await?;
 
     tracing::info!(
         "Set thumbnail for plant: {} to photo: {} for user: {}",

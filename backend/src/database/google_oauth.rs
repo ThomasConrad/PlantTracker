@@ -185,3 +185,76 @@ pub async fn get_users_with_google_tasks(pool: &SqlitePool) -> Result<Vec<String
 
     Ok(user_ids)
 }
+
+/// Get all tokens that need refreshing (expire within the next 10 minutes)
+pub async fn get_tokens_needing_refresh(pool: &SqlitePool) -> Result<Vec<GoogleOAuthToken>> {
+    let cutoff_time = Utc::now() + chrono::Duration::minutes(10);
+    
+    let rows = sqlx::query!(
+        r#"
+        SELECT 
+            user_id,
+            access_token,
+            refresh_token,
+            expires_at,
+            scope,
+            token_type,
+            created_at,
+            updated_at
+        FROM google_oauth_tokens 
+        WHERE refresh_token IS NOT NULL 
+        AND expires_at IS NOT NULL 
+        AND expires_at <= ?
+        "#,
+        cutoff_time
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to get tokens needing refresh: {}", e);
+        AppError::Database(e)
+    })?;
+
+    let tokens = rows
+        .into_iter()
+        .map(|row| GoogleOAuthToken {
+            user_id: row.user_id,
+            access_token: row.access_token,
+            refresh_token: row.refresh_token,
+            expires_at: row.expires_at.map(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(Utc::now)),
+            scope: row.scope,
+            token_type: row.token_type,
+            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
+            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
+        })
+        .collect();
+
+    Ok(tokens)
+}
+
+/// Get the next token expiration time
+pub async fn get_next_token_expiration(pool: &SqlitePool) -> Result<Option<DateTime<Utc>>> {
+    let now = Utc::now();
+    
+    let row = sqlx::query!(
+        r#"
+        SELECT MIN(expires_at) as next_expiration
+        FROM google_oauth_tokens 
+        WHERE refresh_token IS NOT NULL 
+        AND expires_at IS NOT NULL
+        AND expires_at > ?
+        "#,
+        now
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to get next token expiration: {}", e);
+        AppError::Database(e)
+    })?;
+
+    let next_expiration = row.next_expiration
+        .and_then(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0));
+
+    Ok(next_expiration)
+}

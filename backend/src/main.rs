@@ -15,6 +15,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+mod app_state;
 mod auth;
 mod database;
 mod handlers;
@@ -22,8 +23,13 @@ mod middleware;
 mod models;
 mod utils;
 
+use app_state::AppState;
 use handlers::{auth as auth_handlers, calendar, google_tasks, plants};
 use planty_api::ApiDoc;
+use utils::{
+    google_tasks::GoogleTasksConfig, 
+    token_refresh_scheduler::start_token_refresh_scheduler,
+};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -78,6 +84,18 @@ async fn main() -> anyhow::Result<()> {
     // Run migrations for production (embedded migrations)
     database::run_migrations(&pool).await?;
 
+    // Create application state
+    let mut app_state = AppState::new(pool.clone());
+
+    // Start token refresh scheduler if Google Tasks is configured
+    if let Ok(google_config) = GoogleTasksConfig::from_env() {
+        tracing::info!("Starting Google OAuth token refresh scheduler");
+        let notifier = start_token_refresh_scheduler(pool.clone(), google_config);
+        app_state = app_state.with_token_notifier(notifier);
+    } else {
+        tracing::info!("Google Tasks not configured, skipping token refresh scheduler");
+    }
+
     // Authentication setup
     let (session_layer, auth_layer) = auth::create_auth_layers(pool.clone());
 
@@ -119,7 +137,7 @@ async fn main() -> anyhow::Result<()> {
         .nest("/google-tasks", google_tasks::routes())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/openapi.json", get(|| async { Json(ApiDoc::openapi()) }))
-        .with_state(pool);
+        .with_state(app_state);
 
     // Build main application router
     let app = if serve_frontend {

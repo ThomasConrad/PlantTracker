@@ -9,8 +9,9 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::app_state::AppState;
 use crate::auth::AuthSession;
-use crate::database::{photos as db_photos, DatabasePool};
+use crate::database::photos as db_photos;
 use crate::models::{PhotoWithThumbnail, UploadPhotoRequest};
 use crate::utils::errors::{AppError, Result};
 
@@ -30,7 +31,7 @@ struct PhotosResponse {
     offset: i64,
 }
 
-pub fn routes() -> Router<DatabasePool> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/photos", get(list_photos).post(upload_photo))
         .route("/photos/:photo_id", get(serve_photo).delete(delete_photo))
@@ -39,7 +40,7 @@ pub fn routes() -> Router<DatabasePool> {
 
 async fn list_photos(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListPhotosQuery>,
 ) -> Result<Json<PhotosResponse>> {
@@ -62,7 +63,7 @@ async fn list_photos(
     };
 
     let response = db_photos::get_photos_for_plant_paginated(
-        &pool,
+        &app_state.pool,
         &plant_id,
         &user.id,
         Some(limit),
@@ -126,7 +127,7 @@ async fn list_photos(
 
 async fn serve_photo(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Response<Body>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -141,7 +142,7 @@ async fn serve_photo(
     );
 
     let (data, content_type) =
-        db_photos::get_photo_data(&pool, &plant_id, &photo_id, &user.id).await?;
+        db_photos::get_photo_data(&app_state.pool, &plant_id, &photo_id, &user.id).await?;
 
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -160,7 +161,7 @@ async fn serve_photo(
 
 async fn upload_photo(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<crate::models::Photo>)> {
@@ -240,7 +241,7 @@ async fn upload_photo(
         generate_thumbnail: Some(true), // Always generate thumbnails
     };
 
-    let photo = db_photos::create_photo(&pool, &plant_id, &user.id, &upload_request).await?;
+    let photo = db_photos::create_photo(&app_state.pool, &plant_id, &user.id, &upload_request).await?;
 
     tracing::info!(
         "Photo uploaded with id: {} for plant: {}",
@@ -252,7 +253,7 @@ async fn upload_photo(
 
 async fn delete_photo(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -266,7 +267,7 @@ async fn delete_photo(
         user.id
     );
 
-    db_photos::delete_photo(&pool, &plant_id, &photo_id, &user.id).await?;
+    db_photos::delete_photo(&app_state.pool, &plant_id, &photo_id, &user.id).await?;
 
     tracing::info!("Deleted photo: {} for plant: {}", photo_id, plant_id);
     Ok(StatusCode::NO_CONTENT)
@@ -274,7 +275,7 @@ async fn delete_photo(
 
 async fn serve_thumbnail(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Response<Body>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -288,7 +289,7 @@ async fn serve_thumbnail(
         user.id
     );
 
-    match db_photos::get_photo_thumbnail_data(&pool, &plant_id, &photo_id, &user.id).await {
+    match db_photos::get_photo_thumbnail_data(&app_state.pool, &plant_id, &photo_id, &user.id).await {
         Ok((data, content_type)) => {
             let response = Response::builder()
                 .status(StatusCode::OK)

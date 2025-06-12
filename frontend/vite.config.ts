@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Plant Tracker',
-        short_name: 'PlantTracker',
+        name: 'Planty',
+        short_name: 'planty',
         description: 'Track your plants watering, fertilizing, and growth',
         theme_color: '#16a34a',
         background_color: '#ffffff',
@@ -34,7 +34,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\.planttracker\.com\/.*/,
+            urlPattern: /^https:\/\/api\.planty\.com\/.*/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'api-cache',

@@ -9,8 +9,9 @@ use axum::{
 use serde::Deserialize;
 use uuid::Uuid;
 
+use crate::app_state::AppState;
 use crate::auth::AuthSession;
-use crate::database::{tracking as db_tracking, DatabasePool};
+use crate::database::tracking as db_tracking;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::tracking_entry::{
     CreateTrackingEntryRequest, TrackingEntriesResponse, TrackingEntry,
@@ -25,7 +26,7 @@ struct ListEntriesQuery {
     entry_type: Option<String>, // filter by entry type
 }
 
-pub fn routes() -> Router<DatabasePool> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/:plant_id/entries", get(list_entries).post(create_entry))
         .route(
@@ -51,7 +52,7 @@ pub fn routes() -> Router<DatabasePool> {
 )]
 async fn list_entries(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListEntriesQuery>,
 ) -> Result<Json<TrackingEntriesResponse>> {
@@ -74,7 +75,7 @@ async fn list_entries(
     };
 
     let response = db_tracking::get_tracking_entries_for_plant_paginated(
-        &pool,
+        &app_state.pool,
         &plant_id,
         &user.id,
         limit,
@@ -111,7 +112,7 @@ async fn list_entries(
 )]
 async fn create_entry(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<CreateTrackingEntryRequest>,
 ) -> Result<(StatusCode, Json<TrackingEntry>)> {
@@ -125,7 +126,7 @@ async fn create_entry(
         user.id
     );
 
-    let entry = db_tracking::create_tracking_entry(&pool, &plant_id, &user.id, &payload).await?;
+    let entry = db_tracking::create_tracking_entry(&app_state.pool, &plant_id, &user.id, &payload).await?;
 
     tracing::info!(
         "Created tracking entry with id: {} for plant: {}",
@@ -137,7 +138,7 @@ async fn create_entry(
 
 async fn get_entry(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<TrackingEntry>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -151,7 +152,7 @@ async fn get_entry(
         user.id
     );
 
-    let entry = db_tracking::get_tracking_entry(&pool, &plant_id, &entry_id, &user.id).await?;
+    let entry = db_tracking::get_tracking_entry(&app_state.pool, &plant_id, &entry_id, &user.id).await?;
 
     tracing::debug!(
         "Retrieved tracking entry: {} for plant: {}",
@@ -163,7 +164,7 @@ async fn get_entry(
 
 async fn update_entry(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
     ValidatedJson(payload): ValidatedJson<
         crate::models::tracking_entry::UpdateTrackingEntryRequest,
@@ -181,7 +182,7 @@ async fn update_entry(
     );
 
     let entry =
-        db_tracking::update_tracking_entry(&pool, &plant_id, &entry_id, &user.id, &payload).await?;
+        db_tracking::update_tracking_entry(&app_state.pool, &plant_id, &entry_id, &user.id, &payload).await?;
 
     tracing::info!(
         "Updated tracking entry: {} for plant: {}",
@@ -193,7 +194,7 @@ async fn update_entry(
 
 async fn delete_entry(
     auth_session: AuthSession,
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
     let user = auth_session.user.ok_or(AppError::Authentication {
@@ -207,7 +208,7 @@ async fn delete_entry(
         user.id
     );
 
-    db_tracking::delete_tracking_entry(&pool, &plant_id, &entry_id, &user.id).await?;
+    db_tracking::delete_tracking_entry(&app_state.pool, &plant_id, &entry_id, &user.id).await?;
 
     tracing::info!(
         "Deleted tracking entry: {} for plant: {}",

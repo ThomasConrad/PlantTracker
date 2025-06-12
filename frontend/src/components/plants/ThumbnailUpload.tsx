@@ -88,7 +88,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
               type: 'image/jpeg',
               lastModified: Date.now(),
             });
-            console.log(`Compressed ${file.size} bytes to ${compressedFile.size} bytes (${(compressedFile.size/file.size*100).toFixed(1)}%)`);
+            // Compressed file successfully
             resolve(compressedFile);
           } else {
             resolve(file);

@@ -7,14 +7,14 @@ use axum::{
 };
 use serde::Deserialize;
 
+use crate::app_state::AppState;
 use crate::auth::AuthSession;
 use crate::database::plants as db_plants;
-use crate::database::DatabasePool;
 use crate::utils::calendar::{generate_plant_calendar, generate_calendar_token};
 use crate::utils::errors::{AppError, Result};
 
 /// Create calendar routes
-pub fn routes() -> Router<DatabasePool> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/subscription", get(get_calendar_subscription_info))
         .route("/regenerate-token", axum::routing::post(regenerate_calendar_token))
@@ -43,7 +43,7 @@ pub struct CalendarQuery {
     tag = "calendar"
 )]
 pub async fn get_calendar_feed(
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Path(user_id): Path<String>,
     Query(params): Query<CalendarQuery>,
 ) -> Result<Response> {
@@ -75,7 +75,7 @@ pub async fn get_calendar_feed(
     tracing::info!("Calendar token validation passed for user: {}", user_id);
 
     // Get all plants for the user
-    let (plants, _total) = db_plants::list_plants_for_user(&pool, &user_id, 1000, 0, None).await?;
+    let (plants, _total) = db_plants::list_plants_for_user(&app_state.pool, &user_id, 1000, 0, None).await?;
     
     tracing::info!("Found {} plants for user {} when generating calendar", plants.len(), user_id);
     

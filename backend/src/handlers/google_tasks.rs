@@ -8,8 +8,9 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::app_state::AppState;
 use crate::auth::AuthSession;
-use crate::database::{google_oauth, plants as db_plants, DatabasePool};
+use crate::database::{google_oauth, plants as db_plants};
 use crate::models::google_oauth::{
     CreateGoogleTaskRequest, GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse,
     GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
@@ -21,7 +22,7 @@ use crate::utils::google_tasks::{
 };
 
 /// Create Google Tasks routes
-pub fn routes() -> Router<DatabasePool> {
+pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/auth-url", get(get_google_auth_url))
         .route("/callback", get(handle_google_oauth_callback))
@@ -76,7 +77,7 @@ pub async fn get_google_auth_url(auth_session: AuthSession) -> Result<impl IntoR
     tag = "google-tasks"
 )]
 pub async fn handle_google_oauth_callback(
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     Query(params): Query<GoogleOAuthCallbackRequest>,
 ) -> Result<impl IntoResponse> {
     tracing::info!("Handling Google OAuth callback with code: {}", params.code);
@@ -125,7 +126,7 @@ pub async fn handle_google_oauth_callback(
     let scope = "https://www.googleapis.com/auth/tasks".to_string();
 
     google_oauth::save_oauth_token(
-        &pool,
+        &app_state.pool,
         &user_id,
         &access_token,
         refresh_token.as_deref(),
@@ -135,6 +136,9 @@ pub async fn handle_google_oauth_callback(
     .await?;
 
     tracing::info!("Stored Google OAuth tokens for user: {}", user_id);
+
+    // Notify the token refresh scheduler about the new token
+    app_state.notify_token_added();
 
     // Redirect back to calendar settings without any parameters
     let frontend_url =
@@ -162,7 +166,7 @@ pub async fn handle_google_oauth_callback(
     )
 )]
 pub async fn store_google_tokens(
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     auth_session: AuthSession,
     Json(request): Json<StoreTokensRequest>,
 ) -> Result<impl IntoResponse> {
@@ -179,7 +183,7 @@ pub async fn store_google_tokens(
     let scope = "https://www.googleapis.com/auth/tasks".to_string();
 
     google_oauth::save_oauth_token(
-        &pool,
+        &app_state.pool,
         &user.id,
         &request.access_token,
         request.refresh_token.as_deref(),
@@ -189,6 +193,9 @@ pub async fn store_google_tokens(
     .await?;
 
     tracing::info!("Stored Google OAuth tokens for user: {}", user.id);
+
+    // Notify the token refresh scheduler about the new token
+    app_state.notify_token_added();
 
     Ok(Json(GoogleOAuthSuccessResponse {
         success: true,
@@ -222,14 +229,14 @@ pub struct StoreTokensRequest {
     )
 )]
 pub async fn get_google_tasks_status(
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     auth_session: AuthSession,
 ) -> Result<impl IntoResponse> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
 
-    let token = google_oauth::get_oauth_token(&pool, &user.id).await?;
+    let token = google_oauth::get_oauth_token(&app_state.pool, &user.id).await?;
 
     let status = match token {
         Some(token) => {
@@ -281,14 +288,14 @@ pub async fn get_google_tasks_status(
     )
 )]
 pub async fn disconnect_google_tasks(
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     auth_session: AuthSession,
 ) -> Result<impl IntoResponse> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
 
-    google_oauth::delete_oauth_token(&pool, &user.id).await?;
+    google_oauth::delete_oauth_token(&app_state.pool, &user.id).await?;
 
     tracing::info!("Disconnected Google Tasks for user: {}", user.id);
 
@@ -315,7 +322,7 @@ pub async fn disconnect_google_tasks(
     )
 )]
 pub async fn sync_plant_tasks(
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     auth_session: AuthSession,
     Json(request): Json<SyncPlantTasksRequest>,
 ) -> Result<impl IntoResponse> {
@@ -324,13 +331,13 @@ pub async fn sync_plant_tasks(
     })?;
 
     let config = GoogleTasksConfig::from_env()?;
-    let token = ensure_valid_token(&pool, &user.id, &config).await?;
+    let token = ensure_valid_token(&app_state.pool, &user.id, &config).await?;
 
     // Get or create the "Plant Care" task list
     let task_list_id = get_or_create_plant_care_task_list(&token).await?;
 
     // Get user's plants
-    let (plants, _) = db_plants::list_plants_for_user(&pool, &user.id, 1000, 0, None).await?;
+    let (plants, _) = db_plants::list_plants_for_user(&app_state.pool, &user.id, 1000, 0, None).await?;
 
     let days_ahead = request.days_ahead.unwrap_or(365);
     let base_url =
@@ -428,7 +435,7 @@ pub async fn sync_plant_tasks(
     )
 )]
 pub async fn create_task(
-    State(pool): State<DatabasePool>,
+    State(app_state): State<AppState>,
     auth_session: AuthSession,
     Json(request): Json<CreateGoogleTaskRequest>,
 ) -> Result<impl IntoResponse> {
@@ -437,7 +444,7 @@ pub async fn create_task(
     })?;
 
     let config = GoogleTasksConfig::from_env()?;
-    let token = ensure_valid_token(&pool, &user.id, &config).await?;
+    let token = ensure_valid_token(&app_state.pool, &user.id, &config).await?;
 
     // Get or create task list
     let task_list_id = if let Some(list_id) = request.task_list_id {

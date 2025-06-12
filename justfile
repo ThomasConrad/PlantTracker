@@ -140,6 +140,13 @@ install:
     @echo "📦 Installing all dependencies..."
     cd frontend && npm install
 
+# Check code quality (type checking and linting)
+check:
+    @echo "🔍 Running code quality checks..."
+    just typecheck
+    just lint
+    @echo "✅ All checks passed!"
+
 # Type check the frontend
 typecheck:
     @echo "🔍 Type checking frontend..."

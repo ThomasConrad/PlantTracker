@@ -127,6 +127,8 @@ async fn main() -> anyhow::Result<()> {
         Router::new()
             .nest("/api/v1", api_router)
             .route("/api/health", get(health_check))
+            // Handle unknown API routes with 404
+            .route("/api/*path", get(api_not_found))
             .fallback_service(
                 ServeDir::new(&args.frontend_dir)
                     .append_index_html_on_directories(true)
@@ -165,6 +167,11 @@ async fn health_check() -> Json<Value> {
         "service": "planty-api",
         "version": env!("CARGO_PKG_VERSION")
     }))
+}
+
+// API 404 handler - returns proper 404 for unknown API routes
+async fn api_not_found() -> StatusCode {
+    StatusCode::NOT_FOUND
 }
 
 // SPA fallback handler - serves index.html for unmatched routes

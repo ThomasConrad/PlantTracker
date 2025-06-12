@@ -46,12 +46,12 @@ build-backend:
 
 run:
     @echo "🦀 Starting backend..."
-    just build-backend
+    just build
     cd backend && cargo run --bin planty-api
 
 run-release:
     @echo "🦀 Starting backend (release)..."
-    just build-backend-release
+    just build-release
     cd backend && cargo run --release --bin planty-api
 
 # === TEST COMMANDS ===

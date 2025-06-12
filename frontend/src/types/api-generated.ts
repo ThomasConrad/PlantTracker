@@ -36,6 +36,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/google-tasks/auth-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generate Google OAuth authorization URL */
+        get: operations["get_google_auth_url"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google-tasks/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Handle Google OAuth callback */
+        get: operations["handle_google_oauth_callback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google-tasks/create-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a single task */
+        post: operations["create_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google-tasks/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disconnect Google Tasks integration */
+        post: operations["disconnect_google_tasks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google-tasks/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Google Tasks connection status */
+        get: operations["get_google_tasks_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google-tasks/store-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Store Google OAuth tokens (called by frontend after callback) */
+        post: operations["store_google_tokens"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/google-tasks/sync-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync plant care tasks to Google Tasks */
+        post: operations["sync_plant_tasks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plants/{plant_id}/entries": {
         parameters: {
             query?: never;
@@ -63,6 +182,20 @@ export interface components {
             dataType: components["schemas"]["MetricDataType"];
             name: string;
             unit: string;
+        };
+        /** @description Google Tasks task creation request */
+        CreateGoogleTaskRequest: {
+            /**
+             * Format: date-time
+             * @example 2024-01-15T10:00:00Z
+             */
+            due_time: string;
+            /** @example Time to water your Fiddle Leaf Fig. Remember to check soil moisture first. */
+            notes?: string | null;
+            /** @example Plant Care */
+            task_list_id?: string | null;
+            /** @example 💧 Water Fiddle Leaf Fig */
+            title: string;
         };
         CreatePlantRequest: {
             customMetrics?: components["schemas"]["CreateCustomMetricRequest"][] | null;
@@ -99,6 +232,36 @@ export interface components {
         };
         /** @enum {string} */
         EntryType: "watering" | "fertilizing" | "customMetric" | "note";
+        /** @description Request payload for OAuth callback */
+        GoogleOAuthCallbackRequest: {
+            code: string;
+            state?: string | null;
+        };
+        /** @description Response after successful OAuth completion */
+        GoogleOAuthSuccessResponse: {
+            /** Format: date-time */
+            connected_at: string;
+            /** @example Google Tasks integration configured successfully */
+            message: string;
+            scopes: string[];
+            success: boolean;
+        };
+        /** @description Response containing OAuth authorization URL */
+        GoogleOAuthUrlResponse: {
+            /** @example https://accounts.google.com/o/oauth2/auth?... */
+            auth_url: string;
+            /** @example abc123xyz */
+            state: string;
+        };
+        /** @description Google Tasks connection status */
+        GoogleTasksStatus: {
+            connected: boolean;
+            /** Format: date-time */
+            connected_at?: string | null;
+            /** Format: date-time */
+            expires_at?: string | null;
+            scopes?: string[] | null;
+        };
         LoginRequest: {
             email: string;
             password: string;
@@ -158,6 +321,31 @@ export interface components {
             plants: components["schemas"]["PlantResponse"][];
             /** Format: int64 */
             total: number;
+        };
+        StoreTokensRequest: {
+            /** @description The access token from Google OAuth */
+            access_token: string;
+            /**
+             * Format: int64
+             * @description Unix timestamp when the token expires
+             */
+            expires_at: number;
+            /** @description The refresh token from Google OAuth (optional) */
+            refresh_token?: string | null;
+        };
+        /** @description Google Tasks sync request */
+        SyncPlantTasksRequest: {
+            /**
+             * Format: int32
+             * @description Number of days in the future to sync tasks
+             * @example 365
+             */
+            days_ahead?: number | null;
+            /**
+             * @description Whether to replace existing tasks or only add new ones
+             * @example false
+             */
+            replace_existing?: boolean | null;
         };
         TrackingEntriesResponse: {
             entries: components["schemas"]["TrackingEntry"][];
@@ -269,6 +457,253 @@ export interface operations {
             };
             /** @description Email already exists */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_google_auth_url: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Google OAuth authorization URL */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleOAuthUrlResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Configuration error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    handle_google_oauth_callback: {
+        parameters: {
+            query: {
+                /** @description OAuth authorization code */
+                code: string;
+                /** @description OAuth state parameter */
+                state?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to frontend with success/error */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid callback parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGoogleTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Task created successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No Google Tasks connection found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Failed to create task */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    disconnect_google_tasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Google Tasks disconnected successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No Google Tasks connection found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_google_tasks_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Google Tasks connection status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleTasksStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    store_google_tokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreTokensRequest"];
+            };
+        };
+        responses: {
+            /** @description Tokens stored successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoogleOAuthSuccessResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Failed to store tokens */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sync_plant_tasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncPlantTasksRequest"];
+            };
+        };
+        responses: {
+            /** @description Plant tasks synced successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No Google Tasks connection found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Failed to sync tasks */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

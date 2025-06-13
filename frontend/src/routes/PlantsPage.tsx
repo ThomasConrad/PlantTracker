@@ -7,6 +7,87 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 export const PlantsPage: Component = () => {
   const [searchQuery, setSearchQuery] = createSignal('');
   const [sortBy, setSortBy] = createSignal('date_desc');
+  const [mobileColumns, setMobileColumns] = createSignal(1); // Default to 1 column on mobile
+  const MIN_CARD_WIDTH = 120; // Minimum card width in pixels
+  
+  // Pinch-to-zoom gesture handling
+  let lastDistance = 0;
+  let isGesturing = false;
+  
+  const getDistance = (touches: TouchList) => {
+    if (touches.length < 2) return 0;
+    const touch1 = touches[0];
+    const touch2 = touches[1];
+    return Math.sqrt(
+      Math.pow(touch2.clientX - touch1.clientX, 2) + 
+      Math.pow(touch2.clientY - touch1.clientY, 2)
+    );
+  };
+  
+  const getMaxColumns = () => {
+    // Calculate max columns based on screen width and minimum card size
+    const screenWidth = window.innerWidth - 32; // Account for padding (16px on each side)
+    const gapWidth = 12; // 3 * 4px gap between cards
+    return Math.floor((screenWidth + gapWidth) / (MIN_CARD_WIDTH + gapWidth));
+  };
+  
+  const handleTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 2) {
+      lastDistance = getDistance(e.touches);
+      isGesturing = true;
+      e.preventDefault();
+    }
+  };
+  
+  const handleTouchMove = (e: TouchEvent) => {
+    if (e.touches.length === 2 && isGesturing) {
+      e.preventDefault();
+      const currentDistance = getDistance(e.touches);
+      const deltaDistance = currentDistance - lastDistance;
+      
+      // More sensitive pinch detection for smoother experience
+      if (Math.abs(deltaDistance) > 15) {
+        const currentCols = mobileColumns();
+        const maxCols = getMaxColumns();
+        
+        if (deltaDistance > 0 && currentCols < maxCols) {
+          // Pinch out - more columns (smaller cards)
+          setMobileColumns(currentCols + 1);
+        } else if (deltaDistance < 0 && currentCols > 1) {
+          // Pinch in - fewer columns (larger cards)
+          setMobileColumns(currentCols - 1);
+        }
+        
+        lastDistance = currentDistance;
+      }
+    }
+  };
+  
+  const handleTouchEnd = (e: TouchEvent) => {
+    if (e.touches.length < 2) {
+      isGesturing = false;
+      lastDistance = 0;
+    }
+  };
+  
+  // Generate grid classes based on mobile column count
+  const getGridClasses = () => {
+    const cols = mobileColumns();
+    let mobileColClass = '';
+    
+    // Generate dynamic grid classes
+    if (cols === 1) mobileColClass = 'grid-cols-1';
+    else if (cols === 2) mobileColClass = 'grid-cols-2';
+    else if (cols === 3) mobileColClass = 'grid-cols-3';
+    else if (cols === 4) mobileColClass = 'grid-cols-4';
+    else if (cols === 5) mobileColClass = 'grid-cols-5';
+    else if (cols === 6) mobileColClass = 'grid-cols-6';
+    else if (cols === 7) mobileColClass = 'grid-cols-7';
+    else if (cols === 8) mobileColClass = 'grid-cols-8';
+    else mobileColClass = `grid-cols-${cols}`;
+    
+    return `grid ${mobileColClass} sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 px-4 sm:px-0`;
+  };
 
   createEffect(() => {
     plantsStore.loadPlants({ 
@@ -108,9 +189,14 @@ export const PlantsPage: Component = () => {
             </div>
           }
         >
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 px-4 sm:px-0">
+          <div 
+            class={getGridClasses()}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <For each={plantsStore.plants}>
-              {(plant) => <PlantCard plant={plant} />}
+              {(plant) => <PlantCard plant={plant} mobileColumns={mobileColumns()} />}
             </For>
           </div>
         </Show>

@@ -14,10 +14,9 @@ export const BottomNavigation: Component = () => {
   const navItems = [
     {
       path: '/plants',
-      label: 'Plants',
       icon: (active: boolean) => (
         <svg 
-          class={`h-6 w-6 ${active ? 'text-primary-600' : 'text-gray-400'}`} 
+          class={`h-7 w-7 ${active ? 'text-primary-600' : 'text-gray-400'}`} 
           fill={active ? 'currentColor' : 'none'} 
           viewBox="0 0 24 24" 
           stroke="currentColor"
@@ -26,17 +25,16 @@ export const BottomNavigation: Component = () => {
             stroke-linecap="round" 
             stroke-linejoin="round" 
             stroke-width={active ? 0 : 2} 
-            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" 
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
           />
         </svg>
       )
     },
     {
       path: '/calendar',
-      label: 'Calendar',
       icon: (active: boolean) => (
         <svg 
-          class={`h-6 w-6 ${active ? 'text-primary-600' : 'text-gray-400'}`} 
+          class={`h-7 w-7 ${active ? 'text-primary-600' : 'text-gray-400'}`} 
           fill={active ? 'currentColor' : 'none'} 
           viewBox="0 0 24 24" 
           stroke="currentColor"
@@ -52,10 +50,9 @@ export const BottomNavigation: Component = () => {
     },
     {
       path: '/search',
-      label: 'Search',
       icon: (active: boolean) => (
         <svg 
-          class={`h-6 w-6 ${active ? 'text-primary-600' : 'text-gray-400'}`} 
+          class={`h-7 w-7 ${active ? 'text-primary-600' : 'text-gray-400'}`} 
           fill="none" 
           viewBox="0 0 24 24" 
           stroke="currentColor"
@@ -73,24 +70,38 @@ export const BottomNavigation: Component = () => {
 
   return (
     <nav class="bg-white border-t border-gray-200 sm:hidden safe-area-bottom">
-      <div class="grid grid-cols-3 h-16">
+      <div class="grid grid-cols-4 h-16">
         {navItems.map(item => {
           const active = isActive(item.path);
           return (
             <A
               href={item.path}
-              class={`flex flex-col items-center justify-center space-y-1 transition-colors duration-200 ${
+              class={`flex items-center justify-center transition-colors duration-200 ${
                 active ? 'bg-primary-50' : 'hover:bg-gray-50'
               }`}
               activeClass=""
             >
               {item.icon(active)}
-              <span class={`text-xs font-medium ${active ? 'text-primary-600' : 'text-gray-400'}`}>
-                {item.label}
-              </span>
             </A>
           );
         })}
+        
+        {/* Settings button placeholder - will be implemented in next step */}
+        <div class="flex items-center justify-center">
+          <svg 
+            class="h-7 w-7 text-gray-400" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              stroke-width={2} 
+              d="M4 6h16M4 12h16M4 18h16" 
+            />
+          </svg>
+        </div>
       </div>
     </nav>
   );

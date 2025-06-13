@@ -4,47 +4,9 @@ import type { Plant } from '@/types';
 
 interface PlantCardProps {
   plant: Plant;
-  mobileColumns?: number;
 }
 
 export const PlantCard: Component<PlantCardProps> = (props) => {
-  const getTextClasses = () => {
-    const cols = props.mobileColumns || 1;
-    
-    if (cols === 1) {
-      return {
-        title: "text-white font-semibold text-xl leading-tight mb-1 drop-shadow-sm",
-        subtitle: "text-white/90 text-base italic drop-shadow-sm",
-        padding: "p-4"
-      };
-    } else if (cols === 2) {
-      return {
-        title: "text-white font-semibold text-lg leading-tight mb-1 drop-shadow-sm",
-        subtitle: "text-white/90 text-sm italic drop-shadow-sm",
-        padding: "p-3"
-      };
-    } else if (cols === 3) {
-      return {
-        title: "text-white font-semibold text-base leading-tight mb-0.5 drop-shadow-sm",
-        subtitle: "text-white/90 text-xs italic drop-shadow-sm",
-        padding: "p-2.5"
-      };
-    } else if (cols === 4) {
-      return {
-        title: "text-white font-semibold text-sm leading-tight mb-0.5 drop-shadow-sm",
-        subtitle: "text-white/90 text-xs italic drop-shadow-sm",
-        padding: "p-2"
-      };
-    } else {
-      // For 5+ columns, use minimal text
-      return {
-        title: "text-white font-semibold text-xs leading-tight mb-0 drop-shadow-sm truncate",
-        subtitle: "text-white/90 text-xs italic drop-shadow-sm truncate",
-        padding: "p-1.5"
-      };
-    }
-  };
-
   return (
     <A href={`/plants/${props.plant.id}`} class="plant-card-full-image">
       <div class="relative aspect-[4/5] overflow-hidden rounded-lg">
@@ -83,11 +45,11 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
         
         {/* Plant name and genus overlay */}
-        <div class={`absolute bottom-0 left-0 right-0 ${getTextClasses().padding}`}>
-          <h3 class={getTextClasses().title}>
+        <div class="absolute bottom-0 left-0 right-0 p-4">
+          <h3 class="text-white font-semibold text-xl leading-tight mb-1 drop-shadow-sm">
             {props.plant.name}
           </h3>
-          <p class={getTextClasses().subtitle}>
+          <p class="text-white/90 text-base italic drop-shadow-sm">
             {props.plant.genus}
           </p>
         </div>

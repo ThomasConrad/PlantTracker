@@ -294,16 +294,13 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
       {/* Mobile Layout */}
       <Show when={isMobile()}>
         {/* Compact Calendar - Top 2/5 */}
-        <div 
-          class="flex-none bg-white" 
-          style="height: 40vh; overflow: hidden;"
-        >
+        <div class="flex-none bg-white h-[40vh] overflow-hidden">
           <div class="h-full flex flex-col">
             {/* Compact Header */}
             <div class="flex items-center justify-between px-3 py-2 border-b border-gray-200">
               <button
                 onClick={() => navigateMonth('prev')}
-                class="p-1.5 text-gray-400 hover:text-gray-600 rounded-full"
+                class="nav-button-compact"
               >
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
@@ -319,7 +316,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
               
               <button
                 onClick={() => navigateMonth('next')}
-                class="p-1.5 text-gray-400 hover:text-gray-600 rounded-full"
+                class="nav-button-compact"
               >
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5l7 7-7 7" />
@@ -380,16 +377,16 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                           {/* Activity Dots */}
                           <div class="flex space-x-0.5 mt-0.5">
                             <Show when={activities.watering}>
-                              <div class="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                              <div class="activity-dot bg-blue-500"></div>
                             </Show>
                             <Show when={activities.fertilizing}>
-                              <div class="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                              <div class="activity-dot bg-green-500"></div>
                             </Show>
                             <Show when={activities.note}>
-                              <div class="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                              <div class="activity-dot bg-gray-400"></div>
                             </Show>
                             <Show when={activities.customMetric}>
-                              <div class="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                              <div class="activity-dot bg-purple-500"></div>
                             </Show>
                           </div>
                         </div>
@@ -403,7 +400,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
         </div>
         
         {/* Day Events - Bottom 3/5 */}
-        <div class="flex-1 bg-gray-50" style="overflow: scroll;">
+        <div class="flex-1 bg-gray-50 overflow-auto">
           <MobileDayEvents 
             selectedDate={selectedDate()!}
             events={selectedDateEvents()}
@@ -416,11 +413,11 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
       {/* Month Picker Modal - Unified Design */}
       <Show when={showMonthPicker()}>
         <div 
-          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          class="modal-overlay"
           onClick={() => setShowMonthPicker(false)}
         >
           <div 
-            class="bg-white rounded-lg shadow-xl max-w-xs w-full transform transition-all duration-200 ease-out animate-in zoom-in-95"
+            class="modal-content"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with Year Navigation */}
@@ -431,7 +428,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                   newDate.setFullYear(currentDate().getFullYear() - 1);
                   setCurrentDate(newDate);
                 }}
-                class="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                class="nav-button-compact hover:bg-gray-100"
               >
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
@@ -449,7 +446,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                   newDate.setFullYear(currentDate().getFullYear() + 1);
                   setCurrentDate(newDate);
                 }}
-                class="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                class="nav-button-compact hover:bg-gray-100"
               >
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5l7 7-7 7" />
@@ -505,7 +502,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
             </h2>
             <button
               onClick={goToToday}
-              class="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-300 rounded-md hover:bg-blue-50"
+              class="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-300 rounded-md hover:bg-blue-50 transition-colors"
             >
               Today
             </button>
@@ -514,7 +511,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
           <div class="flex items-center space-x-2">
             <button
               onClick={() => navigateMonth('prev')}
-              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+              class="nav-button"
             >
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
@@ -522,7 +519,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
             </button>
             <button
               onClick={() => navigateMonth('next')}
-              class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+              class="nav-button"
             >
               <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5l7 7-7 7" />
@@ -538,8 +535,8 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
         </Show>
 
         <Show when={!loading()}>
-          {/* Calendar Grid */}
-          <div class="p-6">
+          {/* Calendar Grid - Fixed height to prevent overflow */}
+          <div class="p-6 overflow-hidden">
             {/* Day Headers */}
             <div class="grid grid-cols-7 gap-px mb-2">
               <For each={dayNames}>
@@ -551,8 +548,8 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
               </For>
             </div>
 
-            {/* Calendar Days */}
-            <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+            {/* Calendar Days - Fixed grid height */}
+            <div class="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden" style="height: calc(6 * 6rem);">
               <For each={calendarDays()}>
                 {(day) => {
                   const dayEvents = getEventsForDate(day);
@@ -561,22 +558,20 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                   
                   return (
                     <div 
-                      class={`min-h-[100px] bg-white p-2 cursor-pointer hover:bg-gray-50 ${
-                        !isCurrentMonthDay ? 'bg-gray-50 text-gray-400' : ''
+                      class={`calendar-cell ${
+                        !isCurrentMonthDay ? 'calendar-cell-disabled' : ''
                       }`}
                       onClick={() => handleDateClick(day)}
                     >
-                      <div class={`text-sm font-medium mb-1 ${
-                        isTodayDay ? 'bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center' : ''
-                      }`}>
+                      <div class={isTodayDay ? 'calendar-date-today' : 'calendar-date'}>
                         {day.getDate()}
                       </div>
                       
-                      <div class="space-y-1">
+                      <div class="space-y-1 overflow-hidden">
                         <For each={dayEvents.slice(0, 3)}>
                           {(event) => (
                             <div 
-                              class={`text-xs p-1 rounded border truncate cursor-pointer hover:opacity-80 ${getEventColor(event.type)}`}
+                              class={`calendar-event ${getEventColor(event.type)}`}
                               title={`${event.title}${event.entry.notes ? ': ' + event.entry.notes : ''}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -589,7 +584,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                         </For>
                         
                         <Show when={dayEvents.length > 3}>
-                          <div class="text-xs text-gray-500 pl-1">
+                          <div class="text-xs text-gray-500 pl-1 truncate">
                             +{dayEvents.length - 3} more
                           </div>
                         </Show>

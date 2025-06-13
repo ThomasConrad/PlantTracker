@@ -25,5 +25,40 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addComponents }) {
+      addComponents({
+        '.calendar-cell': {
+          '@apply h-24 bg-white p-2 cursor-pointer hover:bg-gray-50 border-b border-r border-gray-100 overflow-hidden': {},
+        },
+        '.calendar-cell-disabled': {
+          '@apply bg-gray-50 text-gray-400': {},
+        },
+        '.calendar-date': {
+          '@apply text-sm font-medium mb-1': {},
+        },
+        '.calendar-date-today': {
+          '@apply bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center': {},
+        },
+        '.calendar-event': {
+          '@apply text-xs p-1 rounded border truncate cursor-pointer hover:opacity-80 transition-opacity': {},
+        },
+        '.activity-dot': {
+          '@apply w-1.5 h-1.5 rounded-full': {},
+        },
+        '.nav-button': {
+          '@apply p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors': {},
+        },
+        '.nav-button-compact': {
+          '@apply p-1.5 text-gray-400 hover:text-gray-600 rounded-full transition-colors': {},
+        },
+        '.modal-overlay': {
+          '@apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50': {},
+        },
+        '.modal-content': {
+          '@apply bg-white rounded-lg shadow-xl max-w-xs w-full transform transition-all duration-200 ease-out': {},
+        },
+      })
+    }
+  ],
 };

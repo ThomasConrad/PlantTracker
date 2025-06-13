@@ -123,4 +123,34 @@
   .safe-area-right {
     padding-right: env(safe-area-inset-right);
   }
+
+  /* Mobile layout utilities */
+  .mobile-content-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-content-area {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-nav-area {
+    flex-shrink: 0;
+    z-index: 50;
+  }
+
+  @media (min-width: 640px) {
+    .mobile-content-container {
+      height: auto;
+      display: block;
+    }
+    
+    .mobile-content-area {
+      flex: none;
+      overflow-y: visible;
+    }
+  }
 }

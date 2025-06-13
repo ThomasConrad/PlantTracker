@@ -58,9 +58,12 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Load environment variables FIRST
+    dotenvy::dotenv().ok();
+    
     let args = Args::parse();
 
-    // Initialize tracing with specified log level
+    // Initialize tracing with specified log level (now reads RUST_LOG from .env)
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -74,9 +77,6 @@ async fn main() -> anyhow::Result<()> {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-
-    // Load environment variables
-    dotenvy::dotenv().ok();
 
     // Database setup with custom URL
     let pool = database::create_pool_with_url(&args.database_url).await?;
@@ -168,12 +168,20 @@ async fn main() -> anyhow::Result<()> {
             .nest("/v1", api_router)
     };
 
+    // Configure file upload limit from environment
+    let max_file_size = env::var("MAX_FILE_SIZE")
+        .unwrap_or_else(|_| "10485760".to_string()) // 10MB default
+        .parse::<usize>()
+        .unwrap_or(10 * 1024 * 1024);
+    
+    tracing::info!("Max file upload size: {} bytes ({:.1} MB)", max_file_size, max_file_size as f64 / 1024.0 / 1024.0);
+
     let app = app.layer(
         ServiceBuilder::new()
             .layer(TraceLayer::new_for_http())
             .layer(from_fn(crate::middleware::logging::log_errors))
             .layer(cors)
-            .layer(DefaultBodyLimit::max(10 * 1024 * 1024)) // 10MB max
+            .layer(DefaultBodyLimit::max(max_file_size))
             .layer(auth_layer)
             .layer(session_layer),
     );

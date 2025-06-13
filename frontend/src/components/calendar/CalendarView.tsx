@@ -184,7 +184,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     setCurrentDate(new Date());
   };
 
-  // Calendar swipe handling
+  // Calendar swipe handling for month navigation
   const handleCalendarTouchStart = (e: TouchEvent) => {
     setCalendarStartX(e.touches[0].clientX);
     setCalendarSwiping(true);
@@ -290,12 +290,15 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
   };
 
   return (
-    <div class={`${isMobile() ? 'h-screen flex flex-col' : 'bg-white rounded-lg shadow'}`}>
+    <div class={`${isMobile() ? 'h-screen flex flex-col overflow-hidden' : 'bg-white rounded-lg shadow'}`}>
       {/* Mobile Layout */}
       <Show when={isMobile()}>
         {/* Compact Calendar - Top 2/5 */}
-        <div class="flex-none overflow-hidden" style="height: 40vh;">
-          <div class="bg-white h-full flex flex-col">
+        <div 
+          class="flex-none bg-white" 
+          style="height: 40vh; overflow: hidden;"
+        >
+          <div class="h-full flex flex-col">
             {/* Compact Header */}
             <div class="flex items-center justify-between px-3 py-2 border-b border-gray-200">
               <button
@@ -400,7 +403,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
         </div>
         
         {/* Day Events - Bottom 3/5 */}
-        <div class="flex-1 bg-gray-50">
+        <div class="flex-1 bg-gray-50" style="overflow: scroll;">
           <MobileDayEvents 
             selectedDate={selectedDate()!}
             events={selectedDateEvents()}

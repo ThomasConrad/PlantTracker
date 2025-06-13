@@ -1,4 +1,4 @@
-import { Component, Show, createSignal } from 'solid-js';
+import { Component, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 
 interface SettingsMenuProps {

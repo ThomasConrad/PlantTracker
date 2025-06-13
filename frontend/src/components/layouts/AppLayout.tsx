@@ -138,9 +138,8 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
         </div>
       </nav>
 
-      {/* Mobile Content Area with independent scrolling */}
       <main class="mobile-content-area sm:max-w-7xl sm:mx-auto sm:py-6 sm:px-6 lg:px-8">
-        <div class="px-4 py-6 sm:px-0 sm:py-0">
+        <div class="h-full '${isMobile() ? '' : 'p-4'}'">
           {props.children}
         </div>
       </main>

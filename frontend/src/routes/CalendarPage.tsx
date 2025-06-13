@@ -43,7 +43,7 @@ export const CalendarPage: Component = () => {
   ];
 
   return (
-    <div class="pb-20 sm:pb-6 sm:space-y-6 sm:h-auto h-screen flex flex-col sm:block">
+    <div class="h-full flex flex-col">
       {/* Header - Hidden on Mobile */}
       <div class="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -197,7 +197,7 @@ export const CalendarPage: Component = () => {
       </Show>
 
       {/* Main Content */}
-      <div class="sm:mt-6 flex-1 sm:flex-none">
+      <div class="h-full sm:mt-6 flex-1 sm:flex-none">
         {/* Mobile: Always show calendar view */}
         <div class="sm:hidden h-full">
           <CalendarView 

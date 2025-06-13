@@ -410,57 +410,66 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
         </div>
       </Show>
 
-      {/* Month Picker Modal */}
+      {/* Month Picker Modal - Unified Design */}
       <Show when={showMonthPicker()}>
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div class="bg-white rounded-lg shadow-xl max-w-sm w-full p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Select Month & Year</h3>
+        <div 
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={() => setShowMonthPicker(false)}
+        >
+          <div 
+            class="bg-white rounded-lg shadow-xl max-w-xs w-full transform transition-all duration-200 ease-out animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header with Year Navigation */}
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200">
               <button
-                onClick={() => setShowMonthPicker(false)}
-                class="text-gray-400 hover:text-gray-600"
+                onClick={() => {
+                  const newDate = new Date(currentDate());
+                  newDate.setFullYear(currentDate().getFullYear() - 1);
+                  setCurrentDate(newDate);
+                }}
+                class="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
               >
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <div class="text-center">
+                <div class="text-xs text-gray-500 uppercase tracking-wide">Year</div>
+                <div class="text-lg font-semibold text-gray-900">{currentDate().getFullYear()}</div>
+              </div>
+              
+              <button
+                onClick={() => {
+                  const newDate = new Date(currentDate());
+                  newDate.setFullYear(currentDate().getFullYear() + 1);
+                  setCurrentDate(newDate);
+                }}
+                class="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             </div>
             
-            {/* Year Selector */}
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Year</label>
-              <select 
-                class="w-full p-2 border border-gray-300 rounded-md"
-                value={currentDate().getFullYear()}
-                onChange={(e) => {
-                  const newYear = parseInt(e.target.value);
-                  const newDate = new Date(currentDate());
-                  newDate.setFullYear(newYear);
-                  setCurrentDate(newDate);
-                }}
-              >
-                <For each={Array.from({length: 10}, (_, i) => new Date().getFullYear() - 5 + i)}>
-                  {(year) => <option value={year}>{year}</option>}
-                </For>
-              </select>
-            </div>
-            
             {/* Month Grid */}
-            <div class="mb-4">
-              <label class="block text-sm font-medium text-gray-700 mb-2">Month</label>
+            <div class="p-4">
               <div class="grid grid-cols-3 gap-2">
                 <For each={monthNames}>
                   {(month, index) => (
                     <button
-                      class={`p-2 text-sm rounded-md transition-colors ${
+                      class={`p-3 text-sm font-medium rounded-lg transition-all duration-150 ${
                         index() === currentDate().getMonth()
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-500'
+                          : 'text-gray-700 hover:bg-gray-100 border-2 border-transparent'
                       }`}
                       onClick={() => {
                         const newDate = new Date(currentDate());
                         newDate.setMonth(index());
                         setCurrentDate(newDate);
+                        setShowMonthPicker(false);
                       }}
                     >
                       {month.slice(0, 3)}
@@ -471,18 +480,12 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
             </div>
             
             {/* Actions */}
-            <div class="flex space-x-3">
+            <div class="px-4 pb-4 border-t border-gray-200 pt-4">
               <button
-                class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+                class="w-full px-4 py-2 text-gray-600 font-medium rounded-lg hover:bg-gray-100 transition-colors"
                 onClick={() => setShowMonthPicker(false)}
               >
                 Cancel
-              </button>
-              <button
-                class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                onClick={() => setShowMonthPicker(false)}
-              >
-                Done
               </button>
             </div>
           </div>

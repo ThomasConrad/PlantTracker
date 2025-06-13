@@ -2,7 +2,6 @@ import { Component, createEffect, createSignal, For, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { PlantCard } from '@/components/plants/PlantCard';
-import { PlantControls } from '@/components/plants/PlantControls';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export const PlantsPage: Component = () => {

@@ -1,32 +1,12 @@
 import { Component, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import type { Plant } from '@/types';
-import { calculateDaysUntil, isOverdue, formatRelativeTime } from '@/utils/date';
 
 interface PlantCardProps {
   plant: Plant;
 }
 
 export const PlantCard: Component<PlantCardProps> = (props) => {
-  const wateringDays = () => calculateDaysUntil(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
-  const fertilizingDays = () => calculateDaysUntil(props.plant.lastFertilized ?? null, props.plant.fertilizingIntervalDays);
-  
-  const wateringOverdue = () => isOverdue(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
-  const fertilizingOverdue = () => isOverdue(props.plant.lastFertilized ?? null, props.plant.fertilizingIntervalDays);
-
-  const getStatusBadge = (days: number, overdue: boolean) => {
-    if (overdue) return 'badge-red';
-    if (days <= 1) return 'badge-yellow';
-    return 'badge-green';
-  };
-
-  const getStatusText = (days: number, overdue: boolean, type: string) => {
-    if (overdue) return `${type} overdue`;
-    if (days === 0) return `${type} today`;
-    if (days === 1) return `${type} tomorrow`;
-    return `${type} in ${days} days`;
-  };
-
   return (
     <A href={`/plants/${props.plant.id}`} class="plant-card-full-image">
       <div class="relative aspect-[4/5] overflow-hidden rounded-lg">

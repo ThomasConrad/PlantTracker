@@ -78,9 +78,7 @@ export const BottomNavigation: Component = () => {
           return (
             <A
               href={item.path}
-              class={`flex items-center justify-center transition-colors duration-200 ${
-                active ? 'bg-primary-50' : 'hover:bg-gray-50'
-              }`}
+              class="flex items-center justify-center transition-colors duration-200 hover:bg-gray-50"
               activeClass=""
             >
               {item.icon(active)}
@@ -90,9 +88,7 @@ export const BottomNavigation: Component = () => {
         
         {/* Settings button */}
         <button 
-          class={`flex items-center justify-center transition-colors duration-200 ${
-            showSettings() ? 'bg-primary-50' : 'hover:bg-gray-50'
-          }`}
+          class="flex items-center justify-center transition-colors duration-200 hover:bg-gray-50"
           onClick={() => setShowSettings(!showSettings())}
         >
           <svg 

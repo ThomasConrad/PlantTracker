@@ -111,11 +111,11 @@
   }
   
   .plant-card-full-image {
-    @apply block transition-all hover:scale-105 duration-300 ease-out cursor-pointer;
+    @apply block transition-all duration-300 ease-out cursor-pointer;
   }
   
   .plant-card-full-image:hover {
-    @apply shadow-lg;
+    @apply shadow-xl;
   }
   
   .badge {

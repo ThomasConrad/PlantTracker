@@ -28,7 +28,10 @@ impl GoogleTasksConfig {
             })?;
         
         let redirect_uri = std::env::var("GOOGLE_REDIRECT_URI")
-            .unwrap_or_else(|_| "http://localhost:3000/api/v1/google-tasks/callback".to_string());
+            .unwrap_or_else(|_| {
+                let host_ip = std::env::var("HOST_IP").unwrap_or_else(|_| "localhost".to_string());
+                format!("http://{}:3000/api/v1/google-tasks/callback", host_ip)
+            });
         
         Ok(Self {
             client_id,

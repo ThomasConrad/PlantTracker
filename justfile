@@ -42,11 +42,20 @@ build-backend:
     @echo "🏗️ Building backend (dev)..."
     cd backend && cargo build
 
+# === DEVELOPMENT COMMANDS ===
+
+# Start development server (builds frontend and runs backend)
+dev:
+    @echo "🚀 Starting development server..."
+    just build-frontend
+    cd backend && cargo run --bin planty-api
+
 # === RUN COMMANDS ===
 
-run:
+# Run backend (builds frontend first, then serves everything)
+backend:
     @echo "🦀 Starting backend..."
-    just build
+    just build-frontend
     cd backend && cargo run --bin planty-api
 
 run-release:

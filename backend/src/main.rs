@@ -99,22 +99,32 @@ async fn main() -> anyhow::Result<()> {
     // Authentication setup
     let (session_layer, auth_layer) = auth::create_auth_layers(pool.clone());
 
-    // CORS configuration
-    let cors = CorsLayer::new()
-        .allow_origin([
-            "http://localhost:3000".parse().unwrap(), // Frontend dev server
-            "http://localhost:3000".parse().unwrap(), // Vite dev server
-            "http://127.0.0.1:3000".parse().unwrap(), // Alternative localhost
-            "http://127.0.0.1:3000".parse().unwrap(), // Alternative Vite
-        ])
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([
-            header::CONTENT_TYPE,
-            header::AUTHORIZATION,
-            header::COOKIE,
-            header::SET_COOKIE,
-        ])
-        .allow_credentials(true); // Allow cookies for authentication
+    // CORS configuration - allow all origins in development
+    let cors = if cfg!(debug_assertions) {
+        // Development: Allow any origin
+        CorsLayer::permissive()
+    } else {
+        // Production: Restrict to specific origins
+        let allowed_origins = env::var("ALLOWED_ORIGINS")
+            .unwrap_or_else(|_| {
+                let host_ip = env::var("HOST_IP").unwrap_or_else(|_| "localhost".to_string());
+                format!("http://{}:3000,http://127.0.0.1:3000", host_ip)
+            })
+            .split(',')
+            .filter_map(|origin| origin.trim().parse().ok())
+            .collect::<Vec<_>>();
+        
+        CorsLayer::new()
+            .allow_origin(allowed_origins)
+            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+            .allow_headers([
+                header::CONTENT_TYPE,
+                header::AUTHORIZATION,
+                header::COOKIE,
+                header::SET_COOKIE,
+            ])
+            .allow_credentials(true)
+    };
 
     // Get the frontend dist directory path
     let serve_frontend = Path::new(&args.frontend_dir).exists();

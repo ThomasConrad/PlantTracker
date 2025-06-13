@@ -349,8 +349,9 @@ mod tests {
         assert_eq!(url, "https://example.com/api/v1/calendar/user123.ics?token=token456");
         
         // Test with different base URLs
-        let url2 = generate_calendar_feed_url("http://localhost:3000", "abc-def", "xyz789");
-        assert_eq!(url2, "http://localhost:3000/api/v1/calendar/abc-def.ics?token=xyz789");
+        let test_host = "http://example.com:3000";
+        let url2 = generate_calendar_feed_url(test_host, "abc-def", "xyz789");
+        assert_eq!(url2, "http://example.com:3000/api/v1/calendar/abc-def.ics?token=xyz789");
     }
 
     #[test]

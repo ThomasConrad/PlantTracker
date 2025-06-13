@@ -141,8 +141,10 @@ pub async fn handle_google_oauth_callback(
     app_state.notify_token_added();
 
     // Redirect back to calendar settings without any parameters
-    let frontend_url =
-        std::env::var("FRONTEND_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+    let frontend_url = std::env::var("FRONTEND_URL").unwrap_or_else(|_| {
+        let host_ip = std::env::var("HOST_IP").unwrap_or_else(|_| "localhost".to_string());
+        format!("http://{}:3000", host_ip)
+    });
 
     let redirect_url = format!("{}/calendar-settings", frontend_url);
 

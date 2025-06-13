@@ -1,8 +1,10 @@
-import { Component } from 'solid-js';
+import { Component, createSignal } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
+import { SettingsMenu } from './SettingsMenu';
 
 export const BottomNavigation: Component = () => {
   const location = useLocation();
+  const [showSettings, setShowSettings] = createSignal(false);
   
   const isActive = (path: string) => {
     if (path === '/plants' && (location.pathname === '/plants' || location.pathname === '/')) {
@@ -86,10 +88,15 @@ export const BottomNavigation: Component = () => {
           );
         })}
         
-        {/* Settings button placeholder - will be implemented in next step */}
-        <div class="flex items-center justify-center">
+        {/* Settings button */}
+        <button 
+          class={`flex items-center justify-center transition-colors duration-200 ${
+            showSettings() ? 'bg-primary-50' : 'hover:bg-gray-50'
+          }`}
+          onClick={() => setShowSettings(!showSettings())}
+        >
           <svg 
-            class="h-7 w-7 text-gray-400" 
+            class={`h-7 w-7 ${showSettings() ? 'text-primary-600' : 'text-gray-400'}`} 
             fill="none" 
             viewBox="0 0 24 24" 
             stroke="currentColor"
@@ -101,8 +108,13 @@ export const BottomNavigation: Component = () => {
               d="M4 6h16M4 12h16M4 18h16" 
             />
           </svg>
-        </div>
+        </button>
       </div>
+      
+      <SettingsMenu 
+        isOpen={showSettings()} 
+        onClose={() => setShowSettings(false)} 
+      />
     </nav>
   );
 };

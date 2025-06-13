@@ -1,4 +1,4 @@
-import { Component, createEffect, createSignal, For, Show } from 'solid-js';
+import { Component, createEffect, createSignal, For, Show, onMount } from 'solid-js';
 import { A } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { PlantCard } from '@/components/plants/PlantCard';
@@ -32,30 +32,36 @@ export const PlantsPage: Component = () => {
   };
   
   const handleTouchStart = (e: TouchEvent) => {
+    console.log('Touch start - touches:', e.touches.length);
     if (e.touches.length === 2) {
       lastDistance = getDistance(e.touches);
       isGesturing = true;
+      console.log('Pinch gesture started');
       e.preventDefault();
+      e.stopPropagation();
     }
   };
   
   const handleTouchMove = (e: TouchEvent) => {
     if (e.touches.length === 2 && isGesturing) {
       e.preventDefault();
+      e.stopPropagation();
       const currentDistance = getDistance(e.touches);
       const deltaDistance = currentDistance - lastDistance;
       
-      // More sensitive pinch detection for smoother experience
-      if (Math.abs(deltaDistance) > 15) {
+      // Less sensitive pinch detection - require more movement
+      if (Math.abs(deltaDistance) > 30) {
         const currentCols = mobileColumns();
         const maxCols = getMaxColumns();
         
-        if (deltaDistance > 0 && currentCols < maxCols) {
-          // Pinch out - more columns (smaller cards)
-          setMobileColumns(currentCols + 1);
-        } else if (deltaDistance < 0 && currentCols > 1) {
-          // Pinch in - fewer columns (larger cards)
+        if (deltaDistance > 0 && currentCols > 1) {
+          // Pinch out (fingers apart) - fewer columns (larger cards)
           setMobileColumns(currentCols - 1);
+          console.log('Pinch out (zoom in) - columns:', currentCols - 1);
+        } else if (deltaDistance < 0 && currentCols < maxCols) {
+          // Pinch in (fingers together) - more columns (smaller cards)
+          setMobileColumns(currentCols + 1);
+          console.log('Pinch in (zoom out) - columns:', currentCols + 1);
         }
         
         lastDistance = currentDistance;
@@ -88,6 +94,48 @@ export const PlantsPage: Component = () => {
     
     return `grid ${mobileColClass} sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 px-4 sm:px-0`;
   };
+
+  // Mount touch event listeners for better mobile detection
+  onMount(() => {
+    let gridContainer: HTMLElement | null = null;
+    
+    // Prevent document-level pinch zoom when in grid area
+    const preventDefaultPinch = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+    
+    // Find the grid container after mount
+    setTimeout(() => {
+      gridContainer = document.querySelector('[data-grid-container]') as HTMLElement;
+      if (gridContainer) {
+        console.log('Grid container found, attaching touch listeners');
+        gridContainer.addEventListener('touchstart', handleTouchStart, { passive: false });
+        gridContainer.addEventListener('touchmove', handleTouchMove, { passive: false });
+        gridContainer.addEventListener('touchend', handleTouchEnd, { passive: false });
+        
+        // Add CSS to prevent default pinch behavior
+        gridContainer.style.touchAction = 'manipulation';
+        
+        // Also prevent at document level when over grid
+        document.addEventListener('touchstart', preventDefaultPinch, { passive: false });
+        document.addEventListener('touchmove', preventDefaultPinch, { passive: false });
+      } else {
+        console.log('Grid container not found');
+      }
+    }, 100);
+    
+    return () => {
+      if (gridContainer) {
+        gridContainer.removeEventListener('touchstart', handleTouchStart);
+        gridContainer.removeEventListener('touchmove', handleTouchMove);
+        gridContainer.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener('touchstart', preventDefaultPinch);
+        document.removeEventListener('touchmove', preventDefaultPinch);
+      }
+    };
+  });
 
   createEffect(() => {
     plantsStore.loadPlants({ 
@@ -191,9 +239,7 @@ export const PlantsPage: Component = () => {
         >
           <div 
             class={getGridClasses()}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            data-grid-container
           >
             <For each={plantsStore.plants}>
               {(plant) => <PlantCard plant={plant} mobileColumns={mobileColumns()} />}

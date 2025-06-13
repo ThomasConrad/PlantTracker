@@ -197,7 +197,7 @@ export const CalendarPage: Component = () => {
       </Show>
 
       {/* Main Content */}
-      <div class="h-full sm:mt-6 flex-1 sm:flex-none">
+      <div class="flex-1 min-h-0 sm:mt-6">
         {/* Mobile: Always show calendar view */}
         <div class="sm:hidden h-full">
           <CalendarView 
@@ -207,7 +207,7 @@ export const CalendarPage: Component = () => {
         </div>
         
         {/* Desktop: Show view mode toggle */}
-        <div class="hidden sm:block">
+        <div class="hidden sm:block h-full">
           <Show when={viewMode() === 'calendar'}>
             <CalendarView 
               selectedPlants={selectedPlants().length > 0 ? selectedPlants() : undefined}

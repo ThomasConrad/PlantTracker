@@ -43,9 +43,9 @@ export const CalendarPage: Component = () => {
   ];
 
   return (
-    <div class="space-y-6 pb-20 sm:pb-6">
-      {/* Header */}
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="pb-20 sm:pb-6 sm:space-y-6 sm:h-auto h-screen flex flex-col sm:block">
+      {/* Header - Hidden on Mobile */}
+      <div class="hidden sm:flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Plant Calendar</h1>
           <p class="text-gray-600">Track all your plant care activities</p>
@@ -104,9 +104,9 @@ export const CalendarPage: Component = () => {
         </div>
       </div>
 
-      {/* Filters Panel */}
+      {/* Filters Panel - Hidden on Mobile */}
       <Show when={showFilters()}>
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="hidden sm:block bg-white rounded-lg shadow p-6">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Plant Filters */}
             <div>
@@ -197,19 +197,32 @@ export const CalendarPage: Component = () => {
       </Show>
 
       {/* Main Content */}
-      <Show when={viewMode() === 'calendar'}>
-        <CalendarView 
-          selectedPlants={selectedPlants().length > 0 ? selectedPlants() : undefined}
-          selectedTypes={selectedTypes().length > 0 ? selectedTypes() : undefined}
-        />
-      </Show>
+      <div class="sm:mt-6 flex-1 sm:flex-none">
+        {/* Mobile: Always show calendar view */}
+        <div class="sm:hidden h-full">
+          <CalendarView 
+            selectedPlants={selectedPlants().length > 0 ? selectedPlants() : undefined}
+            selectedTypes={selectedTypes().length > 0 ? selectedTypes() : undefined}
+          />
+        </div>
+        
+        {/* Desktop: Show view mode toggle */}
+        <div class="hidden sm:block">
+          <Show when={viewMode() === 'calendar'}>
+            <CalendarView 
+              selectedPlants={selectedPlants().length > 0 ? selectedPlants() : undefined}
+              selectedTypes={selectedTypes().length > 0 ? selectedTypes() : undefined}
+            />
+          </Show>
 
-      <Show when={viewMode() === 'list'}>
-        <ActivityListView 
-          selectedPlants={selectedPlants().length > 0 ? selectedPlants() : undefined}
-          selectedTypes={selectedTypes().length > 0 ? selectedTypes() : undefined}
-        />
-      </Show>
+          <Show when={viewMode() === 'list'}>
+            <ActivityListView 
+              selectedPlants={selectedPlants().length > 0 ? selectedPlants() : undefined}
+              selectedTypes={selectedTypes().length > 0 ? selectedTypes() : undefined}
+            />
+          </Show>
+        </div>
+      </div>
     </div>
   );
 };

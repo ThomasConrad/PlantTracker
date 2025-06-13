@@ -1,5 +1,5 @@
 import { Component, JSX, createSignal } from 'solid-js';
-import { A } from '@solidjs/router';
+import { A, useLocation } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
 import { BottomNavigation } from './BottomNavigation';
 
@@ -9,6 +9,10 @@ interface AppLayoutProps {
 
 export const AppLayout: Component<AppLayoutProps> = (props) => {
   const [showUserMenu, setShowUserMenu] = createSignal(false);
+  const location = useLocation();
+
+  // Check if we're on the calendar page and should hide the top nav on mobile
+  const isCalendarPage = () => location.pathname === '/calendar';
 
   const handleLogout = async () => {
     await authStore.logout();
@@ -17,7 +21,7 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
 
   return (
     <div class="min-h-screen bg-gray-50">
-      <nav class="bg-white shadow-sm border-b border-gray-200">
+      <nav class={`bg-white shadow-sm border-b border-gray-200 ${isCalendarPage() ? 'hidden sm:block' : ''}`}>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between h-16">
             <div class="flex items-center">
@@ -135,7 +139,7 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
         </div>
       </nav>
 
-      <main class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 pb-safe-area-inset-bottom">
+      <main class={`${isCalendarPage() ? 'sm:max-w-7xl sm:mx-auto sm:py-6 sm:px-6 lg:px-8 pb-safe-area-inset-bottom' : 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 pb-safe-area-inset-bottom'}`}>
         {props.children}
       </main>
       

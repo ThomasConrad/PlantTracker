@@ -8,8 +8,8 @@ interface PlantCardProps {
 
 export const PlantCard: Component<PlantCardProps> = (props) => {
   return (
-    <A href={`/plants/${props.plant.id}`} class="plant-card-full-image">
-      <div class="relative aspect-[4/5] overflow-hidden rounded-lg">
+    <A href={`/plants/${props.plant.id}`} class="plant-card-full-image group">
+      <div class="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-sm">
         <Show 
           when={props.plant.thumbnailUrl} 
           fallback={
@@ -28,7 +28,7 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
           <img 
             src={props.plant.thumbnailUrl!} 
             alt={`${props.plant.name} thumbnail`}
-            class="h-full w-full object-cover"
+            class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
             onError={(e) => {
               // If thumbnail fails to load, it might still be processing
@@ -42,14 +42,14 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
         </Show>
         
         {/* Gradient overlay for better text contrast */}
-        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
         
         {/* Plant name and genus overlay */}
-        <div class="absolute bottom-0 left-0 right-0 p-4">
-          <h3 class="text-white font-semibold text-xl leading-tight mb-1 drop-shadow-sm">
+        <div class="absolute bottom-0 left-0 right-0 p-5">
+          <h3 class="text-white font-bold text-xl leading-tight mb-1 drop-shadow-lg">
             {props.plant.name}
           </h3>
-          <p class="text-white/90 text-base italic drop-shadow-sm">
+          <p class="text-white/95 text-base italic drop-shadow-md font-medium">
             {props.plant.genus}
           </p>
         </div>

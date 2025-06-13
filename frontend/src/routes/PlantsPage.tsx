@@ -5,7 +5,7 @@ import { PlantCard } from '@/components/plants/PlantCard';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export const PlantsPage: Component = () => {
-  const [searchQuery, setSearchQuery] = createSignal('');
+  const [searchQuery] = createSignal('');
   const [sortBy, setSortBy] = createSignal('date_desc');
 
   createEffect(() => {
@@ -16,17 +16,34 @@ export const PlantsPage: Component = () => {
   });
 
   return (
-    <div class="space-y-4 sm:space-y-6 pb-20 sm:pb-6">
-      <div class="px-4 sm:px-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div class="flex items-center gap-6">
-          <p class="text-gray-600 font-medium">
-            {plantsStore.plants.length} {plantsStore.plants.length === 1 ? 'plant' : 'plants'}
-          </p>
+    <div class="pb-20 sm:pb-6">
+      {/* Header Section */}
+      <div class="px-6 pt-6 pb-4">
+        <A
+          href="/plants/new"
+          class="w-full flex items-center justify-center gap-3 bg-primary-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-sm hover:bg-primary-700 transition-colors"
+        >
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2.5}>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Add Plant
+        </A>
+        
+        {/* Plant count and sort */}
+        <div class="flex items-center justify-between mt-6">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl font-bold text-gray-900">
+              {plantsStore.plants.length}
+            </span>
+            <span class="text-gray-500 text-lg">
+              {plantsStore.plants.length === 1 ? 'plant' : 'plants'}
+            </span>
+          </div>
           
           <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500">Sort by</span>
+            <span class="text-sm text-gray-500 font-medium">Sort by</span>
             <select
-              class="text-sm border-none bg-transparent font-medium text-gray-700 focus:outline-none cursor-pointer"
+              class="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               value={sortBy()}
               onChange={(e) => setSortBy(e.currentTarget.value)}
             >
@@ -37,88 +54,74 @@ export const PlantsPage: Component = () => {
             </select>
           </div>
         </div>
-        
-        <A
-          href="/plants/new"
-          class="btn btn-primary btn-md"
-        >
-          <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Plant
-        </A>
-      </div>
-
-      <div class="px-4 sm:px-0">
-        <div class="relative max-w-md">
-          <input
-            type="text"
-            placeholder="Search plants..."
-            value={searchQuery()}
-            onInput={(e) => setSearchQuery(e.currentTarget.value)}
-            class="input pl-10"
-          />
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
       </div>
 
       <Show
         when={!plantsStore.loading}
         fallback={
-          <div class="flex justify-center py-12">
-            <LoadingSpinner size="lg" />
+          <div class="flex justify-center py-16">
+            <div class="flex flex-col items-center gap-4">
+              <LoadingSpinner size="lg" />
+              <p class="text-gray-500 font-medium">Loading your plants...</p>
+            </div>
           </div>
         }
       >
         <Show
           when={plantsStore.plants.length > 0}
           fallback={
-            <div class="text-center py-12">
-              <svg
-                class="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              <h3 class="mt-2 text-sm font-medium text-gray-900">No plants</h3>
-              <p class="mt-1 text-sm text-gray-500">
-                {searchQuery() ? 'No plants match your search.' : 'Get started by adding your first plant.'}
+            <div class="px-6 py-16 text-center">
+              <div class="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg
+                  class="h-12 w-12 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  stroke-width={1.5}
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+              </div>
+              <h3 class="text-xl font-semibold text-gray-900 mb-2">No plants yet</h3>
+              <p class="text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
+                {searchQuery() ? 'No plants match your search. Try a different term.' : 'Start your plant journey by adding your first green companion.'}
               </p>
               {!searchQuery() && (
-                <div class="mt-6">
-                  <A href="/plants/new" class="btn btn-primary">
-                    <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Plant
-                  </A>
-                </div>
+                <A 
+                  href="/plants/new" 
+                  class="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors"
+                >
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Your First Plant
+                </A>
               )}
             </div>
           }
         >
-          <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 px-4 sm:px-0">
-            <For each={plantsStore.plants}>
-              {(plant) => <PlantCard plant={plant} />}
-            </For>
+          <div class="px-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              <For each={plantsStore.plants}>
+                {(plant) => <PlantCard plant={plant} />}
+              </For>
+            </div>
           </div>
         </Show>
       </Show>
 
       {plantsStore.error && (
-        <div class="bg-red-50 border border-red-200 rounded-md p-4">
-          <p class="text-sm text-red-600">{plantsStore.error}</p>
+        <div class="mx-6 mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
+          <div class="flex items-center gap-3">
+            <svg class="h-5 w-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-sm text-red-700 font-medium">{plantsStore.error}</p>
+          </div>
         </div>
       )}
     </div>

@@ -17,13 +17,26 @@ export const PlantsPage: Component = () => {
   });
 
   return (
-    <div class="space-y-6 pb-20 sm:pb-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 class="text-2xl font-bold text-gray-900">My Plants</h1>
-          <p class="text-gray-600">
+    <div class="space-y-4 sm:space-y-6 pb-20 sm:pb-6">
+      <div class="px-4 sm:px-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex items-center gap-6">
+          <p class="text-gray-600 font-medium">
             {plantsStore.plants.length} {plantsStore.plants.length === 1 ? 'plant' : 'plants'}
           </p>
+          
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-500">Sort by</span>
+            <select
+              class="text-sm border-none bg-transparent font-medium text-gray-700 focus:outline-none cursor-pointer"
+              value={sortBy()}
+              onChange={(e) => setSortBy(e.currentTarget.value)}
+            >
+              <option value="date_desc">Recently Added</option>
+              <option value="date_asc">Oldest First</option>
+              <option value="name_asc">Name A-Z</option>
+              <option value="name_desc">Name Z-A</option>
+            </select>
+          </div>
         </div>
         
         <A
@@ -37,12 +50,22 @@ export const PlantsPage: Component = () => {
         </A>
       </div>
 
-      <PlantControls
-        searchQuery={searchQuery()}
-        sortBy={sortBy()}
-        onSearchChange={setSearchQuery}
-        onSortChange={setSortBy}
-      />
+      <div class="px-4 sm:px-0">
+        <div class="relative max-w-md">
+          <input
+            type="text"
+            placeholder="Search plants..."
+            value={searchQuery()}
+            onInput={(e) => setSearchQuery(e.currentTarget.value)}
+            class="input pl-10"
+          />
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+      </div>
 
       <Show
         when={!plantsStore.loading}
@@ -86,7 +109,7 @@ export const PlantsPage: Component = () => {
             </div>
           }
         >
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 px-4 sm:px-0">
             <For each={plantsStore.plants}>
               {(plant) => <PlantCard plant={plant} />}
             </For>

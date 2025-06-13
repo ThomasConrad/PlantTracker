@@ -214,9 +214,9 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
   });
 
   return (
-    <div class={`${isMobile() ? 'h-screen bg-white' : 'bg-white rounded-lg shadow'}`}>
+    <div class={`${isMobile() ? 'h-full bg-white flex flex-col' : 'bg-white rounded-lg shadow'}`}>
       {/* Header - Simplified on Mobile */}
-      <div class={`border-b border-gray-200 ${isMobile() ? 'p-4' : 'p-6'}`}>
+      <div class={`border-b border-gray-200 flex-shrink-0 ${isMobile() ? 'p-4' : 'p-6'}`}>
         <div class="flex items-center justify-between">
           <h2 class={`font-semibold text-gray-900 ${isMobile() ? 'text-lg' : 'text-xl'}`}>
             Activity List
@@ -235,7 +235,7 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
 
       <Show when={!loading()}>
         {/* Sort Controls */}
-        <div class={`bg-gray-50 border-b border-gray-200 ${isMobile() ? 'p-3' : 'p-4'}`}>
+        <div class={`bg-gray-50 border-b border-gray-200 flex-shrink-0 ${isMobile() ? 'p-3' : 'p-4'}`}>
           <div class={`flex items-center ${isMobile() ? 'space-x-2' : 'space-x-4'}`}>
             <span class={`font-medium text-gray-700 ${isMobile() ? 'text-xs' : 'text-sm'}`}>Sort by:</span>
             
@@ -277,7 +277,7 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
           </div>
         </div>
 
-        {/* Activity List */}
+        {/* Activity List - constrained with flex-1 and overflow-y-auto */}
         <div class={`divide-y divide-gray-200 ${isMobile() ? 'flex-1 overflow-y-auto' : ''}`}>
           <Show when={filteredActivities().length === 0}>
             <div class={`text-center ${isMobile() ? 'p-6' : 'p-8'}`}>

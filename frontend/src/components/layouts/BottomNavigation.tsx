@@ -72,7 +72,7 @@ export const BottomNavigation: Component = () => {
   ];
 
   return (
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 sm:hidden">
+    <nav class="bg-white border-t border-gray-200 sm:hidden safe-area-bottom">
       <div class="grid grid-cols-3 h-16">
         {navItems.map(item => {
           const active = isActive(item.path);

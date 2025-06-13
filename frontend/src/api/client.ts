@@ -33,7 +33,8 @@ interface UpdateTrackingEntryRequest {
 }
 
 
-const API_BASE_URL = (import.meta as { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL || '/api/v1';
+// Since frontend is always served from backend, use relative URLs
+const API_BASE_URL = '/api/v1';
 
 class ApiError extends Error {
   constructor(

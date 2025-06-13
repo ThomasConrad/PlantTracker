@@ -20,7 +20,7 @@ export const PlantControls: Component<PlantControlsProps> = (props) => {
 
 
   return (
-    <div class="space-y-4">
+    <div class="space-y-4 px-4 sm:px-0">
       {/* Search and Filter Toggle */}
       <div class="flex flex-col sm:flex-row gap-4">
         {/* Search Input */}

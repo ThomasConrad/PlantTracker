@@ -83,11 +83,39 @@
   }
   
   .plant-thumbnail {
-    @apply h-48 w-full object-cover bg-gray-100;
+    @apply h-40 sm:h-48 w-full object-cover bg-gray-100;
+  }
+  
+  .plant-card-mobile {
+    @apply plant-card mx-4 mb-4;
+  }
+  
+  .plant-card-body {
+    @apply p-4 sm:p-6;
+  }
+  
+  .plant-card-status {
+    @apply flex items-center justify-between py-2 sm:py-1;
+  }
+  
+  .plant-card-title {
+    @apply text-lg sm:text-lg font-medium text-gray-900 truncate;
+  }
+  
+  .plant-card-subtitle {
+    @apply text-sm text-gray-500 italic mt-1;
+  }
+  
+  .plant-card-footer {
+    @apply pt-3 mt-3 border-t border-gray-200;
   }
   
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  
+  .badge-mobile {
+    @apply badge px-3 py-1 text-sm sm:px-2.5 sm:py-0.5 sm:text-xs;
   }
   
   .badge-green {

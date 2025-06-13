@@ -110,6 +110,14 @@
     @apply pt-3 mt-3 border-t border-gray-200;
   }
   
+  .plant-card-full-image {
+    @apply block transition-all hover:scale-105 duration-300 ease-out cursor-pointer;
+  }
+  
+  .plant-card-full-image:hover {
+    @apply shadow-lg;
+  }
+  
   .badge {
     @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
   }

@@ -28,13 +28,13 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
   };
 
   return (
-    <A href={`/plants/${props.plant.id}`} class="plant-card">
-      <div class="plant-thumbnail">
+    <A href={`/plants/${props.plant.id}`} class="plant-card-full-image">
+      <div class="relative aspect-[4/5] overflow-hidden rounded-lg">
         <Show 
           when={props.plant.thumbnailUrl} 
           fallback={
             <div class="h-full w-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
-              <svg class="h-12 w-12 sm:h-16 sm:w-16 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg class="h-16 w-16 text-primary-600 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -60,44 +60,18 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
             }}
           />
         </Show>
-      </div>
-      
-      <div class="plant-card-body">
-        <div class="space-y-4 sm:space-y-3">
-          <div>
-            <h3 class="plant-card-title">{props.plant.name}</h3>
-            <p class="plant-card-subtitle">{props.plant.genus}</p>
-          </div>
-          
-          <div class="space-y-3 sm:space-y-2">
-            <div class="plant-card-status">
-              <span class="text-sm text-gray-600 font-medium">Watering</span>
-              <span class={`badge-mobile ${getStatusBadge(wateringDays(), wateringOverdue())}`}>
-                {getStatusText(wateringDays(), wateringOverdue(), 'Water')}
-              </span>
-            </div>
-            
-            <div class="plant-card-status">
-              <span class="text-sm text-gray-600 font-medium">Fertilizing</span>
-              <span class={`badge-mobile ${getStatusBadge(fertilizingDays(), fertilizingOverdue())}`}>
-                {getStatusText(fertilizingDays(), fertilizingOverdue(), 'Fertilize')}
-              </span>
-            </div>
-          </div>
-          
-          <div class="plant-card-footer">
-            <p class="text-xs text-gray-500">
-              Last activity: {props.plant.lastWatered || props.plant.lastFertilized 
-                ? formatRelativeTime(
-                    new Date(Math.max(
-                      new Date(props.plant.lastWatered || 0).getTime(),
-                      new Date(props.plant.lastFertilized || 0).getTime()
-                    ))
-                  )
-                : 'Never'
-              }
-            </p>
-          </div>
+        
+        {/* Gradient overlay for better text contrast */}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        
+        {/* Plant name and genus overlay */}
+        <div class="absolute bottom-0 left-0 right-0 p-4">
+          <h3 class="text-white font-semibold text-lg leading-tight mb-1 drop-shadow-sm">
+            {props.plant.name}
+          </h3>
+          <p class="text-white/90 text-sm italic drop-shadow-sm">
+            {props.plant.genus}
+          </p>
         </div>
       </div>
     </A>

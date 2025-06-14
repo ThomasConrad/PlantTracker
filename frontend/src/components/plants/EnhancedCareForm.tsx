@@ -2,6 +2,7 @@ import { Component, createSignal, Show, For } from 'solid-js';
 import { plantsStore } from '@/stores/plants';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { CareTypeButton } from '@/components/ui/CareTypeButton';
 import type { Plant } from '@/types';
 import type { components } from '@/types/api-generated';
 
@@ -102,18 +103,20 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
     resetForm();
   };
 
+
+
   return (
-    <div class="fixed top-0 sm:top-16 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-      <div class="bg-white w-full max-w-md rounded-t-2xl sm:rounded-lg shadow-xl transform transition-all duration-200 ease-out h-auto max-h-[90vh] overflow-y-auto">
+    <div class="care-form-overlay">
+      <div class="care-form-container">
         {/* Header */}
-        <div class="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4 rounded-t-2xl sm:rounded-none">
+        <div class="care-form-header">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900">
+            <h2 class="care-form-title">
               Care for {props.plant.name}
             </h2>
             <button
               onClick={props.onClose}
-              class="text-gray-400 hover:text-gray-600 transition-colors"
+              class="care-form-close-button"
             >
               <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
@@ -122,52 +125,40 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} class="p-4 sm:p-6 space-y-6">
+        <form onSubmit={handleSubmit} class="care-form-body">
           {/* Care Type Selection */}
           <div class="space-y-3">
-            <label class="block text-sm font-medium text-gray-700">Care Type</label>
-            <div class="grid grid-cols-2 gap-3">
-              <button
-                type="button"
+            <label class="label">Care Type</label>
+            <div class="care-type-grid">
+              <CareTypeButton
+                type="watering"
+                isActive={entryType() === 'watering'}
                 onClick={() => handleTypeChange('watering')}
-                class={`p-3 rounded-lg border text-center transition-all ${
-                  entryType() === 'watering'
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}
               >
-                <div class="flex flex-col items-center space-y-1">
-                  <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
-                  </svg>
-                  <span class="text-sm font-medium">Watering</span>
-                </div>
-              </button>
+                <svg class="care-type-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+                </svg>
+                <span class="care-type-label">Watering</span>
+              </CareTypeButton>
               
-              <button
-                type="button"
+              <CareTypeButton
+                type="fertilizing"
+                isActive={entryType() === 'fertilizing'}
                 onClick={() => handleTypeChange('fertilizing')}
-                class={`p-3 rounded-lg border text-center transition-all ${
-                  entryType() === 'fertilizing'
-                    ? 'bg-green-50 border-green-200 text-green-700'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
-                }`}
               >
-                <div class="flex flex-col items-center space-y-1">
-                  <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                  <span class="text-sm font-medium">Fertilizing</span>
-                </div>
-              </button>
+                <svg class="care-type-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                <span class="care-type-label">Fertilizing</span>
+              </CareTypeButton>
             </div>
           </div>
 
           {/* Watering Specific Fields */}
           <Show when={entryType() === 'watering'}>
-            <div class="space-y-4 p-4 bg-blue-50 rounded-lg">
-              <h3 class="text-sm font-medium text-blue-900">Watering Details</h3>
-              <div class="grid grid-cols-2 gap-3">
+            <div class="care-details-watering">
+              <h3 class="care-details-title-watering">Watering Details</h3>
+              <div class="care-form-grid-2">
                 <Input
                   label="Amount (optional)"
                   type="number"
@@ -178,9 +169,9 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
                   placeholder="250"
                 />
                 <div class="space-y-1">
-                  <label class="block text-sm font-medium text-gray-700">Unit</label>
+                  <label class="label">Unit</label>
                   <select
-                    class="input w-full"
+                    class="care-form-select"
                     value={waterUnit()}
                     onChange={(e) => setWaterUnit(e.currentTarget.value)}
                   >
@@ -195,14 +186,14 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
 
           {/* Fertilizing Specific Fields */}
           <Show when={entryType() === 'fertilizing'}>
-            <div class="space-y-4 p-4 bg-green-50 rounded-lg">
-              <h3 class="text-sm font-medium text-green-900">Fertilizer Details</h3>
+            <div class="care-details-fertilizing">
+              <h3 class="care-details-title-fertilizing">Fertilizer Details</h3>
               
-              <div class="grid grid-cols-1 gap-4">
+              <div class="care-form-grid-1">
                 <div class="space-y-1">
-                  <label class="block text-sm font-medium text-gray-700">Type</label>
+                  <label class="label">Type</label>
                   <select
-                    class="input w-full"
+                    class="care-form-select"
                     value={fertilizerType()}
                     onChange={(e) => setFertilizerType(e.currentTarget.value)}
                   >
@@ -221,7 +212,7 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
                   placeholder="e.g., Miracle-Gro, Osmocote"
                 />
 
-                <div class="grid grid-cols-2 gap-3">
+                <div class="care-form-grid-2">
                   <Input
                     label="Amount (optional)"
                     type="number"
@@ -232,9 +223,9 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
                     placeholder="10"
                   />
                   <div class="space-y-1">
-                    <label class="block text-sm font-medium text-gray-700">Unit</label>
+                    <label class="label">Unit</label>
                     <select
-                      class="input w-full"
+                      class="care-form-select"
                       value={fertilizerUnit()}
                       onChange={(e) => setFertilizerUnit(e.currentTarget.value)}
                     >
@@ -258,11 +249,11 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
 
           {/* Notes */}
           <div class="space-y-1">
-            <label class="block text-sm font-medium text-gray-700">
+            <label class="label">
               Notes (optional)
             </label>
             <textarea
-              class="input w-full min-h-[80px] resize-none"
+              class="care-form-textarea"
               value={notes()}
               onInput={(e) => setNotes(e.currentTarget.value)}
               placeholder={
@@ -275,12 +266,12 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
           </div>
 
           {/* Action Buttons */}
-          <div class="flex space-x-3 pt-4">
+          <div class="care-form-actions">
             <Button
               type="button"
               variant="outline"
               onClick={props.onClose}
-              class="flex-1"
+              class="care-form-button"
             >
               Cancel
             </Button>
@@ -288,7 +279,7 @@ export const EnhancedCareForm: Component<EnhancedCareFormProps> = (props) => {
               type="submit"
               variant="primary"
               loading={submitting()}
-              class="flex-1"
+              class="care-form-button"
             >
               {entryType() === 'watering' ? 'Record Watering' : 'Record Fertilizing'}
             </Button>

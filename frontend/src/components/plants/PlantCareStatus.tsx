@@ -125,14 +125,14 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
   };
 
   return (
-    <div class="space-y-6">
+    <div>
       {/* Care Status Cards */}
       <div class="card">
         <div class="card-header">
           <h3 class="text-lg font-medium text-gray-900">Care Status</h3>
         </div>
         <div class="card-body">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 h-full sm:grid-cols-2 gap-4">
             <div class={`p-4 rounded-lg border ${getStatusColor(wateringDays(), wateringOverdue())}`}>
               <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -205,7 +205,7 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
             {/* Enhanced Actions */}
             <div class="border-t border-gray-200 pt-4">
               <h4 class="text-sm font-medium text-gray-700 mb-3">Add Details</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 h-full sm:grid-cols-2 gap-3">
                 <Button
                   variant="outline"
                   size="sm"

@@ -22,7 +22,7 @@ export const CreatePlantPage: Component = () => {
   };
 
   return (
-    <div class="space-y-6">
+    <div class="space-y-6 h-full">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Add New Plant</h1>
         <p class="text-gray-600">Track your plant's care and growth over time.</p>

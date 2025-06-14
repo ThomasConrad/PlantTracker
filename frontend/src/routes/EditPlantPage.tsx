@@ -42,7 +42,7 @@ export const EditPlantPage: Component = () => {
   };
 
   return (
-    <div class="space-y-6">
+    <div class="space-y-6 h-full">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Edit Plant</h1>
         <p class="text-gray-600">Update your plant's information and care settings.</p>

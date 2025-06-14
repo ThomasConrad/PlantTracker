@@ -13,6 +13,7 @@ import { CalendarPage } from '@/routes/CalendarPage';
 import { CalendarSettingsPage } from '@/routes/CalendarSettingsPage';
 import { SearchPage } from '@/routes/SearchPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ThemeProvider } from '@/providers/ThemeProvider';
 
 const App: Component = () => {
   createEffect(() => {
@@ -20,14 +21,15 @@ const App: Component = () => {
   });
 
   return (
-    <Show
-      when={!authStore.loading}
-      fallback={
-        <div class="min-h-screen flex items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      }
-    >
+    <ThemeProvider defaultTheme="system" storageKey="planty-theme">
+      <Show
+        when={!authStore.loading}
+        fallback={
+          <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <LoadingSpinner size="lg" />
+          </div>
+        }
+      >
       <Routes>
         <Route
           path="/login"
@@ -150,6 +152,7 @@ const App: Component = () => {
         <Route path="*" component={() => <Navigate href="/plants" />} />
       </Routes>
     </Show>
+    </ThemeProvider>
   );
 };
 

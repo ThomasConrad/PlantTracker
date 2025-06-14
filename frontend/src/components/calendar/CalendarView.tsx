@@ -290,7 +290,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
   };
 
   return (
-    <div class={`${isMobile() ? 'h-full flex flex-col overflow-hidden' : 'bg-white rounded-lg shadow'}`}>
+          <div class="responsive-container">
       {/* Mobile Layout */}
       <Show when={isMobile()}>
         {/* Compact Calendar - Top 2/5 */}

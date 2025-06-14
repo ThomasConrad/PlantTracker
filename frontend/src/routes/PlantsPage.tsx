@@ -15,6 +15,39 @@ export const PlantsPage: Component = () => {
     });
   });
 
+  // Group plants by year when sorting by date
+  const groupedPlants = () => {
+    const plants = plantsStore.plants;
+    const isDateSort = sortBy().includes('date');
+    
+    if (!isDateSort || plants.length === 0) {
+      return [{ year: null, plants }];
+    }
+
+    const groups: { [key: string]: typeof plants } = {};
+    
+    plants.forEach(plant => {
+      const year = plant.createdAt ? new Date(plant.createdAt).getFullYear().toString() : 'Unknown';
+      if (!groups[year]) {
+        groups[year] = [];
+      }
+      groups[year].push(plant);
+    });
+
+    // Convert to array and sort years
+    const sortedGroups = Object.entries(groups)
+      .map(([year, plants]) => ({ year, plants }))
+      .sort((a, b) => {
+        if (a.year === 'Unknown') return 1;
+        if (b.year === 'Unknown') return -1;
+        return sortBy() === 'date_desc' 
+          ? parseInt(b.year) - parseInt(a.year)
+          : parseInt(a.year) - parseInt(b.year);
+      });
+
+    return sortedGroups;
+  };
+
   return (
     <div class="pb-20 sm:pb-6">
       {/* Header Section */}
@@ -105,11 +138,26 @@ export const PlantsPage: Component = () => {
           }
         >
           <div class="px-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-              <For each={plantsStore.plants}>
-                {(plant) => <PlantCard plant={plant} />}
-              </For>
-            </div>
+            <For each={groupedPlants()}>
+              {(group) => (
+                <div class="mb-8">
+                  {/* Year Header (only show for date sorting) */}
+                  <Show when={group.year !== null}>
+                    <div class="mb-6">
+                      <h2 class="text-2xl font-bold text-gray-900 mb-1">{group.year}</h2>
+                      <div class="h-1 w-12 bg-primary-600 rounded-full"></div>
+                    </div>
+                  </Show>
+                  
+                  {/* Plants Grid */}
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                    <For each={group.plants}>
+                      {(plant) => <PlantCard plant={plant} />}
+                    </For>
+                  </div>
+                </div>
+              )}
+            </For>
           </div>
         </Show>
       </Show>

@@ -47,10 +47,11 @@ export interface BadgeProps extends JSX.HTMLAttributes<HTMLSpanElement> {
 }
 
 // Care Icon Types
-export interface CareIconProps extends JSX.SVGAttributes<SVGSVGElement> {
+export interface CareIconProps extends JSX.SvgSVGAttributes<SVGSVGElement> {
   type: 'watering' | 'fertilizing' | 'pruning' | 'repotting' | 'pest-control' | 'note' | 'custom';
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   variant?: 'default' | 'solid' | 'outline';
+  class?: string;
 }
 
 // Navigation Icon Types

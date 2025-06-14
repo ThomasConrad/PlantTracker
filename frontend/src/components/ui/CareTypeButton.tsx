@@ -5,8 +5,8 @@ import type { components } from '@/types/api-generated';
 
 type EntryType = components['schemas']['EntryType'];
 
-interface CareTypeButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
-  type: EntryType;
+interface CareTypeButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
+  careType: EntryType;
   isActive: boolean;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'default' | 'compact' | 'pill';
@@ -17,7 +17,7 @@ interface CareTypeButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement
 
 export const CareTypeButton: Component<CareTypeButtonProps> = (props) => {
   const [local, rest] = splitProps(props, [
-    'type', 'isActive', 'size', 'variant', 'showIcon', 'showLabel', 'children', 'class'
+    'careType', 'isActive', 'size', 'variant', 'showIcon', 'showLabel', 'children', 'class'
   ]);
 
   const careTypeClasses = {
@@ -83,7 +83,7 @@ export const CareTypeButton: Component<CareTypeButtonProps> = (props) => {
         'flex flex-col items-center justify-center space-y-1 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
         variantClasses[local.variant || 'default'],
         sizeClasses[local.size || 'md'],
-        careTypeClasses[local.type as keyof typeof careTypeClasses] || careTypeClasses.custom,
+        careTypeClasses[local.careType as keyof typeof careTypeClasses] || careTypeClasses.custom,
         local.class
       )}
       {...rest}
@@ -93,14 +93,13 @@ export const CareTypeButton: Component<CareTypeButtonProps> = (props) => {
           <>
             {(local.showIcon !== false) && (
               <CareIcon 
-                type={mapToCareIconType(local.type)} 
-                size={local.size === 'lg' ? 'lg' : local.size === 'sm' ? 'sm' : 'md'} 
-                class="care-type-icon"
+                type={mapToCareIconType(local.careType)} 
+                size={local.size === 'lg' ? 'lg' : local.size === 'sm' ? 'sm' : 'md'}
               />
             )}
             {(local.showLabel !== false) && (
               <span class="care-type-label">
-                {careTypeLabels[local.type as keyof typeof careTypeLabels] || local.type}
+                {careTypeLabels[local.careType as keyof typeof careTypeLabels] || local.careType}
               </span>
             )}
           </>

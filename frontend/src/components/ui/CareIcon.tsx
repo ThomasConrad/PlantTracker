@@ -1,10 +1,11 @@
 import { Component, JSX, splitProps } from 'solid-js';
 import { cn } from '@/utils/cn';
 
-interface CareIconProps extends JSX.SVGAttributes<SVGSVGElement> {
+interface CareIconProps extends JSX.SvgSVGAttributes<SVGSVGElement> {
   type: 'watering' | 'fertilizing' | 'pruning' | 'repotting' | 'pest-control' | 'note' | 'custom';
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   variant?: 'default' | 'solid' | 'outline';
+  class?: string;
 }
 
 export const CareIcon: Component<CareIconProps> = (props) => {

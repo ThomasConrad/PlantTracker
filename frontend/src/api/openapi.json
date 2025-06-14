@@ -838,6 +838,15 @@
           "name": {
             "type": "string"
           },
+          "thumbnailId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
           "updatedAt": {
             "type": "string",
             "format": "date-time"

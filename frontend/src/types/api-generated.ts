@@ -304,6 +304,9 @@ export interface components {
             /** Format: date-time */
             lastWatered?: string | null;
             name: string;
+            /** Format: uuid */
+            thumbnailId?: string | null;
+            thumbnailUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
             userId: string;

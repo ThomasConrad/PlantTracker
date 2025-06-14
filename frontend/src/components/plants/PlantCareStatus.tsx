@@ -1,7 +1,7 @@
 import { Component, createSignal, Show, For, onMount } from 'solid-js';
 import { plantsStore } from '@/stores/plants';
 import { Button } from '@/components/ui/Button';
-import { EnhancedCareForm } from './EnhancedCareForm';
+import { TrackingEntryForm } from './TrackingEntryForm';
 import type { Plant } from '@/types';
 import type { components } from '@/types/api-generated';
 import { calculateDaysUntil, isOverdue, formatDate } from '@/utils/date';
@@ -18,8 +18,7 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
   const [recentEntries, setRecentEntries] = createSignal<TrackingEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [submitting, setSubmitting] = createSignal(false);
-  const [showEnhancedForm, setShowEnhancedForm] = createSignal(false);
-  const [enhancedFormType, setEnhancedFormType] = createSignal<EntryType>('watering');
+  const [showTrackingForm, setShowTrackingForm] = createSignal(false);
 
   const loadRecentEntries = async () => {
     try {
@@ -54,14 +53,17 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
     }
   };
 
-  const openEnhancedForm = (type: EntryType) => {
-    setEnhancedFormType(type);
-    setShowEnhancedForm(true);
+  const openTrackingForm = () => {
+    setShowTrackingForm(true);
   };
 
-  const closeEnhancedForm = () => {
-    setShowEnhancedForm(false);
+  const closeTrackingForm = () => {
+    setShowTrackingForm(false);
     loadRecentEntries(); // Refresh entries when form is closed
+  };
+
+  const handleTrackingSubmit = async (data: CreateTrackingEntryRequest) => {
+    await plantsStore.createTrackingEntry(props.plant.id, data);
   };
 
   const wateringDays = () => calculateDaysUntil(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
@@ -230,34 +232,19 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
               </Button>
             </div>
 
-            {/* Enhanced Actions */}
+            {/* Create Tracking Entry */}
             <div class="border-t border-gray-100 pt-4">
-              <h4 class="text-sm font-medium text-gray-700 mb-3">Add Details</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openEnhancedForm('watering')}
-                  class="flex items-center justify-center"
-                >
-                  <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
-                  </svg>
-                  <span class="hidden sm:inline">Water with</span> Amount & Notes
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openEnhancedForm('fertilizing')}
-                  class="flex items-center justify-center"
-                >
-                  <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                  <span class="hidden sm:inline">Fertilize with</span> Type & Notes
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openTrackingForm}
+                class="flex items-center justify-center w-full"
+              >
+                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Tracking Entry
+              </Button>
             </div>
           </div>
         </div>
@@ -344,12 +331,13 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
         </div>
       </div>
 
-      {/* Enhanced Care Form Modal */}
-      <Show when={showEnhancedForm()}>
-        <EnhancedCareForm
+      {/* Tracking Entry Form Modal */}
+      <Show when={showTrackingForm()}>
+        <TrackingEntryForm
           plant={props.plant}
-          initialType={enhancedFormType()}
-          onClose={closeEnhancedForm}
+          onClose={closeTrackingForm}
+          onSuccess={closeTrackingForm}
+          onSubmit={handleTrackingSubmit}
         />
       </Show>
     </div>

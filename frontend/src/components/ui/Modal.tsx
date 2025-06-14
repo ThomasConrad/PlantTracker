@@ -8,6 +8,7 @@ interface ModalProps {
   position?: 'center' | 'top' | 'bottom';
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
+  contentOnly?: boolean; // If true, only covers content area
   children: JSX.Element;
   class?: string;
 }
@@ -15,7 +16,7 @@ interface ModalProps {
 export const Modal: Component<ModalProps> = (props) => {
   const [local, rest] = splitProps(props, [
     'open', 'onClose', 'size', 'position', 'closeOnOverlayClick', 
-    'closeOnEscape', 'children', 'class'
+    'closeOnEscape', 'contentOnly', 'children', 'class'
   ]);
 
   const sizeClasses = {
@@ -44,6 +45,13 @@ export const Modal: Component<ModalProps> = (props) => {
     }
   };
 
+  const handleOverlayTouchMove = (e: TouchEvent) => {
+    // Prevent scrolling through modal on mobile
+    if (local.contentOnly) {
+      e.preventDefault();
+    }
+  };
+
   onMount(() => {
     if (local.open) {
       document.body.style.overflow = 'hidden';
@@ -60,12 +68,12 @@ export const Modal: Component<ModalProps> = (props) => {
     <Show when={local.open}>
       <div
         class={cn(
-          'fixed inset-0 z-50 flex p-4',
-          'bg-black bg-opacity-50 backdrop-blur-sm',
+          local.contentOnly ? 'modal-overlay' : 'modal-overlay-fullscreen',
           'transition-all duration-200 ease-out',
-          positionClasses[local.position || 'center']
+          local.contentOnly ? '' : positionClasses[local.position || 'center']
         )}
         onClick={handleOverlayClick}
+        onTouchMove={handleOverlayTouchMove}
         role="dialog"
         aria-modal="true"
       >
@@ -78,6 +86,7 @@ export const Modal: Component<ModalProps> = (props) => {
             local.class
           )}
           onClick={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
           {...rest}
         >
           {local.children}

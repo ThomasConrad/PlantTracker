@@ -7,8 +7,7 @@ import { LoginPage } from '@/routes/LoginPage';
 import { RegisterPage } from '@/routes/RegisterPage';
 import { PlantsPage } from '@/routes/PlantsPage';
 import { PlantDetailPage } from '@/routes/PlantDetailPage';
-import { CreatePlantPage } from '@/routes/CreatePlantPage';
-import { EditPlantPage } from '@/routes/EditPlantPage';
+import { PlantFormPage } from '@/routes/PlantFormPage';
 import { CalendarPage } from '@/routes/CalendarPage';
 import { CalendarSettingsPage } from '@/routes/CalendarSettingsPage';
 import { SearchPage } from '@/routes/SearchPage';
@@ -78,7 +77,7 @@ const App: Component = () => {
               fallback={<Navigate href="/login" />}
             >
               <AppLayout>
-                <CreatePlantPage />
+                <PlantFormPage />
               </AppLayout>
             </Show>
           )}
@@ -104,7 +103,7 @@ const App: Component = () => {
               fallback={<Navigate href="/login" />}
             >
               <AppLayout>
-                <EditPlantPage />
+                <PlantFormPage />
               </AppLayout>
             </Show>
           )}

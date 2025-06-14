@@ -125,14 +125,38 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
   };
 
   return (
-    <div>
-      {/* Care Status Cards */}
-      <div class="card">
-        <div class="card-header">
-          <h3 class="text-lg font-medium text-gray-900">Care Status</h3>
+    <div class="bg-white shadow-sm rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
+      {/* Card Header */}
+      <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-gray-50/50">
+        <div class="flex items-center space-x-3">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+              <svg class="h-4 w-4 sm:h-5 sm:w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-semibold text-gray-900">
+              Plant Care Dashboard
+            </h2>
+            <p class="text-xs sm:text-sm text-gray-500">
+              Monitor care status and log activities
+            </p>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="grid grid-cols-1 h-full sm:grid-cols-2 gap-4">
+      </div>
+
+      <div class="p-4 sm:p-6 space-y-8">
+        {/* Care Status Section */}
+        <div>
+          <h3 class="text-base font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v10" />
+            </svg>
+            Care Status
+          </h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class={`p-4 rounded-lg border ${getStatusColor(wateringDays(), wateringOverdue())}`}>
               <div class="flex items-center">
                 <div class="flex-shrink-0">
@@ -166,16 +190,20 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div class="card">
-        <div class="card-header">
-          <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
-        </div>
-        <div class="card-body">
+        {/* Divider */}
+        <div class="border-t border-gray-200"></div>
+
+        {/* Quick Actions Section */}
+        <div>
+          <h3 class="text-base font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Quick Actions
+          </h3>
           <div class="space-y-4">
-            {/* Quick Actions */}
+            {/* Quick Action Buttons */}
             <div class="flex flex-wrap gap-3">
               <Button
                 variant="primary"
@@ -203,9 +231,9 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
             </div>
 
             {/* Enhanced Actions */}
-            <div class="border-t border-gray-200 pt-4">
+            <div class="border-t border-gray-100 pt-4">
               <h4 class="text-sm font-medium text-gray-700 mb-3">Add Details</h4>
-              <div class="grid grid-cols-1 h-full sm:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Button
                   variant="outline"
                   size="sm"
@@ -233,25 +261,33 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Recent Activities */}
-      <div class="card">
-        <div class="card-header">
-          <h3 class="text-lg font-medium text-gray-900">Recent Activities</h3>
-        </div>
-        <div class="card-body">
+        {/* Divider */}
+        <div class="border-t border-gray-200"></div>
+
+        {/* Recent Activities Section */}
+        <div>
+          <h3 class="text-base font-semibold text-gray-900 mb-4 flex items-center">
+            <svg class="h-5 w-5 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Recent Activities
+          </h3>
+
           <Show when={loading()}>
-            <div class="text-center py-4">
+            <div class="text-center py-6">
               <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
               <p class="mt-2 text-sm text-gray-600">Loading recent activities...</p>
             </div>
           </Show>
 
           <Show when={!loading() && recentEntries().length === 0}>
-            <div class="text-center py-4">
-              <p class="text-sm text-gray-600">No recent activities</p>
-              <p class="text-xs text-gray-500">Use the quick actions above to log care activities</p>
+            <div class="text-center py-6 bg-gray-50 rounded-lg">
+              <svg class="mx-auto h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={1.5} d="M9 5H7a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p class="text-sm text-gray-600 font-medium">No recent activities</p>
+              <p class="text-xs text-gray-500 mt-1">Use the quick actions above to log care activities</p>
             </div>
           </Show>
 
@@ -259,7 +295,7 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
             <div class="space-y-3">
               <For each={recentEntries()}>
                 {(entry) => (
-                  <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-150">
                     <div class="flex-shrink-0">
                       {getEntryIcon(entry.entryType)}
                     </div>

@@ -214,11 +214,11 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
   });
 
   return (
-    <div class={`${isMobile() ? 'h-full bg-white flex flex-col' : 'bg-white rounded-lg shadow'}`}>
+    <div class={isMobile() ? 'activity-container-mobile' : 'activity-container-desktop'}>
       {/* Header - Simplified on Mobile */}
-      <div class={`border-b border-gray-200 flex-shrink-0 ${isMobile() ? 'p-4' : 'p-6'}`}>
+      <div class={isMobile() ? 'activity-header-mobile' : 'activity-header-desktop'}>
         <div class="flex items-center justify-between">
-          <h2 class={`font-semibold text-gray-900 ${isMobile() ? 'text-lg' : 'text-xl'}`}>
+          <h2 class={isMobile() ? 'activity-title-mobile' : 'activity-title-desktop'}>
             Activity List
           </h2>
           <div class="text-sm text-gray-500">
@@ -235,16 +235,16 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
 
       <Show when={!loading()}>
         {/* Sort Controls */}
-        <div class={`bg-gray-50 border-b border-gray-200 flex-shrink-0 ${isMobile() ? 'p-3' : 'p-4'}`}>
-          <div class={`flex items-center ${isMobile() ? 'space-x-2' : 'space-x-4'}`}>
-            <span class={`font-medium text-gray-700 ${isMobile() ? 'text-xs' : 'text-sm'}`}>Sort by:</span>
+        <div class={isMobile() ? 'activity-sort-mobile' : 'activity-sort-desktop'}>
+          <div class={isMobile() ? 'activity-sort-container-mobile' : 'activity-sort-container-desktop'}>
+            <span class={isMobile() ? 'activity-sort-label-mobile' : 'activity-sort-label-desktop'}>Sort by:</span>
             
             <button
               onClick={() => handleSort('date')}
-              class={`flex items-center space-x-1 ${isMobile() ? 'px-2 py-1' : 'px-3 py-1'} rounded-md ${isMobile() ? 'text-xs' : 'text-sm'} font-medium ${
+              class={`${isMobile() ? 'activity-sort-button-mobile' : 'activity-sort-button-desktop'} ${
                 sortBy() === 'date' 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'activity-sort-button-active' 
+                  : 'activity-sort-button-inactive'
               }`}
             >
               <span>Date</span>
@@ -253,10 +253,10 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
             
             <button
               onClick={() => handleSort('plant')}
-              class={`flex items-center space-x-1 ${isMobile() ? 'px-2 py-1' : 'px-3 py-1'} rounded-md ${isMobile() ? 'text-xs' : 'text-sm'} font-medium ${
+              class={`${isMobile() ? 'activity-sort-button-mobile' : 'activity-sort-button-desktop'} ${
                 sortBy() === 'plant' 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'activity-sort-button-active' 
+                  : 'activity-sort-button-inactive'
               }`}
             >
               <span>Plant</span>
@@ -265,10 +265,10 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
             
             <button
               onClick={() => handleSort('type')}
-              class={`flex items-center space-x-1 ${isMobile() ? 'px-2 py-1' : 'px-3 py-1'} rounded-md ${isMobile() ? 'text-xs' : 'text-sm'} font-medium ${
+              class={`${isMobile() ? 'activity-sort-button-mobile' : 'activity-sort-button-desktop'} ${
                 sortBy() === 'type' 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'activity-sort-button-active' 
+                  : 'activity-sort-button-inactive'
               }`}
             >
               <span>Type</span>
@@ -278,9 +278,9 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
         </div>
 
         {/* Activity List - constrained with flex-1 and overflow-y-auto */}
-        <div class={`divide-y divide-gray-200 ${isMobile() ? 'flex-1 overflow-y-auto' : ''}`}>
+        <div class={isMobile() ? 'activity-list-mobile' : 'activity-list-desktop'}>
           <Show when={filteredActivities().length === 0}>
-            <div class={`text-center ${isMobile() ? 'p-6' : 'p-8'}`}>
+            <div class={isMobile() ? 'activity-empty-mobile' : 'activity-empty-desktop'}>
               <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -297,20 +297,20 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
           <For each={filteredActivities()}>
             {(activity) => (
               <div 
-                class={`hover:bg-gray-50 cursor-pointer ${isMobile() ? 'p-3' : 'p-4'}`}
+                class={isMobile() ? 'activity-item-mobile' : 'activity-item-desktop'}
                 onClick={() => handleActivityClick(activity)}
               >
-                <div class={`flex items-start ${isMobile() ? 'space-x-3' : 'space-x-4'}`}>
+                <div class={isMobile() ? 'activity-content-mobile' : 'activity-content-desktop'}>
                   {getActivityIcon(activity.entry.entryType)}
                   
                   <div class="flex-1 min-w-0">
-                    <div class={`${isMobile() ? 'space-y-1' : 'flex items-center justify-between'}`}>
-                      <div class={`flex items-center ${isMobile() ? 'space-x-2' : 'space-x-3'}`}>
-                        <h3 class={`font-medium text-gray-900 ${isMobile() ? 'text-sm' : 'text-sm'}`}>
+                    <div class={isMobile() ? 'activity-details-mobile' : 'activity-details-desktop'}>
+                      <div class={isMobile() ? 'activity-meta-mobile' : 'activity-meta-desktop'}>
+                        <h3 class="font-medium text-gray-900 text-sm">
                           {getActivityTypeLabel(activity.entry.entryType)}
                         </h3>
                         <span class={`text-gray-500 ${isMobile() ? 'text-xs' : 'text-sm'}`}>•</span>
-                        <span class={`font-medium text-blue-600 ${isMobile() ? 'text-sm' : 'text-sm'}`}>
+                        <span class="font-medium text-blue-600 text-sm">
                           {activity.plant.name}
                         </span>
                       </div>

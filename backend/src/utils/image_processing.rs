@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
-use image::{DynamicImage, ImageFormat, ImageOutputFormat};
-use std::io::Cursor;
+use image::codecs::avif::AvifEncoder;
+use image::{ColorType, DynamicImage, ImageEncoder, ImageFormat};
 
 /// Maximum dimensions for image processing (4K-ish resolution)
 const MAX_DIMENSION: u32 = 3840; // 4K width/height
@@ -98,14 +98,22 @@ fn crop_to_max_dimension(image: DynamicImage) -> DynamicImage {
     image.resize(new_width, new_height, filter)
 }
 
-/// Encode image to AVIF format with optimized quality settings
+/// Encode image to AVIF format with optimized quality and speed settings
 fn encode_to_avif(image: &DynamicImage) -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
-    let mut cursor = Cursor::new(&mut buffer);
 
-    // Encode to AVIF with quality setting
-    image
-        .write_to(&mut cursor, ImageOutputFormat::Avif)
+    // Create AVIF encoder with optimized settings
+    // Speed 4 (good balance of speed/quality), Quality 85 (high quality)
+    let encoder = AvifEncoder::new_with_speed_quality(&mut buffer, 4, 85)
+        .with_num_threads(Some(std::thread::available_parallelism()?.get()));
+
+    // Convert image to RGBA8 format for encoding
+    let rgba_image = image.to_rgba8();
+    let (width, height) = rgba_image.dimensions();
+
+    // Encode the image data
+    encoder
+        .write_image(rgba_image.as_raw(), width, height, ColorType::Rgba8)
         .with_context(|| "Failed to encode image as AVIF")?;
 
     Ok(buffer)
@@ -120,6 +128,8 @@ mod tests {
         // Create a small test image (100x100 RGB)
         let img = DynamicImage::new_rgb8(100, 100);
         let mut buffer = Vec::new();
+        use image::ImageOutputFormat;
+        use std::io::Cursor;
         img.write_to(&mut Cursor::new(&mut buffer), ImageOutputFormat::Jpeg(80))
             .unwrap();
 

@@ -41,7 +41,7 @@ export const PlantDetailPage: Component = () => {
         </div>
       }
     >
-      <div class="space-y-6">{(() => {
+      <div class="space-y-6 h-full">{(() => {
         const plant = plantsStore.selectedPlant!;
         return (
       <>
@@ -88,12 +88,12 @@ export const PlantDetailPage: Component = () => {
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 h-full lg:grid-cols-3 ">
           <div class="lg:col-span-2 space-y-6">
             <PlantCareStatus plant={plant} />
           </div>
           
-          <div class="space-y-6">
+          <div class="space-y-6 h-full">
             <div class="card">
               <div class="card-header">
                 <h3 class="text-lg font-medium text-gray-900">Plant Info</h3>

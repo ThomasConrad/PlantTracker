@@ -54,7 +54,7 @@ export const PlantsPage: Component = () => {
       <div class="px-6 pt-6 pb-4">
         <A
           href="/plants/new"
-          class="w-full flex items-center justify-center gap-3 bg-primary-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-sm hover:bg-primary-700 transition-colors"
+          class="primary-action-button"
         >
           <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2.5}>
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -63,7 +63,7 @@ export const PlantsPage: Component = () => {
         </A>
         
         {/* Plant count and sort */}
-        <div class="flex items-center justify-between mt-6">
+        <div class="flex-between mt-6">
           <div class="flex items-center gap-2">
             <span class="text-2xl font-bold text-gray-900">
               {plantsStore.plants.length}
@@ -92,7 +92,7 @@ export const PlantsPage: Component = () => {
       <Show
         when={!plantsStore.loading}
         fallback={
-          <div class="flex justify-center py-16">
+          <div class="loading-center py-16">
             <div class="flex flex-col items-center gap-4">
               <LoadingSpinner size="lg" />
               <p class="text-gray-500 font-medium">Loading your plants...</p>
@@ -103,8 +103,8 @@ export const PlantsPage: Component = () => {
         <Show
           when={plantsStore.plants.length > 0}
           fallback={
-            <div class="px-6 py-16 text-center">
-              <div class="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+            <div class="empty-state-container">
+              <div class="empty-state-icon">
                 <svg
                   class="h-12 w-12 text-gray-400"
                   fill="none"
@@ -119,14 +119,14 @@ export const PlantsPage: Component = () => {
                   />
                 </svg>
               </div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">No plants yet</h3>
-              <p class="text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">
+              <h3 class="empty-state-title">No plants yet</h3>
+              <p class="empty-state-description">
                 {searchQuery() ? 'No plants match your search. Try a different term.' : 'Start your plant journey by adding your first green companion.'}
               </p>
               {!searchQuery() && (
                 <A 
                   href="/plants/new" 
-                  class="inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors"
+                  class="primary-action-button-compact"
                 >
                   <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />

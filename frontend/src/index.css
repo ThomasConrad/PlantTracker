@@ -419,6 +419,189 @@
     @apply space-x-2 sm:space-x-4;
   }
 
+  /* Common layout patterns */
+  .flex-center {
+    @apply flex items-center justify-center;
+  }
+
+  .flex-between {
+    @apply flex items-center justify-between;
+  }
+
+  .flex-start {
+    @apply flex items-center justify-start;
+  }
+
+  /* Icon containers */
+  .icon-container-sm {
+    @apply w-6 h-6 rounded-full flex-center;
+  }
+
+  .icon-container-md {
+    @apply w-8 h-8 rounded-full flex-center;
+  }
+
+  .icon-container-lg {
+    @apply w-12 h-12 rounded-full flex-center;
+  }
+
+  .icon-container-xl {
+    @apply w-16 h-16 rounded-full flex-center;
+  }
+
+  .icon-container-xxl {
+    @apply w-24 h-24 mx-auto rounded-full flex-center;
+  }
+
+  /* Icon container colors */
+  .icon-container-blue {
+    @apply bg-blue-100 text-blue-600;
+  }
+
+  .icon-container-green {
+    @apply bg-green-100 text-green-600;
+  }
+
+  .icon-container-gray {
+    @apply bg-gray-100 text-gray-600;
+  }
+
+  .icon-container-purple {
+    @apply bg-purple-100 text-purple-600;
+  }
+
+  .icon-container-primary {
+    @apply bg-primary-100 text-primary-600;
+  }
+
+  .icon-container-red {
+    @apply bg-red-100 text-red-600;
+  }
+
+  /* Logo containers */
+  .logo-container-sm {
+    @apply h-8 w-8 bg-primary-600 rounded-lg flex-center;
+  }
+
+  .logo-container-md {
+    @apply h-12 w-12 bg-primary-600 rounded-lg flex-center;
+  }
+
+  /* Modal patterns */
+  .modal-overlay-base {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex-center z-50;
+  }
+
+  .modal-overlay-padded {
+    @apply modal-overlay-base p-4;
+  }
+
+  .modal-overlay-gray {
+    @apply fixed inset-0 bg-gray-500 bg-opacity-75 flex-center p-4 z-50;
+  }
+
+  /* Header patterns */
+  .page-header {
+    @apply flex-between p-6 border-b border-gray-200;
+  }
+
+  .section-header {
+    @apply flex-between mb-4;
+  }
+
+  .card-header-simple {
+    @apply flex-between p-6 border-b border-gray-200;
+  }
+
+  /* Empty state patterns */
+  .empty-state-container {
+    @apply text-center p-6 sm:p-8;
+  }
+
+  .empty-state-icon {
+    @apply icon-container-xxl bg-gray-100 mb-6;
+  }
+
+  .empty-state-title {
+    @apply text-xl font-semibold text-gray-900 mb-2;
+  }
+
+  .empty-state-description {
+    @apply text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed;
+  }
+
+  /* Primary action buttons */
+  .primary-action-button {
+    @apply w-full flex-center gap-3 bg-primary-600 text-white py-4 rounded-2xl font-semibold text-lg shadow-sm hover:bg-primary-700 transition-colors;
+  }
+
+  .primary-action-button-compact {
+    @apply inline-flex items-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors;
+  }
+
+  /* Badge patterns */
+  .notification-badge {
+    @apply absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex-center text-xs hover:bg-red-600;
+  }
+
+  .action-badge {
+    @apply bg-blue-600 text-white rounded-full w-6 h-6 flex-center;
+  }
+
+  .danger-badge {
+    @apply bg-red-600 text-white rounded-full w-6 h-6 flex-center;
+  }
+
+  /* Activity type specific styles */
+  .activity-icon-watering {
+    @apply icon-container-md icon-container-blue;
+  }
+
+  .activity-icon-fertilizing {
+    @apply icon-container-md icon-container-green;
+  }
+
+  .activity-icon-default {
+    @apply icon-container-md icon-container-gray;
+  }
+
+  .activity-icon-custom {
+    @apply icon-container-md icon-container-purple;
+  }
+
+  .activity-icon-lg-watering {
+    @apply icon-container-lg icon-container-blue;
+  }
+
+  .activity-icon-lg-fertilizing {
+    @apply icon-container-lg icon-container-green;
+  }
+
+  .activity-icon-lg-default {
+    @apply icon-container-lg icon-container-gray;
+  }
+
+  .activity-icon-lg-custom {
+    @apply icon-container-lg icon-container-purple;
+  }
+
+  /* Loading patterns */
+  .loading-center {
+    @apply flex-center py-8;
+  }
+
+  .loading-center-full {
+    @apply min-h-screen flex-center;
+  }
+
+  .loading-spinner-default {
+    @apply inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600;
+  }
+
+  .loading-spinner-sm {
+    @apply inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600;
+  }
+
   .care-form-content {
     /* Better touch targets on mobile */
     @apply touch-manipulation;

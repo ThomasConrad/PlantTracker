@@ -9,7 +9,7 @@ export const AuthLayout: Component<AuthLayoutProps> = (props) => {
     <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div class="sm:mx-auto sm:w-full sm:max-w-md">
         <div class="flex justify-center">
-          <div class="h-12 w-12 bg-primary-600 rounded-lg flex items-center justify-center">
+          <div class="logo-container-md">
             <svg
               class="h-8 w-8 text-white"
               fill="none"

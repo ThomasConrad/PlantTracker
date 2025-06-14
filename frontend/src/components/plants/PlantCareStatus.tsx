@@ -1,6 +1,7 @@
 import { Component, createSignal, Show, For, onMount } from 'solid-js';
 import { plantsStore } from '@/stores/plants';
 import { Button } from '@/components/ui/Button';
+import { EnhancedCareForm } from './EnhancedCareForm';
 import type { Plant } from '@/types';
 import type { components } from '@/types/api-generated';
 import { calculateDaysUntil, isOverdue, formatDate } from '@/utils/date';
@@ -17,6 +18,8 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
   const [recentEntries, setRecentEntries] = createSignal<TrackingEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [submitting, setSubmitting] = createSignal(false);
+  const [showEnhancedForm, setShowEnhancedForm] = createSignal(false);
+  const [enhancedFormType, setEnhancedFormType] = createSignal<EntryType>('watering');
 
   const loadRecentEntries = async () => {
     try {
@@ -49,6 +52,16 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openEnhancedForm = (type: EntryType) => {
+    setEnhancedFormType(type);
+    setShowEnhancedForm(true);
+  };
+
+  const closeEnhancedForm = () => {
+    setShowEnhancedForm(false);
+    loadRecentEntries(); // Refresh entries when form is closed
   };
 
   const wateringDays = () => calculateDaysUntil(props.plant.lastWatered ?? null, props.plant.wateringIntervalDays);
@@ -161,30 +174,63 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
           <h3 class="text-lg font-medium text-gray-900">Quick Actions</h3>
         </div>
         <div class="card-body">
-          <div class="flex flex-wrap gap-3">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleQuickAction('watering')}
-              loading={submitting()}
-            >
-              <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
-              </svg>
-              Water Now
-            </Button>
+          <div class="space-y-4">
+            {/* Quick Actions */}
+            <div class="flex flex-wrap gap-3">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleQuickAction('watering')}
+                loading={submitting()}
+              >
+                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+                </svg>
+                Quick Water
+              </Button>
 
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => handleQuickAction('fertilizing')}
-              loading={submitting()}
-            >
-              <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-              </svg>
-              Fertilize Now
-            </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleQuickAction('fertilizing')}
+                loading={submitting()}
+              >
+                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+                Quick Fertilize
+              </Button>
+            </div>
+
+            {/* Enhanced Actions */}
+            <div class="border-t border-gray-200 pt-4">
+              <h4 class="text-sm font-medium text-gray-700 mb-3">Add Details</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEnhancedForm('watering')}
+                  class="flex items-center justify-center"
+                >
+                  <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+                  </svg>
+                  <span class="hidden sm:inline">Water with</span> Amount & Notes
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEnhancedForm('fertilizing')}
+                  class="flex items-center justify-center"
+                >
+                  <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                  </svg>
+                  <span class="hidden sm:inline">Fertilize with</span> Type & Notes
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -226,8 +272,32 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
                           {formatDate(entry.timestamp)}
                         </p>
                       </div>
-                      <Show when={entry.notes}>
-                        <p class="text-sm text-gray-600 truncate">{entry.notes}</p>
+                      <Show when={entry.value || entry.notes}>
+                        <div class="text-sm text-gray-600 space-y-1">
+                          <Show when={entry.value}>
+                            <div class="flex items-center space-x-2">
+                              <Show when={entry.entryType === 'watering' && entry.value && typeof entry.value === 'object' && 'amount' in entry.value}>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                  {(entry.value as any).amount} {(entry.value as any).unit}
+                                </span>
+                              </Show>
+                              <Show when={entry.entryType === 'fertilizing' && entry.value && typeof entry.value === 'object' && 'type' in entry.value}>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                  {(entry.value as any).type}
+                                  <Show when={'amount' in (entry.value as any)}>
+                                    {' '}• {(entry.value as any).amount} {(entry.value as any).unit}
+                                  </Show>
+                                  <Show when={'dilution' in (entry.value as any)}>
+                                    {' '}• {(entry.value as any).dilution}
+                                  </Show>
+                                </span>
+                              </Show>
+                            </div>
+                          </Show>
+                          <Show when={entry.notes}>
+                            <p class="truncate">{entry.notes}</p>
+                          </Show>
+                        </div>
                       </Show>
                     </div>
                   </div>
@@ -237,6 +307,15 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
           </Show>
         </div>
       </div>
+
+      {/* Enhanced Care Form Modal */}
+      <Show when={showEnhancedForm()}>
+        <EnhancedCareForm
+          plant={props.plant}
+          initialType={enhancedFormType()}
+          onClose={closeEnhancedForm}
+        />
+      </Show>
     </div>
   );
 };

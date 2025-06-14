@@ -105,7 +105,7 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
                 </button>
 
                 {showUserMenu() && (
-                  <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                  <div class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-40">
                     <div class="py-1">
                       <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-200">
                         <p class="font-medium">{authStore.user?.name}</p>

@@ -178,6 +178,34 @@
     z-index: 50;
   }
 
+  /* Enhanced care form styles */
+  .care-form-modal {
+    /* Ensure modal appears above everything on mobile */
+    z-index: 9999;
+  }
+
+
+
+  .care-form-content {
+    /* Better touch targets on mobile */
+    @apply touch-manipulation;
+  }
+
+  /* Better input styling for mobile */
+  .mobile-input {
+    @apply text-base; /* Prevents zoom on iOS */
+  }
+
+  /* Touch-friendly buttons */
+  .mobile-button {
+    @apply min-h-[44px] px-4 py-3 text-base;
+  }
+
+  /* Improved spacing on mobile */
+  .mobile-form-section {
+    @apply p-4 space-y-4;
+  }
+
   @media (min-width: 640px) {
     .mobile-content-container {
       height: auto;
@@ -187,6 +215,14 @@
     .mobile-content-area {
       flex: none;
       overflow-y: visible;
+    }
+
+    .mobile-button {
+      @apply min-h-[auto] px-3 py-2 text-sm;
+    }
+
+    .mobile-form-section {
+      @apply p-6 space-y-6;
     }
   }
 }

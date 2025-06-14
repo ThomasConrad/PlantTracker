@@ -25,7 +25,7 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
           <div class="flex justify-between h-16">
             <div class="flex items-center">
               <A href="/plants" class="flex items-center space-x-2">
-                <div class="h-8 w-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                <div class="logo-container-sm">
                   <svg
                     class="h-5 w-5 text-white"
                     fill="none"
@@ -84,7 +84,7 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
                   class="flex items-center space-x-2 p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100"
                   aria-label="User menu"
                 >
-                  <div class="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                  <div class="icon-container-md bg-gray-300">
                     <span class="text-sm font-medium text-gray-700">
                       {authStore.user?.name?.[0]?.toUpperCase() || 'U'}
                     </span>

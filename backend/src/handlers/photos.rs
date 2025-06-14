@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
 use crate::database::photos as db_photos;
-use crate::models::{PhotoWithThumbnail, UploadPhotoRequest};
+use crate::models::{Photo, UploadPhotoRequest};
 use crate::utils::errors::{AppError, Result};
 
 #[derive(Debug, Deserialize)]
@@ -25,17 +25,24 @@ struct ListPhotosQuery {
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PhotosResponse {
-    photos: Vec<PhotoWithThumbnail>,
+    photos: Vec<PhotoWithUrlWrapper>,
     total: i64,
     limit: i64,
     offset: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PhotoWithUrlWrapper {
+    #[serde(flatten)]
+    photo: Photo,
+    url: String,
 }
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/photos", get(list_photos).post(upload_photo))
         .route("/photos/:photo_id", get(serve_photo).delete(delete_photo))
-        .route("/photos/:photo_id/thumbnail", get(serve_thumbnail))
 }
 
 async fn list_photos(
@@ -72,41 +79,13 @@ async fn list_photos(
     )
     .await?;
 
-    // Convert to PhotoWithThumbnail with URLs
-    let photos_with_urls: Vec<PhotoWithThumbnail> = response
+    // Convert photos to include URLs
+    let photos_with_urls: Vec<PhotoWithUrlWrapper> = response
         .photos
         .into_iter()
         .map(|photo| {
-            let full_url = format!(
-                "/api/v1/plants/{}/photos/{}?v={}",
-                plant_id,
-                photo.id,
-                photo.created_at.timestamp()
-            );
-            let thumbnail_url = if photo.thumbnail_width.is_some() {
-                Some(format!(
-                    "/api/v1/plants/{}/photos/{}/thumbnail?v={}",
-                    plant_id,
-                    photo.id,
-                    photo.created_at.timestamp()
-                ))
-            } else {
-                None
-            };
-
-            PhotoWithThumbnail {
-                id: photo.id,
-                plant_id: photo.plant_id,
-                filename: photo.filename,
-                original_filename: photo.original_filename,
-                size: photo.size,
-                content_type: photo.content_type,
-                thumbnail_width: photo.thumbnail_width,
-                thumbnail_height: photo.thumbnail_height,
-                created_at: photo.created_at,
-                full_url,
-                thumbnail_url,
-            }
+            let url = photo.url();
+            PhotoWithUrlWrapper { photo, url }
         })
         .collect();
 
@@ -238,10 +217,10 @@ async fn upload_photo(
         size: file_data.len() as i64,
         content_type,
         data: file_data,
-        generate_thumbnail: Some(true), // Always generate thumbnails
     };
 
-    let photo = db_photos::create_photo(&app_state.pool, &plant_id, &user.id, &upload_request).await?;
+    let photo =
+        db_photos::create_photo(&app_state.pool, &plant_id, &user.id, &upload_request).await?;
 
     tracing::info!(
         "Photo uploaded with id: {} for plant: {}",
@@ -271,58 +250,4 @@ async fn delete_photo(
 
     tracing::info!("Deleted photo: {} for plant: {}", photo_id, plant_id);
     Ok(StatusCode::NO_CONTENT)
-}
-
-async fn serve_thumbnail(
-    auth_session: AuthSession,
-    State(app_state): State<AppState>,
-    Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
-) -> Result<Response<Body>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
-
-    tracing::info!(
-        "Serve thumbnail request for plant: {}, photo: {} by user: {}",
-        plant_id,
-        photo_id,
-        user.id
-    );
-
-    match db_photos::get_photo_thumbnail_data(&app_state.pool, &plant_id, &photo_id, &user.id).await {
-        Ok((data, content_type)) => {
-            let response = Response::builder()
-                .status(StatusCode::OK)
-                .header(header::CONTENT_TYPE, content_type)
-                .header(header::CONTENT_LENGTH, data.len())
-                .header(header::CACHE_CONTROL, "public, max-age=31536000") // Cache for 1 year
-                .header(header::ETAG, format!("\"thumb-{}-{}\"", plant_id, photo_id)) // ETag for caching
-                .body(Body::from(data))
-                .map_err(|_| AppError::Internal {
-                    message: "Failed to build response".to_string(),
-                })?;
-
-            tracing::debug!("Served thumbnail: {} for plant: {}", photo_id, plant_id);
-            Ok(response)
-        }
-        Err(AppError::NotFound { .. }) => {
-            // Thumbnail not ready yet, return 202 Accepted to indicate processing
-            tracing::debug!(
-                "Thumbnail not ready for photo: {} in plant: {}",
-                photo_id,
-                plant_id
-            );
-            let response = Response::builder()
-                .status(StatusCode::ACCEPTED)
-                .header(header::CONTENT_TYPE, "application/json")
-                .body(Body::from(
-                    r#"{"status":"processing","message":"Thumbnail is being generated"}"#,
-                ))
-                .map_err(|_| AppError::Internal {
-                    message: "Failed to build response".to_string(),
-                })?;
-            Ok(response)
-        }
-        Err(e) => Err(e),
-    }
 }

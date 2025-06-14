@@ -10,7 +10,10 @@ export interface CustomMetric {
 
 // Import and re-export the generated Plant type
 import type { components } from './api-generated';
-export type Plant = components['schemas']['PlantResponse'];
+export type Plant = components['schemas']['PlantResponse'] & {
+  thumbnailId?: string | null;
+  thumbnailUrl?: string | null;
+};
 
 export interface Photo {
   id: string;
@@ -19,14 +22,13 @@ export interface Photo {
   originalFilename: string;
   size: number;
   contentType: string;
-  thumbnailWidth?: number | null;
-  thumbnailHeight?: number | null;
+  width?: number | null;
+  height?: number | null;
   createdAt: string;
 }
 
-export interface PhotoWithThumbnail extends Photo {
-  fullUrl: string;
-  thumbnailUrl?: string | null;
+export interface PhotoWithUrl extends Photo {
+  url: string;
 }
 
 // Re-export commonly used generated types for convenience

@@ -67,28 +67,30 @@ const plantsStore = {
       setLoading(true);
       setError(null);
       
-      // First create the plant with basic data
-      const { thumbnailFile, ...createData } = plantData;
-      const newPlant = await apiClient.createPlant(createData);
+      // Create the plant first
+      const newPlant = await apiClient.createPlant(plantData);
+      setPlants(prev => [...prev, newPlant]);
       
-      let finalPlant = newPlant;
-      
-      // Handle thumbnail upload if a file was provided
-      if (thumbnailFile instanceof File) {
+      // If a thumbnail file was provided, upload it and set as thumbnail
+      if (plantData.thumbnailFile) {
         try {
-          // Upload the photo
-          const uploadedPhoto = await apiClient.uploadPlantPhoto(newPlant.id, thumbnailFile);
+          const photo = await apiClient.uploadPlantPhoto(newPlant.id, plantData.thumbnailFile);
+          const updatedPlant = await apiClient.setPlantThumbnail(newPlant.id, photo.id);
           
-          // Set the uploaded photo as the plant's thumbnail
-          finalPlant = await apiClient.setPlantThumbnail(newPlant.id, uploadedPhoto.id);
-        } catch (photoError) {
-          console.error('Failed to upload/set thumbnail for new plant:', photoError);
-          // Don't throw here - the plant creation was successful, just the thumbnail failed
+          // Update the plant in our store with the thumbnail
+          setPlants(prev => prev.map(plant => 
+            plant.id === newPlant.id ? updatedPlant : plant
+          ));
+          
+          return updatedPlant;
+        } catch (thumbnailError) {
+          // If thumbnail upload fails, still return the created plant
+          console.warn('Failed to upload thumbnail:', thumbnailError);
+          return newPlant;
         }
       }
       
-      setPlants(prev => [...prev, finalPlant]);
-      return finalPlant;
+      return newPlant;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create plant';
       setError(errorMessage);
@@ -98,46 +100,22 @@ const plantsStore = {
     }
   },
 
-  async updatePlant(plantId: string, plantData: Partial<CreatePlantRequest> & { thumbnailFile?: File }): Promise<Plant> {
+  async updatePlant(plantId: string, plantData: Partial<CreatePlantRequest>): Promise<Plant> {
     try {
       setLoading(true);
       setError(null);
       
-      // First update the basic plant data
-      const { thumbnailFile, ...updateData } = plantData;
-      const updatedPlant = await apiClient.updatePlant(plantId, updateData);
-      
-      let finalPlant = updatedPlant;
-      
-      // Handle thumbnail upload if a file was provided
-      if (thumbnailFile instanceof File) {
-        try {
-          // Uploading thumbnail file
-          
-          // Upload the photo
-          const uploadedPhoto = await apiClient.uploadPlantPhoto(plantId, thumbnailFile);
-          // Photo uploaded successfully
-          
-          // Set the uploaded photo as the plant's thumbnail
-          finalPlant = await apiClient.setPlantThumbnail(plantId, uploadedPhoto.id);
-          // Thumbnail set successfully
-          
-          // Photo processing completed
-        } catch (photoError) {
-          console.error('Failed to upload/set thumbnail:', photoError);
-          // Don't throw here - the plant update was successful, just the thumbnail failed
-        }
-      }
+      const updatedPlant = await apiClient.updatePlant(plantId, plantData);
       
       setPlants(prev =>
-        prev.map(plant => plant.id === plantId ? finalPlant : plant)
+        prev.map(plant => plant.id === plantId ? updatedPlant : plant)
       );
       
       if (selectedPlant()?.id === plantId) {
-        setSelectedPlant(finalPlant);
+        setSelectedPlant(updatedPlant);
       }
       
-      return finalPlant;
+      return updatedPlant;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update plant';
       setError(errorMessage);
@@ -181,26 +159,18 @@ const plantsStore = {
     try {
       setError(null);
       const updatedPlant = await apiClient.setPlantThumbnail(plantId, photoId);
-      
-      // Update plants in store
-      setPlants(plants => 
-        plants.map(plant => 
-          plant.id === plantId ? updatedPlant : plant
-        )
-      );
-      
-      // Update selectedPlant if it's the one being updated
-      if (selectedPlant()?.id === plantId) {
-        setSelectedPlant(updatedPlant);
-      }
-      
+      // Update the plant in our local store
+      setPlants(prev => prev.map(plant => 
+        plant.id === plantId ? updatedPlant : plant
+      ));
       return updatedPlant;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to set thumbnail';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set plant thumbnail';
       setError(errorMessage);
       throw err;
     }
   },
+
 
   async createTrackingEntry(
     plantId: string,

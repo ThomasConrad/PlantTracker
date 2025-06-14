@@ -206,6 +206,24 @@ class ApiClient {
     return response.json();
   }
 
+  async setPlantThumbnail(plantId: string, photoId: string): Promise<Plant> {
+    const response = await fetch(`${this.baseUrl}/plants/${plantId}/thumbnail/${photoId}`, {
+      method: 'PUT',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.message || `HTTP ${response.status}`,
+        response.status,
+        errorData
+      );
+    }
+
+    return response.json();
+  }
+
   async deletePlantPhoto(plantId: string, photoId: string): Promise<void> {
     await this.request(`/plants/${plantId}/photos/${photoId}`, {
       method: 'DELETE',
@@ -214,16 +232,6 @@ class ApiClient {
 
   getPhotoUrl(plantId: string, photoId: string): string {
     return `${this.baseUrl}/plants/${plantId}/photos/${photoId}`;
-  }
-
-  getThumbnailUrl(plantId: string, photoId: string): string {
-    return `${this.baseUrl}/plants/${plantId}/photos/${photoId}/thumbnail`;
-  }
-
-  async setPlantThumbnail(plantId: string, photoId: string): Promise<Plant> {
-    return this.request<Plant>(`/plants/${plantId}/thumbnail/${photoId}`, {
-      method: 'PUT',
-    });
   }
 
   async getTrackingEntries(

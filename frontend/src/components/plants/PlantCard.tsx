@@ -10,8 +10,8 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
   return (
     <A href={`/plants/${props.plant.id}`} class="plant-card-full-image group">
       <div class="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-sm">
-        <Show 
-          when={props.plant.thumbnailUrl} 
+        <Show
+          when={props.plant.thumbnailUrl}
           fallback={
             <div class="h-full w-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
               <svg class="h-16 w-16 text-primary-600 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -25,19 +25,11 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
             </div>
           }
         >
-          <img 
-            src={props.plant.thumbnailUrl!} 
+          <img
+            src={props.plant.thumbnailUrl!}
             alt={`${props.plant.name} thumbnail`}
             class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
-            onError={(e) => {
-              // If thumbnail fails to load, it might still be processing
-              // Try again in a few seconds
-              const img = e.currentTarget;
-              setTimeout(() => {
-                img.src = props.plant.thumbnailUrl! + `?retry=${Date.now()}`;
-              }, 3000);
-            }}
           />
         </Show>
         

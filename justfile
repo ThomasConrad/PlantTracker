@@ -130,6 +130,24 @@ generate-openapi:
     cd backend && cargo build --bin generate-openapi
     cd backend && ./target/debug/generate-openapi > ../frontend/src/api/openapi.json
 
+# === DATABASE COMMANDS ===
+
+# Run database migrations
+migrate:
+    @echo "🗃️ Running database migrations..."
+    cd backend && sqlx migrate run
+
+# Create a new database migration
+migrate-new name:
+    @echo "🗃️ Creating new migration: {{name}}"
+    cd backend && sqlx migrate add {{name}}
+
+# Reset database (drop and recreate)
+db-reset:
+    @echo "🗃️ Resetting database..."
+    cd backend && rm -f planty.db
+    just migrate
+
 # === UTILITY COMMANDS ===
 
 # Setup Python environment for E2E tests

@@ -744,6 +744,11 @@
           "filename": {
             "type": "string"
           },
+          "height": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "id": {
             "type": "string",
             "format": "uuid"
@@ -759,12 +764,7 @@
             "type": "integer",
             "format": "int64"
           },
-          "thumbnailHeight": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "thumbnailWidth": {
+          "width": {
             "type": "integer",
             "format": "int32",
             "nullable": true
@@ -837,15 +837,6 @@
           },
           "name": {
             "type": "string"
-          },
-          "thumbnailId": {
-            "type": "string",
-            "format": "uuid",
-            "nullable": true
-          },
-          "thumbnailUrl": {
-            "type": "string",
-            "nullable": true
           },
           "updatedAt": {
             "type": "string",

@@ -44,7 +44,7 @@ dotenvy = "0.15"
 multer = "3.0"
 
 # Image processing
-image = { version = "0.24", features = ["jpeg", "png", "gif", "webp"] }
+image = { version = "0.24", features = ["jpeg", "png", "gif", "webp", "avif"] }
 
 # Calendar
 icalendar = "0.16"

@@ -14,7 +14,7 @@ async fn test_user_can_only_see_own_plants() {
 
     // Create plants for user1
     let plant1 = common::create_test_plant(&app, "User1 Plant1", "Genus1").await;
-    let plant2 = common::create_test_plant(&app, "User1 Plant2", "Genus2").await;
+    let _plant2 = common::create_test_plant(&app, "User1 Plant2", "Genus2").await;
 
     // Logout user1 and create user2
     app.client
@@ -28,7 +28,7 @@ async fn test_user_can_only_see_own_plants() {
     let user2_id = user2["user"]["id"].as_str().unwrap();
 
     // Create plants for user2
-    let plant3 = common::create_test_plant(&app, "User2 Plant1", "Genus3").await;
+    let _plant3 = common::create_test_plant(&app, "User2 Plant1", "Genus3").await;
 
     // User2 should only see their own plant
     let response = app

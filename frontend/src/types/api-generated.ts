@@ -273,6 +273,8 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             filename: string;
+            /** Format: int32 */
+            height?: number | null;
             /** Format: uuid */
             id: string;
             originalFilename: string;
@@ -281,9 +283,7 @@ export interface components {
             /** Format: int64 */
             size: number;
             /** Format: int32 */
-            thumbnailHeight?: number | null;
-            /** Format: int32 */
-            thumbnailWidth?: number | null;
+            width?: number | null;
         };
         PhotosResponse: {
             photos: components["schemas"]["Photo"][];
@@ -304,9 +304,6 @@ export interface components {
             /** Format: date-time */
             lastWatered?: string | null;
             name: string;
-            /** Format: uuid */
-            thumbnailId?: string | null;
-            thumbnailUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
             userId: string;

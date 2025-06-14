@@ -16,10 +16,23 @@ export const EditPlantPage: Component = () => {
     }
   });
 
-  const handleSubmit = async (data: PlantFormData) => {
+  const handleSubmit = async (data: PlantFormData & { thumbnailFile?: File }) => {
     try {
       setLoading(true);
+      
+      // Update the plant first
       await plantsStore.updatePlant(params.id, data);
+      
+      // If a thumbnail file was provided, upload it and set as thumbnail
+      if (data.thumbnailFile) {
+        try {
+          const photo = await plantsStore.uploadPhoto(params.id, data.thumbnailFile);
+          await plantsStore.setPlantThumbnail(params.id, photo.id);
+        } catch (thumbnailError) {
+          console.warn('Failed to upload thumbnail:', thumbnailError);
+        }
+      }
+      
       navigate(`/plants/${params.id}`);
     } catch (error) {
       console.error('Failed to update plant:', error);

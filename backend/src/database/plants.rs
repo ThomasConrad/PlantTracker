@@ -52,10 +52,14 @@ impl PlantRow {
                 .map_err(|_| AppError::Internal {
                     message: "Invalid datetime in database".to_string(),
                 })?,
-            thumbnail_id: self.thumbnail_id.as_ref().and_then(|s| Uuid::parse_str(s).ok()),
-            thumbnail_url: self.thumbnail_id.as_ref().map(|thumb_id| {
-                format!("/api/v1/plants/{}/photos/{}/thumbnail", self.id, thumb_id)
-            }),
+            thumbnail_id: self
+                .thumbnail_id
+                .as_ref()
+                .and_then(|s| Uuid::parse_str(s).ok()),
+            thumbnail_url: self
+                .thumbnail_id
+                .as_ref()
+                .map(|thumb_id| format!("/api/v1/plants/{}/photos/{}", self.id, thumb_id)),
             custom_metrics: vec![], // TODO: Load custom metrics
             created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
                 AppError::Internal {

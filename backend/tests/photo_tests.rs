@@ -55,11 +55,11 @@ async fn test_upload_photo() {
     let plant = common::create_test_plant(&app, "Upload Plant", "Uploadicus").await;
     let plant_id = plant["id"].as_str().unwrap();
 
-    // Create fake image data (simulate a JPEG)
-    let fake_image_data = vec![0xFF, 0xD8, 0xFF, 0xE0]; // JPEG header
+    // Create valid test image data
+    let test_image_data = common::create_test_image_data(10, 10);
 
     // Upload photo using multipart form
-    let part = Part::bytes(fake_image_data.clone())
+    let part = Part::bytes(test_image_data.clone())
         .file_name("test-image.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
@@ -80,8 +80,9 @@ async fn test_upload_photo() {
     assert!(body["id"].is_string());
     assert_eq!(body["plantId"], plant_id);
     assert_eq!(body["originalFilename"], "test-image.jpg");
-    assert_eq!(body["size"], fake_image_data.len());
-    assert_eq!(body["contentType"], "image/jpeg");
+    // Size will be different after AVIF conversion
+    assert!(body["size"].as_i64().unwrap() > 0);
+    assert_eq!(body["contentType"], "image/avif"); // Converted to AVIF
     assert!(body["filename"].as_str().unwrap().contains(plant_id));
     assert!(body["createdAt"].is_string());
 }
@@ -170,7 +171,8 @@ async fn test_upload_photo_for_nonexistent_plant() {
     let fake_plant_id = uuid::Uuid::new_v4();
 
     // Try to upload photo to nonexistent plant
-    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+    let test_image_data = common::create_test_image_data(5, 5);
+    let part = Part::bytes(test_image_data)
         .file_name("test.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
@@ -193,7 +195,8 @@ async fn test_upload_photo_unauthenticated() {
     let app = TestApp::new().await;
     let plant_id = uuid::Uuid::new_v4();
 
-    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+    let test_image_data = common::create_test_image_data(5, 5);
+    let part = Part::bytes(test_image_data)
         .file_name("test.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
@@ -223,7 +226,8 @@ async fn test_delete_photo() {
     let plant_id = plant["id"].as_str().unwrap();
 
     // Upload a photo first
-    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+    let test_image_data = common::create_test_image_data(8, 8);
+    let part = Part::bytes(test_image_data)
         .file_name("to-delete.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
@@ -329,7 +333,8 @@ async fn test_user_isolation_photos() {
     let user1_plant_id = user1_plant["id"].as_str().unwrap();
 
     // Upload photo as user1
-    let part = Part::bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]) // JPEG header
+    let test_image_data = common::create_test_image_data(6, 6);
+    let part = Part::bytes(test_image_data)
         .file_name("user1-photo.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
@@ -392,11 +397,11 @@ async fn test_serve_photo() {
     let plant = common::create_test_plant(&app, "Serve Plant", "Servicus").await;
     let plant_id = plant["id"].as_str().unwrap();
 
-    // Create fake image data (simulate a JPEG)
-    let fake_image_data = vec![0xFF, 0xD8, 0xFF, 0xE0]; // JPEG header
+    // Create valid test image data
+    let test_image_data = common::create_test_image_data(12, 12);
 
     // Upload photo using multipart form
-    let part = Part::bytes(fake_image_data.clone())
+    let part = Part::bytes(test_image_data.clone())
         .file_name("serve-test.jpg")
         .mime_str("image/jpeg")
         .expect("Failed to create part");
@@ -430,18 +435,16 @@ async fn test_serve_photo() {
     assert_eq!(serve_response.status(), 200);
     assert_eq!(
         serve_response.headers().get("content-type").unwrap(),
-        "image/jpeg"
-    );
-    assert_eq!(
-        serve_response.headers().get("content-length").unwrap(),
-        &fake_image_data.len().to_string()
+        "image/avif" // Should be AVIF after processing
     );
 
+    // Data will be different after AVIF conversion
     let served_data = serve_response
         .bytes()
         .await
         .expect("Failed to get photo data");
-    assert_eq!(served_data.to_vec(), fake_image_data);
+    assert!(!served_data.is_empty());
+    // Don't check exact data match since it's been processed to AVIF
 }
 
 #[tokio::test]

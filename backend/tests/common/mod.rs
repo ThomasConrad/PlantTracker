@@ -4,8 +4,9 @@ use sqlx::SqlitePool;
 use tempfile::TempDir;
 use tokio::net::TcpListener;
 
+use planty_api::app_state::AppState;
 use planty_api::auth;
-use planty_api::handlers::{auth as auth_handlers, plants, google_tasks};
+use planty_api::handlers::{auth as auth_handlers, google_tasks, plants};
 
 pub struct TestApp {
     pub address: String,
@@ -33,12 +34,15 @@ impl TestApp {
         // Set up authentication layers
         let (session_layer, auth_layer) = auth::create_auth_layers(db_pool.clone());
 
+        // Create app state
+        let app_state = AppState::new(db_pool.clone());
+
         // Build app
         let app = Router::new()
             .nest("/auth", auth_handlers::routes())
             .nest("/plants", plants::routes())
             .nest("/google-tasks", google_tasks::routes())
-            .with_state(db_pool.clone())
+            .with_state(app_state)
             .layer(auth_layer)
             .layer(session_layer);
 
@@ -142,4 +146,19 @@ pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_
         .json()
         .await
         .expect("Failed to parse create plant response")
+}
+
+/// Create valid test image data for testing
+pub fn create_test_image_data(width: u32, height: u32) -> Vec<u8> {
+    use image::{DynamicImage, ImageOutputFormat};
+    use std::io::Cursor;
+
+    let img = DynamicImage::new_rgb8(width, height);
+    let mut jpeg_data = Vec::new();
+    img.write_to(
+        &mut Cursor::new(&mut jpeg_data),
+        ImageOutputFormat::Jpeg(80),
+    )
+    .unwrap();
+    jpeg_data
 }

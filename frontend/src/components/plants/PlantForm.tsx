@@ -1,12 +1,12 @@
 import { Component, createSignal, For } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { ThumbnailUpload } from './ThumbnailUpload';
+import { ThumbnailUpload } from '@/components/plants/ThumbnailUpload';
 import type { PlantFormData } from '@/types';
 
 interface PlantFormProps {
   initialData?: Partial<PlantFormData>;
-  onSubmit: (data: PlantFormData) => Promise<void>;
+  onSubmit: (data: PlantFormData & { thumbnailFile?: File }) => Promise<void>;
   submitText?: string;
   loading?: boolean;
 }
@@ -18,10 +18,10 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     wateringIntervalDays: props.initialData?.wateringIntervalDays || 7,
     fertilizingIntervalDays: props.initialData?.fertilizingIntervalDays || 14,
     customMetrics: props.initialData?.customMetrics || [],
-    thumbnailFile: props.initialData?.thumbnailFile,
   });
 
   const [errors, setErrors] = createSignal<Record<string, string>>({});
+  const [thumbnailFile, setThumbnailFile] = createSignal<File | null>(null);
   const [thumbnailError, setThumbnailError] = createSignal<string>('');
 
   const addCustomMetric = () => {
@@ -50,23 +50,6 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     }));
   };
 
-  const handleThumbnailSelect = (file: File) => {
-    setThumbnailError('');
-    
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
-      setThumbnailError('File size must be less than 10MB');
-      return;
-    }
-    
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setThumbnailError('Please select an image file');
-      return;
-    }
-    
-    setFormData(prev => ({ ...prev, thumbnailFile: file }));
-  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -100,6 +83,11 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleThumbnailSelect = (file: File) => {
+    setThumbnailFile(file);
+    setThumbnailError('');
+  };
+
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     
@@ -114,17 +102,12 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
       name: formData().name.trim(),
       genus: formData().genus.trim(),
       customMetrics: validCustomMetrics,
+      thumbnailFile: thumbnailFile() || undefined,
     });
   };
 
   return (
     <form onSubmit={handleSubmit} class="space-y-6">
-      {/* Thumbnail Upload */}
-      <ThumbnailUpload
-        onFileSelect={handleThumbnailSelect}
-        selectedFile={formData().thumbnailFile}
-        error={thumbnailError()}
-      />
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Input
           label="Plant Name"
@@ -176,6 +159,13 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
           required
         />
       </div>
+
+      <ThumbnailUpload
+        onFileSelect={handleThumbnailSelect}
+        selectedFile={thumbnailFile()}
+        error={thumbnailError()}
+        loading={props.loading}
+      />
 
       <div class="space-y-4">
         <div class="flex items-center justify-between">

@@ -102,11 +102,15 @@ pub struct CreatePlantRequest {
     #[validate(nested)]
     pub fertilizing_schedule: Option<CreateCareScheduleRequest>,
     pub custom_metrics: Option<Vec<CreateCustomMetricRequest>>,
+    pub last_watered: Option<DateTime<Utc>>,
+    pub last_fertilized: Option<DateTime<Utc>>,
 }
 
 impl CreatePlantRequest {
     pub fn watering_interval_days(&self) -> Option<i32> {
-        self.watering_schedule.as_ref().and_then(|s| s.interval_days)
+        self.watering_schedule
+            .as_ref()
+            .and_then(|s| s.interval_days)
     }
 
     pub fn watering_amount(&self) -> Option<f64> {
@@ -118,11 +122,15 @@ impl CreatePlantRequest {
     }
 
     pub fn watering_notes(&self) -> Option<String> {
-        self.watering_schedule.as_ref().and_then(|s| s.notes.clone())
+        self.watering_schedule
+            .as_ref()
+            .and_then(|s| s.notes.clone())
     }
 
     pub fn fertilizing_interval_days(&self) -> Option<i32> {
-        self.fertilizing_schedule.as_ref().and_then(|s| s.interval_days)
+        self.fertilizing_schedule
+            .as_ref()
+            .and_then(|s| s.interval_days)
     }
 
     pub fn fertilizing_amount(&self) -> Option<f64> {
@@ -130,11 +138,15 @@ impl CreatePlantRequest {
     }
 
     pub fn fertilizing_unit(&self) -> Option<String> {
-        self.fertilizing_schedule.as_ref().and_then(|s| s.unit.clone())
+        self.fertilizing_schedule
+            .as_ref()
+            .and_then(|s| s.unit.clone())
     }
 
     pub fn fertilizing_notes(&self) -> Option<String> {
-        self.fertilizing_schedule.as_ref().and_then(|s| s.notes.clone())
+        self.fertilizing_schedule
+            .as_ref()
+            .and_then(|s| s.notes.clone())
     }
 }
 
@@ -252,6 +264,8 @@ mod tests {
                 notes: None,
             }),
             custom_metrics: None,
+            last_watered: None,
+            last_fertilized: None,
         };
 
         assert!(request.validate().is_ok());
@@ -275,6 +289,8 @@ mod tests {
                 notes: None,
             }),
             custom_metrics: None,
+            last_watered: None,
+            last_fertilized: None,
         };
 
         let validation_result = request.validate();
@@ -302,6 +318,8 @@ mod tests {
                 notes: None,
             }),
             custom_metrics: None,
+            last_watered: None,
+            last_fertilized: None,
         };
 
         let validation_result = request.validate();
@@ -329,6 +347,8 @@ mod tests {
                 notes: None,
             }),
             custom_metrics: None,
+            last_watered: None,
+            last_fertilized: None,
         };
 
         let validation_result = request.validate();
@@ -356,6 +376,8 @@ mod tests {
                 notes: None,
             }),
             custom_metrics: None,
+            last_watered: None,
+            last_fertilized: None,
         };
 
         let validation_result = request.validate();
@@ -384,6 +406,8 @@ mod tests {
                 notes: None,
             }),
             custom_metrics: None,
+            last_watered: None,
+            last_fertilized: None,
         };
 
         let validation_result = request.validate();
@@ -484,6 +508,8 @@ mod tests {
                 notes: None,
             }),
             custom_metrics: Some(vec![custom_metric]),
+            last_watered: None,
+            last_fertilized: None,
         };
 
         assert!(request.validate().is_ok());

@@ -114,7 +114,7 @@ pub async fn create_plant(
     let plant_id = Uuid::new_v4();
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
-    
+
     // Extract values to avoid lifetime issues
     let watering_interval = request.watering_interval_days();
     let fertilizing_interval = request.fertilizing_interval_days();
@@ -124,6 +124,8 @@ pub async fn create_plant(
     let fertilizing_amount = request.fertilizing_amount();
     let fertilizing_unit = request.fertilizing_unit();
     let fertilizing_notes = request.fertilizing_notes();
+    let last_watered = request.last_watered.map(|dt| dt.to_rfc3339());
+    let last_fertilized = request.last_fertilized.map(|dt| dt.to_rfc3339());
 
     let result = sqlx::query!(
         r#"
@@ -132,8 +134,9 @@ pub async fn create_plant(
             watering_interval_days, fertilizing_interval_days,
             watering_amount, watering_unit, watering_notes,
             fertilizing_amount, fertilizing_unit, fertilizing_notes,
+            last_watered, last_fertilized,
             created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         plant_id_str,
         user_id,
@@ -147,6 +150,8 @@ pub async fn create_plant(
         fertilizing_amount,
         fertilizing_unit,
         fertilizing_notes,
+        last_watered,
+        last_fertilized,
         now,
         now
     )
@@ -319,89 +324,55 @@ pub async fn update_plant(
         WHERE id = ? AND user_id = ?
     ";
 
-    let mut query_builder = sqlx::query(query)
-        .bind(&request.name)
-        .bind(&request.genus);
+    let mut query_builder = sqlx::query(query).bind(&request.name).bind(&request.genus);
 
     // Handle watering schedule fields
     if let Some(watering_interval) = request.watering_interval_days() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(watering_interval);
+        query_builder = query_builder.bind(true).bind(watering_interval);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<i32>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<i32>>);
     }
 
     if let Some(fertilizing_interval) = request.fertilizing_interval_days() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(fertilizing_interval);
+        query_builder = query_builder.bind(true).bind(fertilizing_interval);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<i32>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<i32>>);
     }
 
     if let Some(watering_amount) = request.watering_amount() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(watering_amount);
+        query_builder = query_builder.bind(true).bind(watering_amount);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<f64>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<f64>>);
     }
 
     if let Some(watering_unit) = request.watering_unit() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(watering_unit);
+        query_builder = query_builder.bind(true).bind(watering_unit);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
     }
 
     if let Some(watering_notes) = request.watering_notes() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(watering_notes);
+        query_builder = query_builder.bind(true).bind(watering_notes);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
     }
 
     if let Some(fertilizing_amount) = request.fertilizing_amount() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(fertilizing_amount);
+        query_builder = query_builder.bind(true).bind(fertilizing_amount);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<f64>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<f64>>);
     }
 
     if let Some(fertilizing_unit) = request.fertilizing_unit() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(fertilizing_unit);
+        query_builder = query_builder.bind(true).bind(fertilizing_unit);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
     }
 
     if let Some(fertilizing_notes) = request.fertilizing_notes() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(fertilizing_notes);
+        query_builder = query_builder.bind(true).bind(fertilizing_notes);
     } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
     }
 
     query_builder = query_builder

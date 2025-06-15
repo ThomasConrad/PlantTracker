@@ -27,6 +27,7 @@ pub enum EntryType {
     Fertilizing,
     CustomMetric,
     Note,
+    Photo,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]

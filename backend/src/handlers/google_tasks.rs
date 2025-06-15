@@ -351,12 +351,13 @@ pub async fn sync_plant_tasks(
 
     for plant in &plants {
         // Generate watering tasks
-        let last_watered = plant
-            .last_watered
-            .unwrap_or_else(|| now - chrono::Duration::days(plant.watering_interval_days as i64));
+        if let Some(watering_interval) = plant.watering_schedule.interval_days {
+            let last_watered = plant
+                .last_watered
+                .unwrap_or_else(|| now - chrono::Duration::days(watering_interval as i64));
 
-        let mut next_watering =
-            last_watered + chrono::Duration::days(plant.watering_interval_days as i64);
+            let mut next_watering =
+                last_watered + chrono::Duration::days(watering_interval as i64);
         while next_watering <= end_date && next_watering >= now {
             match create_plant_care_task(
                 &token,
@@ -373,16 +374,18 @@ pub async fn sync_plant_tasks(
                     tracing::error!("Failed to create watering task for {}: {}", plant.name, e)
                 }
             }
-            next_watering += chrono::Duration::days(plant.watering_interval_days as i64);
+            next_watering += chrono::Duration::days(watering_interval as i64);
+        }
         }
 
         // Generate fertilizing tasks
-        let last_fertilized = plant.last_fertilized.unwrap_or_else(|| {
-            now - chrono::Duration::days(plant.fertilizing_interval_days as i64)
-        });
+        if let Some(fertilizing_interval) = plant.fertilizing_schedule.interval_days {
+            let last_fertilized = plant.last_fertilized.unwrap_or_else(|| {
+                now - chrono::Duration::days(fertilizing_interval as i64)
+            });
 
-        let mut next_fertilizing =
-            last_fertilized + chrono::Duration::days(plant.fertilizing_interval_days as i64);
+            let mut next_fertilizing =
+                last_fertilized + chrono::Duration::days(fertilizing_interval as i64);
         while next_fertilizing <= end_date && next_fertilizing >= now {
             match create_plant_care_task(
                 &token,
@@ -401,7 +404,8 @@ pub async fn sync_plant_tasks(
                     e
                 ),
             }
-            next_fertilizing += chrono::Duration::days(plant.fertilizing_interval_days as i64);
+            next_fertilizing += chrono::Duration::days(fertilizing_interval as i64);
+        }
         }
     }
 

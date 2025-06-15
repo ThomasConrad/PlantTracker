@@ -15,8 +15,8 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
   const [formData, setFormData] = createSignal<PlantFormData>({
     name: props.initialData?.name || '',
     genus: props.initialData?.genus || '',
-    wateringIntervalDays: props.initialData?.wateringIntervalDays || 7,
-    fertilizingIntervalDays: props.initialData?.fertilizingIntervalDays || 14,
+    wateringSchedule: props.initialData?.wateringSchedule || { intervalDays: 7 },
+    fertilizingSchedule: props.initialData?.fertilizingSchedule || { intervalDays: 14 },
     customMetrics: props.initialData?.customMetrics || [],
   });
 
@@ -62,11 +62,15 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
       newErrors.genus = 'Genus is required';
     }
 
-    if (formData().wateringIntervalDays < 1) {
+    // Validate watering schedule if enabled
+    const wateringInterval = formData().wateringSchedule?.intervalDays;
+    if (wateringInterval && wateringInterval < 1) {
       newErrors.wateringIntervalDays = 'Watering interval must be at least 1 day';
     }
 
-    if (formData().fertilizingIntervalDays < 1) {
+    // Validate fertilizing schedule if enabled
+    const fertilizingInterval = formData().fertilizingSchedule?.intervalDays;
+    if (fertilizingInterval && fertilizingInterval < 1) {
       newErrors.fertilizingIntervalDays = 'Fertilizing interval must be at least 1 day';
     }
 
@@ -130,34 +134,190 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
         />
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Input
-          label="Watering Interval (days)"
-          type="number"
-          min="1"
-          max="365"
-          value={formData().wateringIntervalDays}
-          onInput={(e) => setFormData(prev => ({ 
-            ...prev, 
-            wateringIntervalDays: parseInt(e.currentTarget.value) || 1 
-          }))}
-          error={errors().wateringIntervalDays}
-          required
-        />
+      {/* Watering Schedule */}
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900">Watering Schedule</h3>
+        <div class="space-y-4">
+          <label class="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              class="rounded border-gray-300 text-green-600 focus:ring-green-500"
+              checked={!!formData().wateringSchedule?.intervalDays}
+              onInput={(e) => {
+                const checked = e.currentTarget.checked;
+                setFormData(prev => ({
+                  ...prev,
+                  wateringSchedule: checked 
+                    ? { intervalDays: 7, amount: undefined, unit: 'ml', notes: '' }
+                    : undefined
+                }));
+              }}
+            />
+            <span class="text-sm font-medium text-gray-700">Enable watering schedule</span>
+          </label>
+          
+          {formData().wateringSchedule?.intervalDays && (
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 ml-6">
+              <Input
+                label="Interval (days)"
+                type="number"
+                min="1"
+                max="365"
+value={formData().wateringSchedule?.intervalDays || 7}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  wateringSchedule: {
+                    ...prev.wateringSchedule!,
+                    intervalDays: parseInt(e.currentTarget.value) || 1
+                  }
+                }))}
+                error={errors().wateringIntervalDays}
+                required
+              />
+              
+              <Input
+                label="Amount (optional)"
+                type="number"
+                min="0.1"
+                step="0.1"
+value={formData().wateringSchedule?.amount || ''}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  wateringSchedule: {
+                    ...prev.wateringSchedule!,
+                    amount: parseFloat(e.currentTarget.value) || undefined
+                  }
+                }))}
+                placeholder="e.g., 250"
+              />
+              
+              <Input
+                label="Unit (optional)"
+                type="text"
+value={formData().wateringSchedule?.unit || ''}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  wateringSchedule: {
+                    ...prev.wateringSchedule!,
+                    unit: e.currentTarget.value || undefined
+                  }
+                }))}
+                placeholder="e.g., ml, cups"
+              />
+            </div>
+          )}
+          
+          {formData().wateringSchedule?.intervalDays && (
+            <div class="ml-6">
+              <Input
+                label="Notes (optional)"
+                type="text"
+value={formData().wateringSchedule?.notes || ''}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  wateringSchedule: {
+                    ...prev.wateringSchedule!,
+                    notes: e.currentTarget.value || undefined
+                  }
+                }))}
+                placeholder="e.g., Water when soil is dry"
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
-        <Input
-          label="Fertilizing Interval (days)"
-          type="number"
-          min="1"
-          max="365"
-          value={formData().fertilizingIntervalDays}
-          onInput={(e) => setFormData(prev => ({ 
-            ...prev, 
-            fertilizingIntervalDays: parseInt(e.currentTarget.value) || 1 
-          }))}
-          error={errors().fertilizingIntervalDays}
-          required
-        />
+      {/* Fertilizing Schedule */}
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium text-gray-900">Fertilizing Schedule</h3>
+        <div class="space-y-4">
+          <label class="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              class="rounded border-gray-300 text-green-600 focus:ring-green-500"
+              checked={!!formData().fertilizingSchedule?.intervalDays}
+              onInput={(e) => {
+                const checked = e.currentTarget.checked;
+                setFormData(prev => ({
+                  ...prev,
+                  fertilizingSchedule: checked 
+                    ? { intervalDays: 14, amount: undefined, unit: 'ml', notes: '' }
+                    : undefined
+                }));
+              }}
+            />
+            <span class="text-sm font-medium text-gray-700">Enable fertilizing schedule</span>
+          </label>
+          
+          {formData().fertilizingSchedule?.intervalDays && (
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 ml-6">
+              <Input
+                label="Interval (days)"
+                type="number"
+                min="1"
+                max="365"
+value={formData().fertilizingSchedule?.intervalDays || 14}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  fertilizingSchedule: {
+                    ...prev.fertilizingSchedule!,
+                    intervalDays: parseInt(e.currentTarget.value) || 1
+                  }
+                }))}
+                error={errors().fertilizingIntervalDays}
+                required
+              />
+              
+              <Input
+                label="Amount (optional)"
+                type="number"
+                min="0.1"
+                step="0.1"
+value={formData().fertilizingSchedule?.amount || ''}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  fertilizingSchedule: {
+                    ...prev.fertilizingSchedule!,
+                    amount: parseFloat(e.currentTarget.value) || undefined
+                  }
+                }))}
+                placeholder="e.g., 5"
+              />
+              
+              <Input
+                label="Unit (optional)"
+                type="text"
+value={formData().fertilizingSchedule?.unit || ''}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  fertilizingSchedule: {
+                    ...prev.fertilizingSchedule!,
+                    unit: e.currentTarget.value || undefined
+                  }
+                }))}
+                placeholder="e.g., ml, drops"
+              />
+            </div>
+          )}
+          
+          {formData().fertilizingSchedule?.intervalDays && (
+            <div class="ml-6">
+              <Input
+                label="Notes (optional)"
+                type="text"
+value={formData().fertilizingSchedule?.notes || ''}
+                onInput={(e) => setFormData(prev => ({
+                  ...prev,
+                  fertilizingSchedule: {
+                    ...prev.fertilizingSchedule!,
+                    notes: e.currentTarget.value || undefined
+                  }
+                }))}
+                placeholder="e.g., Dilute 1:10 with water"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <ThumbnailUpload

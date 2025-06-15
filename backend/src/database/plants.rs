@@ -13,8 +13,14 @@ pub struct PlantRow {
     pub user_id: String,
     pub name: String,
     pub genus: String,
-    pub watering_interval_days: i32,
-    pub fertilizing_interval_days: i32,
+    pub watering_interval_days: Option<i32>,
+    pub fertilizing_interval_days: Option<i32>,
+    pub watering_amount: Option<f64>,
+    pub watering_unit: Option<String>,
+    pub watering_notes: Option<String>,
+    pub fertilizing_amount: Option<f64>,
+    pub fertilizing_unit: Option<String>,
+    pub fertilizing_notes: Option<String>,
     pub last_watered: Option<String>,
     pub last_fertilized: Option<String>,
     pub thumbnail_id: Option<String>,
@@ -36,8 +42,18 @@ impl PlantRow {
             })?,
             name: self.name,
             genus: self.genus,
-            watering_interval_days: self.watering_interval_days,
-            fertilizing_interval_days: self.fertilizing_interval_days,
+            watering_schedule: crate::models::plant::CareSchedule {
+                interval_days: self.watering_interval_days,
+                amount: self.watering_amount,
+                unit: self.watering_unit,
+                notes: self.watering_notes,
+            },
+            fertilizing_schedule: crate::models::plant::CareSchedule {
+                interval_days: self.fertilizing_interval_days,
+                amount: self.fertilizing_amount,
+                unit: self.fertilizing_unit,
+                notes: self.fertilizing_notes,
+            },
             last_watered: self
                 .last_watered
                 .map(|s| s.parse::<DateTime<Utc>>())
@@ -98,21 +114,39 @@ pub async fn create_plant(
     let plant_id = Uuid::new_v4();
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
+    
+    // Extract values to avoid lifetime issues
+    let watering_interval = request.watering_interval_days();
+    let fertilizing_interval = request.fertilizing_interval_days();
+    let watering_amount = request.watering_amount();
+    let watering_unit = request.watering_unit();
+    let watering_notes = request.watering_notes();
+    let fertilizing_amount = request.fertilizing_amount();
+    let fertilizing_unit = request.fertilizing_unit();
+    let fertilizing_notes = request.fertilizing_notes();
 
     let result = sqlx::query!(
         r#"
         INSERT INTO plants (
             id, user_id, name, genus, 
             watering_interval_days, fertilizing_interval_days,
+            watering_amount, watering_unit, watering_notes,
+            fertilizing_amount, fertilizing_unit, fertilizing_notes,
             created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         plant_id_str,
         user_id,
         request.name,
         request.genus,
-        request.watering_interval_days,
-        request.fertilizing_interval_days,
+        watering_interval,
+        fertilizing_interval,
+        watering_amount,
+        watering_unit,
+        watering_notes,
+        fertilizing_amount,
+        fertilizing_unit,
+        fertilizing_notes,
         now,
         now
     )
@@ -268,42 +302,112 @@ pub async fn update_plant(
 
     let now = Utc::now().to_rfc3339();
 
-    // Build dynamic update query based on provided fields
-    let mut set_clauses = vec!["updated_at = ?"];
-    let mut params: Vec<String> = vec![now.clone()];
+    // Build the UPDATE query with proper parameter handling
+    let query = "
+        UPDATE plants SET 
+            name = COALESCE(?, name),
+            genus = COALESCE(?, genus),
+            watering_interval_days = CASE WHEN ? THEN ? ELSE watering_interval_days END,
+            fertilizing_interval_days = CASE WHEN ? THEN ? ELSE fertilizing_interval_days END,
+            watering_amount = CASE WHEN ? THEN ? ELSE watering_amount END,
+            watering_unit = CASE WHEN ? THEN ? ELSE watering_unit END,
+            watering_notes = CASE WHEN ? THEN ? ELSE watering_notes END,
+            fertilizing_amount = CASE WHEN ? THEN ? ELSE fertilizing_amount END,
+            fertilizing_unit = CASE WHEN ? THEN ? ELSE fertilizing_unit END,
+            fertilizing_notes = CASE WHEN ? THEN ? ELSE fertilizing_notes END,
+            updated_at = ?
+        WHERE id = ? AND user_id = ?
+    ";
 
-    if let Some(name) = &request.name {
-        set_clauses.push("name = ?");
-        params.push(name.clone());
+    let mut query_builder = sqlx::query(query)
+        .bind(&request.name)
+        .bind(&request.genus);
+
+    // Handle watering schedule fields
+    if let Some(watering_interval) = request.watering_interval_days() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(watering_interval);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<i32>>);
     }
 
-    if let Some(genus) = &request.genus {
-        set_clauses.push("genus = ?");
-        params.push(genus.clone());
+    if let Some(fertilizing_interval) = request.fertilizing_interval_days() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(fertilizing_interval);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<i32>>);
     }
 
-    if let Some(watering_interval) = request.watering_interval_days {
-        set_clauses.push("watering_interval_days = ?");
-        params.push(watering_interval.to_string());
+    if let Some(watering_amount) = request.watering_amount() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(watering_amount);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<f64>>);
     }
 
-    if let Some(fertilizing_interval) = request.fertilizing_interval_days {
-        set_clauses.push("fertilizing_interval_days = ?");
-        params.push(fertilizing_interval.to_string());
+    if let Some(watering_unit) = request.watering_unit() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(watering_unit);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>);
     }
 
-    let query = format!(
-        "UPDATE plants SET {} WHERE id = ? AND user_id = ?",
-        set_clauses.join(", ")
-    );
-
-    params.push(plant_id.to_string());
-    params.push(user_id.to_string());
-
-    let mut query_builder = sqlx::query(&query);
-    for param in params {
-        query_builder = query_builder.bind(param);
+    if let Some(watering_notes) = request.watering_notes() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(watering_notes);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>);
     }
+
+    if let Some(fertilizing_amount) = request.fertilizing_amount() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(fertilizing_amount);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<f64>>);
+    }
+
+    if let Some(fertilizing_unit) = request.fertilizing_unit() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(fertilizing_unit);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>);
+    }
+
+    if let Some(fertilizing_notes) = request.fertilizing_notes() {
+        query_builder = query_builder
+            .bind(true)
+            .bind(fertilizing_notes);
+    } else {
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>);
+    }
+
+    query_builder = query_builder
+        .bind(&now)
+        .bind(plant_id.to_string())
+        .bind(user_id);
 
     let result = query_builder.execute(pool).await.map_err(|e| {
         tracing::error!("Failed to update plant: {}", e);

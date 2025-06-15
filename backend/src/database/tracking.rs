@@ -114,6 +114,7 @@ pub async fn get_tracking_entries_for_plant_paginated(
                     "fertilizing" => EntryType::Fertilizing,
                     "measurement" => EntryType::CustomMetric,
                     "note" => EntryType::Note,
+                    "photo" => EntryType::Photo,
                     _ => EntryType::Watering, // fallback
                 },
                 timestamp: chrono::DateTime::parse_from_rfc3339(&timestamp_str)
@@ -188,6 +189,7 @@ pub async fn get_tracking_entries_for_plant(
                     "fertilizing" => EntryType::Fertilizing,
                     "measurement" => EntryType::CustomMetric,
                     "note" => EntryType::Note,
+                    "photo" => EntryType::Photo,
                     _ => EntryType::Watering, // fallback
                 },
                 timestamp: chrono::DateTime::parse_from_rfc3339(&timestamp_str)
@@ -240,6 +242,7 @@ pub async fn create_tracking_entry(
         EntryType::Fertilizing => "fertilizing",
         EntryType::CustomMetric => "measurement",
         EntryType::Note => "note",
+        EntryType::Photo => "photo",
     };
 
     let value_json = request
@@ -299,6 +302,9 @@ pub async fn create_tracking_entry(
         }
         EntryType::Note => {
             // Notes don't update plant care dates
+        }
+        EntryType::Photo => {
+            // Photos don't update plant care dates
         }
     }
 

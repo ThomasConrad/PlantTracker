@@ -178,6 +178,22 @@ export interface components {
         AuthResponse: {
             user: components["schemas"]["UserResponse"];
         };
+        CareSchedule: {
+            /** Format: double */
+            amount?: number | null;
+            /** Format: int32 */
+            intervalDays?: number | null;
+            notes?: string | null;
+            unit?: string | null;
+        };
+        CreateCareScheduleRequest: {
+            /** Format: double */
+            amount?: number | null;
+            /** Format: int32 */
+            intervalDays?: number | null;
+            notes?: string | null;
+            unit?: string | null;
+        };
         CreateCustomMetricRequest: {
             dataType: components["schemas"]["MetricDataType"];
             name: string;
@@ -199,12 +215,10 @@ export interface components {
         };
         CreatePlantRequest: {
             customMetrics?: components["schemas"]["CreateCustomMetricRequest"][] | null;
-            /** Format: int32 */
-            fertilizingIntervalDays: number;
+            fertilizingSchedule?: components["schemas"]["CreateCareScheduleRequest"] | null;
             genus: string;
             name: string;
-            /** Format: int32 */
-            wateringIntervalDays: number;
+            wateringSchedule?: components["schemas"]["CreateCareScheduleRequest"] | null;
         };
         CreateTrackingEntryRequest: {
             entryType: components["schemas"]["EntryType"];
@@ -231,7 +245,7 @@ export interface components {
             unit: string;
         };
         /** @enum {string} */
-        EntryType: "watering" | "fertilizing" | "customMetric" | "note";
+        EntryType: "watering" | "fertilizing" | "customMetric" | "note" | "photo";
         /** @description Request payload for OAuth callback */
         GoogleOAuthCallbackRequest: {
             code: string;
@@ -294,8 +308,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             customMetrics: components["schemas"]["CustomMetric"][];
-            /** Format: int32 */
-            fertilizingIntervalDays: number;
+            fertilizingSchedule: components["schemas"]["CareSchedule"];
             genus: string;
             /** Format: uuid */
             id: string;
@@ -310,8 +323,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             userId: string;
-            /** Format: int32 */
-            wateringIntervalDays: number;
+            wateringSchedule: components["schemas"]["CareSchedule"];
         };
         PlantsResponse: {
             /** Format: int64 */

@@ -279,8 +279,12 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Fiddle Leaf Fig",
             "genus": "Ficus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {
+                "intervalDays": 7
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 14
+            }
         }
         
         response = client.request("POST", "/plants", json=plant_data)
@@ -289,7 +293,8 @@ class TestPlantCRUD:
         response_data = response.json()
         assert response_data["name"] == plant_data["name"]
         assert response_data["genus"] == plant_data["genus"]
-        assert response_data["wateringIntervalDays"] == plant_data["wateringIntervalDays"]
+        assert response_data["wateringSchedule"]["intervalDays"] == 7
+        assert response_data["fertilizingSchedule"]["intervalDays"] == 14
         assert "id" in response_data
         
     def test_create_plant_validation_errors(self, client):
@@ -298,8 +303,12 @@ class TestPlantCRUD:
         response = client.request("POST", "/plants", json={
             "name": "",
             "genus": "Ficus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {
+                "intervalDays": 7
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 14
+            }
         })
         assert response.status_code == 422
         
@@ -307,8 +316,12 @@ class TestPlantCRUD:
         response = client.request("POST", "/plants", json={
             "name": "Test Plant",
             "genus": "Test",
-            "wateringIntervalDays": 0,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {
+                "intervalDays": 0
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 14
+            }
         })
         assert response.status_code == 422
         
@@ -316,8 +329,18 @@ class TestPlantCRUD:
         """Test getting all plants"""
         # Create some plants first
         plants_data = [
-            {"name": "Plant 1", "genus": "Genus1", "wateringIntervalDays": 7, "fertilizingIntervalDays": 14},
-            {"name": "Plant 2", "genus": "Genus2", "wateringIntervalDays": 10, "fertilizingIntervalDays": 21},
+            {
+                "name": "Plant 1", 
+                "genus": "Genus1", 
+                "wateringSchedule": {"intervalDays": 7}, 
+                "fertilizingSchedule": {"intervalDays": 14}
+            },
+            {
+                "name": "Plant 2", 
+                "genus": "Genus2", 
+                "wateringSchedule": {"intervalDays": 10}, 
+                "fertilizingSchedule": {"intervalDays": 21}
+            }
         ]
         
         created_plants = []
@@ -340,8 +363,8 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Test Plant",
             "genus": "TestGenus",
-            "wateringIntervalDays": 5,
-            "fertilizingIntervalDays": 10
+            "wateringSchedule": {"intervalDays": 5},
+            "fertilizingSchedule": {"intervalDays": 10}
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
@@ -361,8 +384,8 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Original Plant",
             "genus": "OriginalGenus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
@@ -371,14 +394,14 @@ class TestPlantCRUD:
         # Update the plant
         update_data = {
             "name": "Updated Plant",
-            "wateringIntervalDays": 10
+            "wateringSchedule": {"intervalDays": 10}
         }
         response = client.request("PUT", f"/plants/{plant['id']}", json=update_data)
         assert response.status_code == 200
         
         response_data = response.json()
         assert response_data["name"] == "Updated Plant"
-        assert response_data["wateringIntervalDays"] == 10
+        assert response_data["wateringSchedule"]["intervalDays"] == 10
         assert response_data["genus"] == plant_data["genus"]  # Should remain unchanged
         
     def test_delete_plant(self, client):
@@ -387,8 +410,8 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Plant to Delete",
             "genus": "DeleteGenus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
@@ -425,8 +448,8 @@ class TestUserIsolation:
         plant_data = {
             "name": "User 1 Plant",
             "genus": "User1Genus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
@@ -472,8 +495,8 @@ class TestErrorHandling:
         response = client.request("POST", "/plants", json={
             "name": "Test Plant",
             "genus": "TestGenus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         })
         assert response.status_code == 401
         
@@ -525,8 +548,8 @@ class TestErrorHandling:
         # This will get 400 because JSON deserialization fails before validation
         response = client.request("POST", "/plants", json={
             "name": "Test Plant",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         })
         assert response.status_code == 400
         
@@ -534,8 +557,8 @@ class TestErrorHandling:
         response = client.request("POST", "/plants", json={
             "name": "",  # Empty name should fail validation
             "genus": "TestGenus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         })
         assert response.status_code == 422
 
@@ -566,8 +589,8 @@ class TestPerformance:
             plant_data = {
                 "name": f"Plant {i}",
                 "genus": f"Genus{i}",
-                "wateringIntervalDays": 7,
-                "fertilizingIntervalDays": 14
+                "wateringSchedule": {"intervalDays": 7},
+                "fertilizingSchedule": {"intervalDays": 14}
             }
             response = client.request("POST", "/plants", json=plant_data)
             assert response.status_code == 201
@@ -622,8 +645,8 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Photo Test Plant",
             "genus": "Photographicus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -664,8 +687,8 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Photo List Plant",
             "genus": "Listicus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -704,8 +727,8 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Photo Delete Plant",
             "genus": "Deleticus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -749,8 +772,8 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Thumbnail Test Plant",
             "genus": "Thumbnailicus", 
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -822,8 +845,8 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Performance Test Plant",
             "genus": "Performicus", 
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -936,8 +959,8 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Async Thumbnail Test Plant",
             "genus": "Asyncicus", 
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -1005,8 +1028,8 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Validation Plant",
             "genus": "Validicus", 
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -1180,14 +1203,14 @@ class TestCalendarFunctionality:
             {
                 "name": "Fiddle Leaf Fig",
                 "genus": "Ficus",
-                "wateringIntervalDays": 7,
-                "fertilizingIntervalDays": 14
+                "wateringSchedule": {"intervalDays": 7},
+                "fertilizingSchedule": {"intervalDays": 14}
             },
             {
                 "name": "Snake Plant", 
                 "genus": "Sansevieria",
-                "wateringIntervalDays": 14,
-                "fertilizingIntervalDays": 30
+                "wateringSchedule": {"intervalDays": 14},
+                "fertilizingSchedule": {"intervalDays": 30}
             }
         ]
         
@@ -1297,8 +1320,8 @@ class TestCalendarFunctionality:
         plant_data = {
             "name": "Test Plant",
             "genus": "Testicus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 14}
         }
         
         response = self.client.request("POST", "/plants", json=plant_data)
@@ -1358,8 +1381,18 @@ class TestCalendarFunctionality:
         """Test that calendar events have unique UIDs"""
         # Create multiple plants
         plants_data = [
-            {"name": "Plant 1", "genus": "Genus1", "wateringIntervalDays": 5, "fertilizingIntervalDays": 10},
-            {"name": "Plant 2", "genus": "Genus2", "wateringIntervalDays": 7, "fertilizingIntervalDays": 14},
+            {
+                "name": "Plant 1", 
+                "genus": "Genus1", 
+                "wateringSchedule": {"intervalDays": 5}, 
+                "fertilizingSchedule": {"intervalDays": 10}
+            },
+            {
+                "name": "Plant 2", 
+                "genus": "Genus2", 
+                "wateringSchedule": {"intervalDays": 7}, 
+                "fertilizingSchedule": {"intervalDays": 14}
+            }
         ]
         
         for plant_data in plants_data:
@@ -1401,8 +1434,8 @@ class TestCalendarFunctionality:
         plant_data = {
             "name": "🌿 Monstera Deliciosa",
             "genus": "Mønstéra",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 21
+            "wateringSchedule": {"intervalDays": 7},
+            "fertilizingSchedule": {"intervalDays": 21}
         }
         
         response = self.client.request("POST", "/plants", json=plant_data)

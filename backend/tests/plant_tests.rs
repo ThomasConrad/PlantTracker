@@ -18,8 +18,12 @@ async fn test_create_plant_authenticated() {
         .json(&json!({
             "name": "My Fiddle Leaf Fig",
             "genus": "Ficus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14,
+            "wateringSchedule": {
+                "intervalDays": 7
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 14
+            },
             "customMetrics": []
         }))
         .send()
@@ -31,8 +35,8 @@ async fn test_create_plant_authenticated() {
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert_eq!(body["name"], "My Fiddle Leaf Fig");
     assert_eq!(body["genus"], "Ficus");
-    assert_eq!(body["wateringIntervalDays"], 7);
-    assert_eq!(body["fertilizingIntervalDays"], 14);
+    assert_eq!(body["wateringSchedule"]["intervalDays"], 7);
+    assert_eq!(body["fertilizingSchedule"]["intervalDays"], 14);
     assert!(body["id"].is_string());
     assert!(body["userId"].is_string());
 }
@@ -47,8 +51,12 @@ async fn test_create_plant_unauthenticated() {
         .json(&json!({
             "name": "Unauthorized Plant",
             "genus": "Ficus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14,
+            "wateringSchedule": {
+                "intervalDays": 7
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 14
+            },
             "customMetrics": []
         }))
         .send()
@@ -168,8 +176,12 @@ async fn test_update_plant() {
         .json(&json!({
             "name": "Updated Plant",
             "genus": "Updated Genus",
-            "wateringIntervalDays": 5,
-            "fertilizingIntervalDays": 21
+            "wateringSchedule": {
+                "intervalDays": 5
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 21
+            }
         }))
         .send()
         .await
@@ -181,8 +193,8 @@ async fn test_update_plant() {
     assert_eq!(body["id"], plant_id);
     assert_eq!(body["name"], "Updated Plant");
     assert_eq!(body["genus"], "Updated Genus");
-    assert_eq!(body["wateringIntervalDays"], 5);
-    assert_eq!(body["fertilizingIntervalDays"], 21);
+    assert_eq!(body["wateringSchedule"]["intervalDays"], 5);
+    assert_eq!(body["fertilizingSchedule"]["intervalDays"], 21);
 }
 
 #[tokio::test]
@@ -237,8 +249,12 @@ async fn test_plant_validation() {
         .json(&json!({
             "name": "Invalid Plant",
             "genus": "Invalid Genus",
-            "wateringIntervalDays": 500, // Too high
-            "fertilizingIntervalDays": 14,
+            "wateringSchedule": {
+                "intervalDays": 500 // Too high
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 14
+            },
             "customMetrics": []
         }))
         .send()
@@ -254,8 +270,12 @@ async fn test_plant_validation() {
         .json(&json!({
             "name": "",
             "genus": "Valid Genus",
-            "wateringIntervalDays": 7,
-            "fertilizingIntervalDays": 14,
+            "wateringSchedule": {
+                "intervalDays": 7
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 14
+            },
             "customMetrics": []
         }))
         .send()

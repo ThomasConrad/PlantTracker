@@ -247,28 +247,38 @@ pub async fn create_plant_care_task(
     task_list_id: &str,
 ) -> Result<String> {
     let (title, notes) = match task_type {
-        "watering" => (
-            format!("💧 Water {}", plant.name),
-            format!(
-                "Time to water your {} ({}).\nWater every {} days.\n\nView plant details: {}/plants/{}",
-                plant.name,
-                plant.genus,
-                plant.watering_interval_days,
-                base_url,
-                plant.id
-            ),
-        ),
-        "fertilizing" => (
-            format!("🌱 Fertilize {}", plant.name),
-            format!(
-                "Time to fertilize your {} ({}).\nFertilize every {} days.\n\nView plant details: {}/plants/{}",
-                plant.name,
-                plant.genus,
-                plant.fertilizing_interval_days,
-                base_url,
-                plant.id
-            ),
-        ),
+        "watering" => {
+            let interval_days = plant.watering_schedule.interval_days.unwrap_or(0);
+            (
+                format!("💧 Water {}", plant.name),
+                format!(
+                    "Time to water your {} ({}).{}{} Water every {} days.\n\nView plant details: {}/plants/{}",
+                    plant.name,
+                    plant.genus,
+                    plant.watering_schedule.amount.map_or("".to_string(), |amt| format!(" Amount: {}", amt)),
+                    plant.watering_schedule.unit.as_ref().map_or("".to_string(), |unit| format!(" {}", unit)),
+                    interval_days,
+                    base_url,
+                    plant.id
+                ),
+            )
+        },
+        "fertilizing" => {
+            let interval_days = plant.fertilizing_schedule.interval_days.unwrap_or(0);
+            (
+                format!("🌱 Fertilize {}", plant.name),
+                format!(
+                    "Time to fertilize your {} ({}).{}{} Fertilize every {} days.\n\nView plant details: {}/plants/{}",
+                    plant.name,
+                    plant.genus,
+                    plant.fertilizing_schedule.amount.map_or("".to_string(), |amt| format!(" Amount: {}", amt)),
+                    plant.fertilizing_schedule.unit.as_ref().map_or("".to_string(), |unit| format!(" {}", unit)),
+                    interval_days,
+                    base_url,
+                    plant.id
+                ),
+            )
+        },
         _ => return Err(AppError::Internal {
             message: "Invalid task type".to_string(),
         }),

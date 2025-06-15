@@ -40,11 +40,17 @@ fn generate_watering_events(
     end_date: DateTime<Utc>,
     base_url: &str,
 ) -> Result<(), AppError> {
+    // Skip if watering is disabled
+    if plant.watering_schedule.interval_days.is_none() {
+        return Ok(());
+    }
+    
+    let interval_days = plant.watering_schedule.interval_days.unwrap();
     let last_watered = plant
         .last_watered
-        .unwrap_or_else(|| start_date - Duration::days(plant.watering_interval_days as i64));
+        .unwrap_or_else(|| start_date - Duration::days(interval_days as i64));
 
-    let interval_duration = Duration::days(plant.watering_interval_days as i64);
+    let interval_duration = Duration::days(interval_days as i64);
     let mut next_watering = last_watered + interval_duration;
 
     // Ensure we start from a future date
@@ -59,10 +65,12 @@ fn generate_watering_events(
             .uid(&format!("water-{}-{}", plant.id, next_watering.timestamp()))
             .summary(&format!("💧 Water {}", plant.name))
             .description(&format!(
-                "Time to water your {} ({}). Water every {} days.\n\nView plant details: {}/plants/{}",
+                "Time to water your {} ({}).{}{} Water every {} days.\n\nView plant details: {}/plants/{}",
                 plant.name,
                 plant.genus,
-                plant.watering_interval_days,
+                plant.watering_schedule.amount.map_or("".to_string(), |amt| format!(" Amount: {}", amt)),
+                plant.watering_schedule.unit.as_ref().map_or("".to_string(), |unit| format!(" {}", unit)),
+                interval_days,
                 base_url,
                 plant.id
             ))
@@ -89,11 +97,17 @@ fn generate_fertilizing_events(
     end_date: DateTime<Utc>,
     base_url: &str,
 ) -> Result<(), AppError> {
+    // Skip if fertilizing is disabled
+    if plant.fertilizing_schedule.interval_days.is_none() {
+        return Ok(());
+    }
+    
+    let interval_days = plant.fertilizing_schedule.interval_days.unwrap();
     let last_fertilized = plant
         .last_fertilized
-        .unwrap_or_else(|| start_date - Duration::days(plant.fertilizing_interval_days as i64));
+        .unwrap_or_else(|| start_date - Duration::days(interval_days as i64));
 
-    let interval_duration = Duration::days(plant.fertilizing_interval_days as i64);
+    let interval_duration = Duration::days(interval_days as i64);
     let mut next_fertilizing = last_fertilized + interval_duration;
 
     // Ensure we start from a future date
@@ -108,10 +122,12 @@ fn generate_fertilizing_events(
             .uid(&format!("fertilize-{}-{}", plant.id, next_fertilizing.timestamp()))
             .summary(&format!("🌱 Fertilize {}", plant.name))
             .description(&format!(
-                "Time to fertilize your {} ({}). Fertilize every {} days.\n\nView plant details: {}/plants/{}",
+                "Time to fertilize your {} ({}).{}{} Fertilize every {} days.\n\nView plant details: {}/plants/{}",
                 plant.name,
                 plant.genus,
-                plant.fertilizing_interval_days,
+                plant.fertilizing_schedule.amount.map_or("".to_string(), |amt| format!(" Amount: {}", amt)),
+                plant.fertilizing_schedule.unit.as_ref().map_or("".to_string(), |unit| format!(" {}", unit)),
+                interval_days,
                 base_url,
                 plant.id
             ))
@@ -168,8 +184,18 @@ mod tests {
             id: Uuid::new_v4(),
             name: "Test Plant".to_string(),
             genus: "Testicus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_schedule: crate::models::plant::CareSchedule {
+                interval_days: Some(7),
+                amount: None,
+                unit: None,
+                notes: None,
+            },
+            fertilizing_schedule: crate::models::plant::CareSchedule {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            },
             last_watered: Some(Utc::now()),
             last_fertilized: Some(Utc::now()),
             thumbnail_id: None,
@@ -191,8 +217,18 @@ mod tests {
             id: Uuid::new_v4(),
             name: name.to_string(),
             genus: genus.to_string(),
-            watering_interval_days: watering_days,
-            fertilizing_interval_days: fertilizing_days,
+            watering_schedule: crate::models::plant::CareSchedule {
+                interval_days: Some(watering_days),
+                amount: None,
+                unit: None,
+                notes: None,
+            },
+            fertilizing_schedule: crate::models::plant::CareSchedule {
+                interval_days: Some(fertilizing_days),
+                amount: None,
+                unit: None,
+                notes: None,
+            },
             last_watered: Some(Utc::now() - Duration::days(watering_days as i64 - 1)),
             last_fertilized: Some(Utc::now() - Duration::days(fertilizing_days as i64 - 1)),
             thumbnail_id: None,

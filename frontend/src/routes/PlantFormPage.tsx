@@ -160,7 +160,27 @@ export const PlantFormPage: Component = () => {
               {/* Form Content */}
               <div class="p-4 sm:p-6 lg:p-8">
                 <PlantForm
-                  initialData={isEditing() ? plantsStore.selectedPlant || undefined : undefined}
+                  initialData={isEditing() && plantsStore.selectedPlant ? {
+                    name: plantsStore.selectedPlant.name,
+                    genus: plantsStore.selectedPlant.genus,
+                    wateringSchedule: plantsStore.selectedPlant.wateringSchedule?.intervalDays ? {
+                      intervalDays: plantsStore.selectedPlant.wateringSchedule.intervalDays,
+                      amount: plantsStore.selectedPlant.wateringSchedule.amount || undefined,
+                      unit: plantsStore.selectedPlant.wateringSchedule.unit || undefined,
+                      notes: plantsStore.selectedPlant.wateringSchedule.notes || undefined,
+                    } : undefined,
+                    fertilizingSchedule: plantsStore.selectedPlant.fertilizingSchedule?.intervalDays ? {
+                      intervalDays: plantsStore.selectedPlant.fertilizingSchedule.intervalDays,
+                      amount: plantsStore.selectedPlant.fertilizingSchedule.amount || undefined,
+                      unit: plantsStore.selectedPlant.fertilizingSchedule.unit || undefined,
+                      notes: plantsStore.selectedPlant.fertilizingSchedule.notes || undefined,
+                    } : undefined,
+                    customMetrics: plantsStore.selectedPlant.customMetrics?.map(m => ({
+                      name: m.name,
+                      unit: m.unit,
+                      dataType: m.dataType as 'Number' | 'Text' | 'Boolean'
+                    })) || []
+                  } : undefined}
                   onSubmit={handleSubmit}
                   submitText={getSubmitText()}
                   loading={loading()}

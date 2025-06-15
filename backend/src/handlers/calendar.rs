@@ -80,8 +80,8 @@ pub async fn get_calendar_feed(
     tracing::info!("Found {} plants for user {} when generating calendar", plants.len(), user_id);
     
     for plant in &plants {
-        tracing::info!("Plant: {} - watering: {} days, fertilizing: {} days", 
-                      plant.name, plant.watering_interval_days, plant.fertilizing_interval_days);
+        tracing::info!("Plant: {} - watering: {:?} days, fertilizing: {:?} days", 
+                      plant.name, plant.watering_schedule.interval_days, plant.fertilizing_schedule.interval_days);
     }
     
     // Get base URL from request headers or use default

@@ -1,6 +1,8 @@
 import { Component, createSignal, Show, For } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { ThumbnailUpload } from './ThumbnailUpload';
+import { plantsStore } from '@/stores/plants';
 import type { Plant } from '@/types';
 import type { components } from '@/types/api-generated';
 
@@ -33,6 +35,12 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
   // Custom metric fields
   const [selectedMetricId, setSelectedMetricId] = createSignal('');
   const [customValue, setCustomValue] = createSignal('');
+
+  // Photo fields
+  const [selectedPhoto, setSelectedPhoto] = createSignal<File | null>(null);
+  const [photoCaption, setPhotoCaption] = createSignal('');
+  const [uploadingPhoto, setUploadingPhoto] = createSignal(false);
+  const [photoError, setPhotoError] = createSignal('');
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -73,10 +81,38 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
           baseData.value = customValue();
         }
       }
+    } else if (entryType() === 'photo') {
+      // For photo entries, we'll upload the photo first and then attach the ID
+      if (!selectedPhoto()) {
+        setPhotoError('Please select a photo');
+        return;
+      }
     }
 
     try {
       setSubmitting(true);
+      
+      // Handle photo upload if this is a photo entry
+      if (entryType() === 'photo' && selectedPhoto()) {
+        setUploadingPhoto(true);
+        try {
+          // Upload the photo first
+          const photoResponse = await plantsStore.uploadPhoto(props.plant.id, selectedPhoto()!, photoCaption());
+          // Add the photo ID to the tracking entry
+          baseData.photoIds = [photoResponse.id];
+          // Use the caption as notes if provided
+          if (photoCaption()) {
+            baseData.notes = photoCaption();
+          }
+        } catch (photoError) {
+          console.error('Failed to upload photo:', photoError);
+          setPhotoError('Failed to upload photo. Please try again.');
+          return;
+        } finally {
+          setUploadingPhoto(false);
+        }
+      }
+      
       await props.onSubmit(baseData);
       props.onSuccess();
       props.onClose();
@@ -98,6 +134,9 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
     setDilutionRatio('');
     setSelectedMetricId('');
     setCustomValue('');
+    setSelectedPhoto(null);
+    setPhotoCaption('');
+    setPhotoError('');
   };
 
   const handleClose = () => {
@@ -136,7 +175,7 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
             {/* Entry Type Selection */}
             <div class="space-y-2">
               <label class="label">Activity Type</label>
-              <div class="grid grid-cols-2 gap-3">
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setEntryType('watering')}
@@ -166,6 +205,17 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   Note
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryType('photo')}
+                  class={`care-type-button ${entryType() === 'photo' ? 'care-type-button-active' : 'care-type-button-inactive'}`}
+                >
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Photo
                 </button>
                 <Show when={props.plant.customMetrics.length > 0}>
                   <button
@@ -320,6 +370,28 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
               </div>
             </Show>
 
+            {/* Photo Details */}
+            <Show when={entryType() === 'photo'}>
+              <div class="space-y-4">
+                <h3 class="text-sm font-medium text-gray-900">Photo Details</h3>
+                <ThumbnailUpload
+                  onFileSelect={(file) => {
+                    setSelectedPhoto(file);
+                    setPhotoError('');
+                  }}
+                  selectedFile={selectedPhoto()}
+                  error={photoError()}
+                  loading={uploadingPhoto()}
+                />
+                <Input
+                  label="Photo Caption (optional)"
+                  value={photoCaption()}
+                  onInput={(e) => setPhotoCaption(e.currentTarget.value)}
+                  placeholder="Describe what's in the photo..."
+                />
+              </div>
+            </Show>
+
             {/* Notes */}
             <Input
               label="Notes (optional)"
@@ -339,13 +411,14 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
             </Button>
             <Button
               type="submit"
-              loading={submitting()}
+              loading={submitting() || uploadingPhoto()}
               disabled={
                 (entryType() === 'customMetric' && (!selectedMetricId() || !customValue())) ||
-                submitting()
+                (entryType() === 'photo' && !selectedPhoto()) ||
+                submitting() || uploadingPhoto()
               }
             >
-              Create Entry
+              {uploadingPhoto() ? 'Uploading Photo...' : 'Create Entry'}
             </Button>
           </div>
         </form>

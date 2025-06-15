@@ -89,3 +89,7 @@ The application uses PostgreSQL with the following key tables:
 - `tracking_entries` - Care activities (watering, fertilizing, custom metrics)
 - `photos` - Plant photos with thumbnail support
 - `sessions` - Authentication session storage
+
+## Memories
+
+- Testing Strategy: Use `--test foo bar` approach, expanding and iterating systematically to build comprehensive test coverage

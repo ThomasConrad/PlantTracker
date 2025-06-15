@@ -13,11 +13,18 @@ export interface AppState {
   error: string | null;
 }
 
+export interface CareScheduleFormData {
+  intervalDays?: number;
+  amount?: number;
+  unit?: string;
+  notes?: string;
+}
+
 export interface PlantFormData {
   name: string;
   genus: string;
-  wateringIntervalDays: number;
-  fertilizingIntervalDays: number;
+  wateringSchedule?: CareScheduleFormData;
+  fertilizingSchedule?: CareScheduleFormData;
   customMetrics: {
     name: string;
     unit: string;

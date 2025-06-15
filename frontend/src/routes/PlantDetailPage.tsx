@@ -162,7 +162,15 @@ export const PlantDetailPage: Component = () => {
                             <span class="text-xs text-gray-400">Active</span>
                           </div>
                         </div>
-                        <p class="text-sm text-gray-900 font-medium">Every {plant.wateringIntervalDays} days</p>
+                        <Show when={plant.wateringSchedule?.intervalDays} fallback={<p class="text-sm text-gray-500 italic">No watering schedule</p>}>
+                          <p class="text-sm text-gray-900 font-medium">Every {plant.wateringSchedule.intervalDays} days</p>
+                          <Show when={plant.wateringSchedule.amount}>
+                            <p class="text-xs text-gray-600">{plant.wateringSchedule.amount}{plant.wateringSchedule.unit}</p>
+                          </Show>
+                          <Show when={plant.wateringSchedule.notes}>
+                            <p class="text-xs text-gray-600 italic">{plant.wateringSchedule.notes}</p>
+                          </Show>
+                        </Show>
                         {plant.lastWatered && (
                           <p class="text-xs text-gray-500">Last watered: {formatDate(plant.lastWatered)}</p>
                         )}
@@ -177,7 +185,15 @@ export const PlantDetailPage: Component = () => {
                               <span class="text-xs text-gray-400">Active</span>
                             </div>
                           </div>
-                          <p class="text-sm text-gray-900 font-medium">Every {plant.fertilizingIntervalDays} days</p>
+                          <Show when={plant.fertilizingSchedule?.intervalDays} fallback={<p class="text-sm text-gray-500 italic">No fertilizing schedule</p>}>
+                            <p class="text-sm text-gray-900 font-medium">Every {plant.fertilizingSchedule.intervalDays} days</p>
+                            <Show when={plant.fertilizingSchedule.amount}>
+                              <p class="text-xs text-gray-600">{plant.fertilizingSchedule.amount}{plant.fertilizingSchedule.unit}</p>
+                            </Show>
+                            <Show when={plant.fertilizingSchedule.notes}>
+                              <p class="text-xs text-gray-600 italic">{plant.fertilizingSchedule.notes}</p>
+                            </Show>
+                          </Show>
                           {plant.lastFertilized && (
                             <p class="text-xs text-gray-500">Last fertilized: {formatDate(plant.lastFertilized)}</p>
                           )}

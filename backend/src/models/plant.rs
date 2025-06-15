@@ -5,6 +5,30 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CareSchedule {
+    pub interval_days: Option<i32>,
+    pub amount: Option<f64>,
+    pub unit: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateCareScheduleRequest {
+    #[validate(range(min = 1, max = 365))]
+    pub interval_days: Option<i32>,
+    #[validate(range(min = 0.01))]
+    pub amount: Option<f64>,
+    #[validate(length(max = 20))]
+    pub unit: Option<String>,
+    #[validate(length(max = 500))]
+    pub notes: Option<String>,
+}
+
+type UpdateCareScheduleRequest = CreateCareScheduleRequest;
+
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Plant {
@@ -12,13 +36,39 @@ pub struct Plant {
     pub user_id: Uuid,
     pub name: String,
     pub genus: String,
-    pub watering_interval_days: i32,
-    pub fertilizing_interval_days: i32,
+    pub watering_interval_days: Option<i32>,
+    pub fertilizing_interval_days: Option<i32>,
+    pub watering_amount: Option<f64>,
+    pub watering_unit: Option<String>,
+    pub watering_notes: Option<String>,
+    pub fertilizing_amount: Option<f64>,
+    pub fertilizing_unit: Option<String>,
+    pub fertilizing_notes: Option<String>,
     pub last_watered: Option<DateTime<Utc>>,
     pub last_fertilized: Option<DateTime<Utc>>,
     pub thumbnail_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+impl Plant {
+    pub fn watering_schedule(&self) -> CareSchedule {
+        CareSchedule {
+            interval_days: self.watering_interval_days,
+            amount: self.watering_amount,
+            unit: self.watering_unit.clone(),
+            notes: self.watering_notes.clone(),
+        }
+    }
+
+    pub fn fertilizing_schedule(&self) -> CareSchedule {
+        CareSchedule {
+            interval_days: self.fertilizing_interval_days,
+            amount: self.fertilizing_amount,
+            unit: self.fertilizing_unit.clone(),
+            notes: self.fertilizing_notes.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
@@ -47,11 +97,45 @@ pub struct CreatePlantRequest {
     pub name: String,
     #[validate(length(min = 1, max = 100))]
     pub genus: String,
-    #[validate(range(min = 1, max = 365))]
-    pub watering_interval_days: i32,
-    #[validate(range(min = 1, max = 365))]
-    pub fertilizing_interval_days: i32,
+    #[validate(nested)]
+    pub watering_schedule: Option<CreateCareScheduleRequest>,
+    #[validate(nested)]
+    pub fertilizing_schedule: Option<CreateCareScheduleRequest>,
     pub custom_metrics: Option<Vec<CreateCustomMetricRequest>>,
+}
+
+impl CreatePlantRequest {
+    pub fn watering_interval_days(&self) -> Option<i32> {
+        self.watering_schedule.as_ref().and_then(|s| s.interval_days)
+    }
+
+    pub fn watering_amount(&self) -> Option<f64> {
+        self.watering_schedule.as_ref().and_then(|s| s.amount)
+    }
+
+    pub fn watering_unit(&self) -> Option<String> {
+        self.watering_schedule.as_ref().and_then(|s| s.unit.clone())
+    }
+
+    pub fn watering_notes(&self) -> Option<String> {
+        self.watering_schedule.as_ref().and_then(|s| s.notes.clone())
+    }
+
+    pub fn fertilizing_interval_days(&self) -> Option<i32> {
+        self.fertilizing_schedule.as_ref().and_then(|s| s.interval_days)
+    }
+
+    pub fn fertilizing_amount(&self) -> Option<f64> {
+        self.fertilizing_schedule.as_ref().and_then(|s| s.amount)
+    }
+
+    pub fn fertilizing_unit(&self) -> Option<String> {
+        self.fertilizing_schedule.as_ref().and_then(|s| s.unit.clone())
+    }
+
+    pub fn fertilizing_notes(&self) -> Option<String> {
+        self.fertilizing_schedule.as_ref().and_then(|s| s.notes.clone())
+    }
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -71,9 +155,43 @@ pub struct CreateCustomMetricRequest {
 pub struct UpdatePlantRequest {
     pub name: Option<String>,
     pub genus: Option<String>,
-    pub watering_interval_days: Option<i32>,
-    pub fertilizing_interval_days: Option<i32>,
+    pub watering_schedule: Option<UpdateCareScheduleRequest>,
+    pub fertilizing_schedule: Option<UpdateCareScheduleRequest>,
     pub custom_metrics: Option<Vec<UpdateCustomMetricRequest>>,
+}
+
+impl UpdatePlantRequest {
+    pub fn watering_interval_days(&self) -> Option<Option<i32>> {
+        self.watering_schedule.as_ref().map(|s| s.interval_days)
+    }
+
+    pub fn watering_amount(&self) -> Option<Option<f64>> {
+        self.watering_schedule.as_ref().map(|s| s.amount)
+    }
+
+    pub fn watering_unit(&self) -> Option<Option<String>> {
+        self.watering_schedule.as_ref().map(|s| s.unit.clone())
+    }
+
+    pub fn watering_notes(&self) -> Option<Option<String>> {
+        self.watering_schedule.as_ref().map(|s| s.notes.clone())
+    }
+
+    pub fn fertilizing_interval_days(&self) -> Option<Option<i32>> {
+        self.fertilizing_schedule.as_ref().map(|s| s.interval_days)
+    }
+
+    pub fn fertilizing_amount(&self) -> Option<Option<f64>> {
+        self.fertilizing_schedule.as_ref().map(|s| s.amount)
+    }
+
+    pub fn fertilizing_unit(&self) -> Option<Option<String>> {
+        self.fertilizing_schedule.as_ref().map(|s| s.unit.clone())
+    }
+
+    pub fn fertilizing_notes(&self) -> Option<Option<String>> {
+        self.fertilizing_schedule.as_ref().map(|s| s.notes.clone())
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,8 +209,8 @@ pub struct PlantResponse {
     pub id: Uuid,
     pub name: String,
     pub genus: String,
-    pub watering_interval_days: i32,
-    pub fertilizing_interval_days: i32,
+    pub watering_schedule: CareSchedule,
+    pub fertilizing_schedule: CareSchedule,
     pub last_watered: Option<DateTime<Utc>>,
     pub last_fertilized: Option<DateTime<Utc>>,
     pub thumbnail_id: Option<Uuid>,
@@ -121,8 +239,18 @@ mod tests {
         let request = CreatePlantRequest {
             name: "Fiddle Leaf Fig".to_string(),
             genus: "Ficus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(7),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
+            fertilizing_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
             custom_metrics: None,
         };
 
@@ -134,8 +262,18 @@ mod tests {
         let request = CreatePlantRequest {
             name: "".to_string(),
             genus: "Ficus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(7),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
+            fertilizing_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
             custom_metrics: None,
         };
 
@@ -151,8 +289,18 @@ mod tests {
         let request = CreatePlantRequest {
             name: "a".repeat(101), // Exceeds max length of 100
             genus: "Ficus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(7),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
+            fertilizing_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
             custom_metrics: None,
         };
 
@@ -168,8 +316,18 @@ mod tests {
         let request = CreatePlantRequest {
             name: "Fiddle Leaf Fig".to_string(),
             genus: "".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(7),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
+            fertilizing_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
             custom_metrics: None,
         };
 
@@ -185,8 +343,18 @@ mod tests {
         let request = CreatePlantRequest {
             name: "Fiddle Leaf Fig".to_string(),
             genus: "Ficus".to_string(),
-            watering_interval_days: 0, // Below minimum of 1
-            fertilizing_interval_days: 14,
+            watering_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(0), // Below minimum of 1
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
+            fertilizing_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
             custom_metrics: None,
         };
 
@@ -194,7 +362,8 @@ mod tests {
         assert!(validation_result.is_err());
 
         let errors = validation_result.unwrap_err();
-        assert!(errors.field_errors().contains_key("watering_interval_days"));
+        // Check for nested validation errors in watering_schedule
+        assert!(errors.errors().contains_key("watering_schedule"));
     }
 
     #[test]
@@ -202,8 +371,18 @@ mod tests {
         let request = CreatePlantRequest {
             name: "Fiddle Leaf Fig".to_string(),
             genus: "Ficus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 366, // Above maximum of 365
+            watering_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(7),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
+            fertilizing_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(366), // Above maximum of 365
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
             custom_metrics: None,
         };
 
@@ -211,9 +390,8 @@ mod tests {
         assert!(validation_result.is_err());
 
         let errors = validation_result.unwrap_err();
-        assert!(errors
-            .field_errors()
-            .contains_key("fertilizing_interval_days"));
+        // Check for nested validation errors in fertilizing_schedule
+        assert!(errors.errors().contains_key("fertilizing_schedule"));
     }
 
     #[test]
@@ -293,8 +471,18 @@ mod tests {
         let request = CreatePlantRequest {
             name: "Fiddle Leaf Fig".to_string(),
             genus: "Ficus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(7),
+                amount: Some(250.0),
+                unit: Some("ml".to_string()),
+                notes: Some("Water when soil is dry".to_string()),
+            }),
+            fertilizing_schedule: Some(CreateCareScheduleRequest {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            }),
             custom_metrics: Some(vec![custom_metric]),
         };
 
@@ -305,16 +493,20 @@ mod tests {
     fn test_update_plant_request_deserialization() {
         let json = r#"{
             "name": "Updated Plant Name",
-            "wateringIntervalDays": 5,
-            "fertilizingIntervalDays": 21
+            "wateringSchedule": {
+                "intervalDays": 5
+            },
+            "fertilizingSchedule": {
+                "intervalDays": 21
+            }
         }"#;
 
         let request: UpdatePlantRequest = serde_json::from_str(json).unwrap();
 
         assert_eq!(request.name, Some("Updated Plant Name".to_string()));
         assert_eq!(request.genus, None);
-        assert_eq!(request.watering_interval_days, Some(5));
-        assert_eq!(request.fertilizing_interval_days, Some(21));
+        assert_eq!(request.watering_interval_days(), Some(Some(5)));
+        assert_eq!(request.fertilizing_interval_days(), Some(Some(21)));
         assert!(request.custom_metrics.is_none());
     }
 
@@ -324,8 +516,18 @@ mod tests {
             id: Uuid::new_v4(),
             name: "Test Plant".to_string(),
             genus: "Test Genus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_schedule: CareSchedule {
+                interval_days: Some(7),
+                amount: None,
+                unit: None,
+                notes: None,
+            },
+            fertilizing_schedule: CareSchedule {
+                interval_days: Some(14),
+                amount: None,
+                unit: None,
+                notes: None,
+            },
             last_watered: None,
             last_fertilized: None,
             thumbnail_id: None,
@@ -357,8 +559,14 @@ mod tests {
             user_id: Uuid::new_v4(),
             name: "Test Plant".to_string(),
             genus: "Test Genus".to_string(),
-            watering_interval_days: 7,
-            fertilizing_interval_days: 14,
+            watering_interval_days: Some(7),
+            fertilizing_interval_days: Some(14),
+            watering_amount: None,
+            watering_unit: None,
+            watering_notes: None,
+            fertilizing_amount: None,
+            fertilizing_unit: None,
+            fertilizing_notes: None,
             last_watered: None,
             last_fertilized: None,
             thumbnail_id: None,

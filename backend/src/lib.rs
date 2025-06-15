@@ -14,7 +14,7 @@ use models::{
         GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
     },
     photo::{Photo, PhotosResponse},
-    plant::{CreateCustomMetricRequest, CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, PlantsResponse},
+    plant::{CareSchedule, CreateCareScheduleRequest, CreateCustomMetricRequest, CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, PlantsResponse},
     tracking_entry::{
         CreateTrackingEntryRequest, EntryType, TrackingEntriesResponse, TrackingEntry,
     },
@@ -54,6 +54,8 @@ use handlers::google_tasks::StoreTokensRequest;
             PlantsResponse,
             CreatePlantRequest,
             CreateCustomMetricRequest,
+            CareSchedule,
+            CreateCareScheduleRequest,
             CustomMetric,
             MetricDataType,
             CreateGoogleTaskRequest,

@@ -434,6 +434,52 @@
           }
         }
       },
+      "CareSchedule": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "intervalDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CreateCareScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "intervalDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "CreateCustomMetricRequest": {
         "type": "object",
         "required": [
@@ -486,9 +532,7 @@
         "type": "object",
         "required": [
           "name",
-          "genus",
-          "wateringIntervalDays",
-          "fertilizingIntervalDays"
+          "genus"
         ],
         "properties": {
           "customMetrics": {
@@ -498,9 +542,13 @@
             },
             "nullable": true
           },
-          "fertilizingIntervalDays": {
-            "type": "integer",
-            "format": "int32"
+          "fertilizingSchedule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateCareScheduleRequest"
+              }
+            ],
+            "nullable": true
           },
           "genus": {
             "type": "string"
@@ -508,9 +556,13 @@
           "name": {
             "type": "string"
           },
-          "wateringIntervalDays": {
-            "type": "integer",
-            "format": "int32"
+          "wateringSchedule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CreateCareScheduleRequest"
+              }
+            ],
+            "nullable": true
           }
         }
       },
@@ -604,7 +656,8 @@
           "watering",
           "fertilizing",
           "customMetric",
-          "note"
+          "note",
+          "photo"
         ]
       },
       "GoogleOAuthCallbackRequest": {
@@ -796,8 +849,8 @@
           "id",
           "name",
           "genus",
-          "wateringIntervalDays",
-          "fertilizingIntervalDays",
+          "wateringSchedule",
+          "fertilizingSchedule",
           "customMetrics",
           "createdAt",
           "updatedAt",
@@ -814,9 +867,8 @@
               "$ref": "#/components/schemas/CustomMetric"
             }
           },
-          "fertilizingIntervalDays": {
-            "type": "integer",
-            "format": "int32"
+          "fertilizingSchedule": {
+            "$ref": "#/components/schemas/CareSchedule"
           },
           "genus": {
             "type": "string"
@@ -854,9 +906,8 @@
           "userId": {
             "type": "string"
           },
-          "wateringIntervalDays": {
-            "type": "integer",
-            "format": "int32"
+          "wateringSchedule": {
+            "$ref": "#/components/schemas/CareSchedule"
           }
         }
       },

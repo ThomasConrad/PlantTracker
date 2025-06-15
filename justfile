@@ -69,7 +69,7 @@ run-release:
 test:
     @echo "🧪 Running all tests..."
     just test-backend
-    just test-e2e-parallel
+    just test-e2e
 
 # Run frontend tests
 test-frontend:
@@ -103,6 +103,12 @@ test-e2e-calendar:
     @echo "🧪 Running calendar E2E tests..."
     just setup-e2e-env
     cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "calendar" -v -n auto
+
+# Run E2E tests with custom filter
+test-e2e-filter filter:
+    @echo "🧪 Running E2E tests with filter: {{filter}}"
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "{{filter}}" -v -n auto
 
 # Run E2E isolation tests
 test-e2e-isolation:

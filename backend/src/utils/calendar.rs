@@ -42,10 +42,18 @@ fn generate_watering_events(
 ) -> Result<(), AppError> {
     // Skip if watering is disabled
     if plant.watering_schedule.interval_days.is_none() {
+        tracing::info!("Skipping watering events for {} - no watering interval set", plant.name);
+        return Ok(());
+    }
+
+    let interval_days = plant.watering_schedule.interval_days.unwrap();
+    
+    // Safety check to prevent infinite loops
+    if interval_days <= 0 {
+        tracing::warn!("Invalid watering interval for plant {}: {} days", plant.name, interval_days);
         return Ok(());
     }
     
-    let interval_days = plant.watering_schedule.interval_days.unwrap();
     let last_watered = plant
         .last_watered
         .unwrap_or_else(|| start_date - Duration::days(interval_days as i64));
@@ -53,10 +61,13 @@ fn generate_watering_events(
     let interval_duration = Duration::days(interval_days as i64);
     let mut next_watering = last_watered + interval_duration;
 
-    // Ensure we start from a future date
-    while next_watering <= start_date {
+    // Ensure we start from a recent date (allow events that are due now or very soon)
+    // This prevents missing events due to timing precision issues
+    let start_threshold = start_date - Duration::hours(1);
+    while next_watering <= start_threshold {
         next_watering += interval_duration;
     }
+
 
     let mut event_count = 0;
     while next_watering <= end_date && event_count < 100 {
@@ -99,10 +110,18 @@ fn generate_fertilizing_events(
 ) -> Result<(), AppError> {
     // Skip if fertilizing is disabled
     if plant.fertilizing_schedule.interval_days.is_none() {
+        tracing::info!("Skipping fertilizing events for {} - no fertilizing interval set", plant.name);
+        return Ok(());
+    }
+
+    let interval_days = plant.fertilizing_schedule.interval_days.unwrap();
+    
+    // Safety check to prevent infinite loops
+    if interval_days <= 0 {
+        tracing::warn!("Invalid fertilizing interval for plant {}: {} days", plant.name, interval_days);
         return Ok(());
     }
     
-    let interval_days = plant.fertilizing_schedule.interval_days.unwrap();
     let last_fertilized = plant
         .last_fertilized
         .unwrap_or_else(|| start_date - Duration::days(interval_days as i64));
@@ -110,8 +129,10 @@ fn generate_fertilizing_events(
     let interval_duration = Duration::days(interval_days as i64);
     let mut next_fertilizing = last_fertilized + interval_duration;
 
-    // Ensure we start from a future date
-    while next_fertilizing <= start_date {
+    // Ensure we start from a recent date (allow events that are due now or very soon)
+    // This prevents missing events due to timing precision issues
+    let start_threshold = start_date - Duration::hours(1);
+    while next_fertilizing <= start_threshold {
         next_fertilizing += interval_duration;
     }
 

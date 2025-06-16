@@ -11,6 +11,10 @@ export const BottomNavigation: Component = () => {
     if (path === '/plants' && (location.pathname === '/plants' || location.pathname === '/')) {
       return true;
     }
+    // Special case: Don't highlight calendar tab when on calendar settings page
+    if (path === '/calendar' && location.pathname.startsWith('/calendar/settings')) {
+      return false;
+    }
     return location.pathname.startsWith(path);
   };
 
@@ -77,7 +81,7 @@ export const BottomNavigation: Component = () => {
           class="bottom-nav-item"
           onClick={() => setShowSettings(!showSettings())}
         >
-          <NavIcon isActive={showSettings()}>
+          <NavIcon isActive={showSettings() || location.pathname.startsWith('/calendar/settings') || location.pathname.startsWith('/settings')}>
             <path 
               stroke-linecap="round" 
               stroke-linejoin="round" 

@@ -63,7 +63,7 @@ const plantsStore = {
     }
   },
 
-  async createPlant(plantData: CreatePlantRequest & { thumbnailFile?: File }): Promise<Plant> {
+  async createPlant(plantData: CreatePlantRequest & { previewFile?: File }): Promise<Plant> {
     try {
       setLoading(true);
       setError(null);
@@ -72,21 +72,21 @@ const plantsStore = {
       const newPlant = await apiClient.createPlant(plantData);
       setPlants(prev => [...prev, newPlant]);
       
-      // If a thumbnail file was provided, upload it and set as thumbnail
-      if (plantData.thumbnailFile) {
+      // If a preview file was provided, upload it and set as preview
+      if (plantData.previewFile) {
         try {
-          const photo = await apiClient.uploadPlantPhoto(newPlant.id, plantData.thumbnailFile);
-          const updatedPlant = await apiClient.setPlantThumbnail(newPlant.id, photo.id);
+          const photo = await apiClient.uploadPlantPhoto(newPlant.id, plantData.previewFile);
+          const updatedPlant = await apiClient.setPlantPreview(newPlant.id, photo.id);
           
-          // Update the plant in our store with the thumbnail
+          // Update the plant in our store with the preview
           setPlants(prev => prev.map(plant => 
             plant.id === newPlant.id ? updatedPlant : plant
           ));
           
           return updatedPlant;
-        } catch (thumbnailError) {
-          // If thumbnail upload fails, still return the created plant
-          console.warn('Failed to upload thumbnail:', thumbnailError);
+        } catch (previewError) {
+          // If preview upload fails, still return the created plant
+          console.warn('Failed to upload preview:', previewError);
           return newPlant;
         }
       }
@@ -170,17 +170,17 @@ const plantsStore = {
     }
   },
 
-  async setPlantThumbnail(plantId: string, photoId: string): Promise<Plant> {
+  async setPlantPreview(plantId: string, photoId: string): Promise<Plant> {
     try {
       setError(null);
-      const updatedPlant = await apiClient.setPlantThumbnail(plantId, photoId);
+      const updatedPlant = await apiClient.setPlantPreview(plantId, photoId);
       // Update the plant in our local store
       setPlants(prev => prev.map(plant => 
         plant.id === plantId ? updatedPlant : plant
       ));
       return updatedPlant;
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to set plant thumbnail';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set plant preview';
       setError(errorMessage);
       throw err;
     }

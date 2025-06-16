@@ -24,7 +24,7 @@ pub fn routes() -> Router<AppState> {
             "/:id",
             get(get_plant).put(update_plant).delete(delete_plant),
         )
-        .route("/:id/thumbnail/:photo_id", put(set_plant_thumbnail))
+        .route("/:id/preview/:photo_id", put(set_plant_preview))
         .nest("/:plant_id", photos::routes())
         .merge(tracking::routes())
 }
@@ -242,7 +242,7 @@ async fn delete_plant(
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn set_plant_thumbnail(
+async fn set_plant_preview(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
     Path((id, photo_id)): Path<(Uuid, Uuid)>,
@@ -252,16 +252,16 @@ async fn set_plant_thumbnail(
     })?;
 
     tracing::info!(
-        "Set thumbnail request for plant: {}, photo: {} by user: {}",
+        "Set preview request for plant: {}, photo: {} by user: {}",
         id,
         photo_id,
         user.id
     );
 
-    let plant = db_plants::set_plant_thumbnail(&app_state.pool, id, photo_id, &user.id).await?;
+    let plant = db_plants::set_plant_preview(&app_state.pool, id, photo_id, &user.id).await?;
 
     tracing::info!(
-        "Set thumbnail for plant: {} to photo: {} for user: {}",
+        "Set preview for plant: {} to photo: {} for user: {}",
         id,
         photo_id,
         user.id

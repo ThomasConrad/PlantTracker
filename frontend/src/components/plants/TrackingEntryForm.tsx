@@ -1,7 +1,7 @@
 import { Component, createSignal, Show, For } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { ThumbnailUpload } from './ThumbnailUpload';
+import { PreviewUpload } from './PreviewUpload';
 import { plantsStore } from '@/stores/plants';
 import type { Plant } from '@/types';
 import type { components } from '@/types/api-generated';
@@ -374,7 +374,7 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
             <Show when={entryType() === 'photo'}>
               <div class="space-y-4">
                 <h3 class="text-sm font-medium text-gray-900">Photo Details</h3>
-                <ThumbnailUpload
+                <PreviewUpload
                   onFileSelect={(file) => {
                     setSelectedPhoto(file);
                     setPhotoError('');

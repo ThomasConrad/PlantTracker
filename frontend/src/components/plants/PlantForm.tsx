@@ -1,16 +1,16 @@
 import { Component, createSignal, For } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { ThumbnailUpload } from '@/components/plants/ThumbnailUpload';
+import { PreviewUpload } from '@/components/plants/PreviewUpload';
 import type { PlantFormData, Photo } from '@/types';
 
 interface PlantFormProps {
   initialData?: Partial<PlantFormData>;
-  existingThumbnailUrl?: string | null;
+  existingPreviewUrl?: string | null;
   existingPhotos?: Photo[];
-  onSubmit: (data: PlantFormData & { thumbnailFile?: File }) => Promise<void>;
+  onSubmit: (data: PlantFormData & { previewFile?: File }) => Promise<void>;
   onPhotoSelect?: (photoId: string) => Promise<void>;
-  onClearThumbnail?: () => Promise<void>;
+  onClearPreview?: () => Promise<void>;
   submitText?: string;
   loading?: boolean;
 }
@@ -25,8 +25,8 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
   });
 
   const [errors, setErrors] = createSignal<Record<string, string>>({});
-  const [thumbnailFile, setThumbnailFile] = createSignal<File | null>(null);
-  const [thumbnailError, setThumbnailError] = createSignal<string>('');
+  const [previewFile, setThumbnailFile] = createSignal<File | null>(null);
+  const [previewError, setThumbnailError] = createSignal<string>('');
 
   const addCustomMetric = () => {
     setFormData(prev => ({
@@ -91,7 +91,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleThumbnailSelect = (file: File) => {
+  const handlePreviewSelect = (file: File) => {
     setThumbnailFile(file);
     setThumbnailError('');
   };
@@ -110,7 +110,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
       name: formData().name.trim(),
       genus: formData().genus.trim(),
       customMetrics: validCustomMetrics,
-      thumbnailFile: thumbnailFile() || undefined,
+      previewFile: previewFile() || undefined,
     });
   };
 
@@ -324,14 +324,14 @@ value={formData().fertilizingSchedule?.notes || ''}
         </div>
       </div>
 
-      <ThumbnailUpload
-        onFileSelect={handleThumbnailSelect}
+      <PreviewUpload
+        onFileSelect={handlePreviewSelect}
         onPhotoSelect={props.onPhotoSelect}
-        onClearThumbnail={props.onClearThumbnail}
-        selectedFile={thumbnailFile()}
-        existingThumbnailUrl={props.existingThumbnailUrl}
+        onClearPreview={props.onClearPreview}
+        selectedFile={previewFile()}
+        existingPreviewUrl={props.existingPreviewUrl}
         existingPhotos={props.existingPhotos}
-        error={thumbnailError()}
+        error={previewError()}
         loading={props.loading}
       />
 

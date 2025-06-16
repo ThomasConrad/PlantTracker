@@ -1154,12 +1154,12 @@
           "name": {
             "type": "string"
           },
-          "thumbnailId": {
+          "previewId": {
             "type": "string",
             "format": "uuid",
             "nullable": true
           },
-          "thumbnailUrl": {
+          "previewUrl": {
             "type": "string",
             "nullable": true
           },

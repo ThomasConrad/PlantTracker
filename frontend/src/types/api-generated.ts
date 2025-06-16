@@ -354,8 +354,8 @@ export interface components {
             lastWatered?: string | null;
             name: string;
             /** Format: uuid */
-            thumbnailId?: string | null;
-            thumbnailUrl?: string | null;
+            previewId?: string | null;
+            previewUrl?: string | null;
             /** Format: date-time */
             updatedAt: string;
             userId: string;

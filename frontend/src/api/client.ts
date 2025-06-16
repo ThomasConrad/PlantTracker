@@ -200,8 +200,8 @@ class ApiClient {
     return response.json();
   }
 
-  async setPlantThumbnail(plantId: string, photoId: string): Promise<Plant> {
-    const response = await fetch(`${this.baseUrl}/plants/${plantId}/thumbnail/${photoId}`, {
+  async setPlantPreview(plantId: string, photoId: string): Promise<Plant> {
+    const response = await fetch(`${this.baseUrl}/plants/${plantId}/preview/${photoId}`, {
       method: 'PUT',
       credentials: 'include',
     });

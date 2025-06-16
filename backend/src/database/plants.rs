@@ -23,7 +23,7 @@ pub struct PlantRow {
     pub fertilizing_notes: Option<String>,
     pub last_watered: Option<String>,
     pub last_fertilized: Option<String>,
-    pub thumbnail_id: Option<String>,
+    pub preview_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -68,12 +68,12 @@ impl PlantRow {
                 .map_err(|_| AppError::Internal {
                     message: "Invalid datetime in database".to_string(),
                 })?,
-            thumbnail_id: self
-                .thumbnail_id
+            preview_id: self
+                .preview_id
                 .as_ref()
                 .and_then(|s| Uuid::parse_str(s).ok()),
-            thumbnail_url: self
-                .thumbnail_id
+            preview_url: self
+                .preview_id
                 .as_ref()
                 .map(|thumb_id| format!("/api/v1/plants/{}/photos/{}", self.id, thumb_id)),
             custom_metrics: vec![], // TODO: Load custom metrics
@@ -423,7 +423,7 @@ pub async fn delete_plant(
     Ok(())
 }
 
-pub async fn set_plant_thumbnail(
+pub async fn set_plant_preview(
     pool: &DatabasePool,
     plant_id: Uuid,
     photo_id: Uuid,
@@ -466,10 +466,10 @@ pub async fn set_plant_thumbnail(
         });
     }
 
-    // Update the plant's thumbnail_id
+    // Update the plant's preview_id
     let now = Utc::now().to_rfc3339();
     let result = sqlx::query!(
-        "UPDATE plants SET thumbnail_id = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        "UPDATE plants SET preview_id = ?, updated_at = ? WHERE id = ? AND user_id = ?",
         photo_id_str,
         now,
         plant_id_str,

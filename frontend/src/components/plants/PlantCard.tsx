@@ -11,7 +11,7 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
     <A href={`/plants/${props.plant.id}`} class="plant-card-full-image group">
       <div class="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-sm">
         <Show
-          when={props.plant.thumbnailUrl}
+          when={props.plant.previewUrl}
           fallback={
             <div class="h-full w-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
               <svg class="h-16 w-16 text-primary-600 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -26,8 +26,8 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
           }
         >
           <img
-            src={props.plant.thumbnailUrl!}
-            alt={`${props.plant.name} thumbnail`}
+            src={props.plant.previewUrl!}
+            alt={`${props.plant.name} preview`}
             class="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
           />

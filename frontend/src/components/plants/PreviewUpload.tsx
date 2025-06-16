@@ -2,18 +2,18 @@ import { Component, createSignal, Show, onMount, onCleanup, For } from 'solid-js
 import { Button } from '@/components/ui/Button';
 import type { Photo } from '@/types/api';
 
-interface ThumbnailUploadProps {
+interface PreviewUploadProps {
   onFileSelect: (file: File) => void;
   onPhotoSelect?: (photoId: string) => void;
-  onClearThumbnail?: () => void;
+  onClearPreview?: () => void;
   selectedFile?: File | null;
-  existingThumbnailUrl?: string | null;
+  existingPreviewUrl?: string | null;
   existingPhotos?: Photo[];
   error?: string;
   loading?: boolean;
 }
 
-export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
+export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   const [preview, setPreview] = createSignal<string | null>(null);
   const [isMobile, setIsMobile] = createSignal(false);
   const [showCamera, setShowCamera] = createSignal(false);
@@ -177,7 +177,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
     // Convert canvas to blob
     canvas.toBlob(async (blob) => {
       if (blob) {
-        const file = new File([blob], `plant-thumbnail-${Date.now()}.jpg`, { 
+        const file = new File([blob], `plant-preview-${Date.now()}.jpg`, { 
           type: 'image/jpeg' 
         });
         try {
@@ -199,7 +199,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
     if (fileInputRef) {
       fileInputRef.value = '';
     }
-    props.onClearThumbnail?.();
+    props.onClearPreview?.();
   };
 
   const selectExistingPhoto = (photoId: string) => {
@@ -208,15 +208,15 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
   };
 
   // Determine what to show as the current thumbnail
-  const getCurrentThumbnail = () => {
+  const getCurrentPreview = () => {
     if (preview()) {
       return preview();
     }
-    return props.existingThumbnailUrl;
+    return props.existingPreviewUrl;
   };
 
-  const hasCurrentThumbnail = () => {
-    return preview() || props.existingThumbnailUrl;
+  const hasCurrentPreview = () => {
+    return preview() || props.existingPreviewUrl;
   };
 
   return (
@@ -235,7 +235,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
               Choose from existing
             </button>
           </Show>
-          <Show when={hasCurrentThumbnail()}>
+          <Show when={hasCurrentPreview()}>
             <button
               type="button"
               onClick={removePhoto}
@@ -294,7 +294,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
 
       {/* Preview or Upload Area */}
       <Show
-        when={hasCurrentThumbnail()}
+        when={hasCurrentPreview()}
         fallback={
           <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
             <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
@@ -311,6 +311,8 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
                     type="button"
                     variant="outline"
                     onClick={startCamera}
+                    loading={compressing() || props.loading}
+                    disabled={compressing() || props.loading}
                     class="flex items-center"
                   >
                     <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,6 +327,8 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef?.click()}
+                  loading={compressing() || props.loading}
+                  disabled={compressing() || props.loading}
                   class="flex items-center"
                 >
                   <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -343,7 +347,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
       >
         <div class="relative">
           <img
-            src={getCurrentThumbnail()!}
+            src={getCurrentPreview()!}
             alt="Plant preview"
             class="w-full h-48 object-cover rounded-lg border border-gray-200"
           />
@@ -353,6 +357,8 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef?.click()}
+              loading={compressing() || props.loading}
+              disabled={compressing() || props.loading}
               class="bg-white shadow-lg"
             >
               Change Photo
@@ -427,11 +433,18 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
         class="hidden"
       />
 
-      {/* Compression loading */}
-      <Show when={compressing()}>
+      {/* Processing status */}
+      <Show when={compressing() || props.loading}>
         <div class="text-center py-4">
           <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          <p class="mt-2 text-sm text-gray-600">Compressing image...</p>
+          <p class="mt-2 text-sm text-gray-600">
+            <Show 
+              when={compressing()} 
+              fallback="Processing photo..."
+            >
+              Compressing image...
+            </Show>
+          </p>
         </div>
       </Show>
 

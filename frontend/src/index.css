@@ -83,7 +83,7 @@
     @apply ring-1 ring-primary-200;
   }
   
-  .plant-thumbnail {
+  .plant-preview {
     @apply h-40 sm:h-48 w-full object-cover bg-gray-100;
   }
   

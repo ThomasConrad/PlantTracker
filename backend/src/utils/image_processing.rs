@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use image::codecs::avif::AvifEncoder;
-use image::{ColorType, DynamicImage, ImageEncoder, ImageFormat};
+use image::{ColorType, DynamicImage, GenericImageView, ImageEncoder, ImageFormat};
 
 /// Maximum dimensions for image processing (4K-ish resolution)
 const MAX_DIMENSION: u32 = 3840; // 4K width/height
@@ -20,6 +20,9 @@ pub struct ProcessedImage {
 
 /// Process an uploaded image by converting to AVIF and optionally cropping to 4K
 ///
+/// This function offloads CPU-intensive image processing to a blocking thread pool
+/// to avoid blocking the async runtime during heavy image operations.
+///
 /// # Arguments
 /// * `image_data` - Raw image bytes from upload
 /// * `content_type` - Original content type for format detection
@@ -35,26 +38,35 @@ pub async fn process_uploaded_image(
     image_data: &[u8],
     content_type: &str,
 ) -> Result<ProcessedImage> {
-    // Detect and load the image format
-    let format = detect_image_format(content_type)
-        .with_context(|| format!("Unsupported image format: {}", content_type))?;
+    // Clone data for move into blocking task
+    let image_data = image_data.to_vec();
+    let content_type = content_type.to_string();
 
-    let image = image::load_from_memory_with_format(image_data, format)
-        .with_context(|| "Failed to decode image")?;
+    // Offload CPU-intensive image processing to blocking thread pool
+    tokio::task::spawn_blocking(move || {
+        // Detect and load the image format
+        let format = detect_image_format(&content_type)
+            .with_context(|| format!("Unsupported image format: {}", content_type))?;
 
-    // Crop to 4K if the image is larger
-    let processed_image = crop_to_max_dimension(image);
+        let image = image::load_from_memory_with_format(&image_data, format)
+            .with_context(|| "Failed to decode image")?;
 
-    // Convert to AVIF format
-    let avif_data =
-        encode_to_avif(&processed_image).with_context(|| "Failed to encode image to AVIF")?;
+        // Crop to 4K if the image is larger
+        let processed_image = crop_to_max_dimension(image);
 
-    Ok(ProcessedImage {
-        data: avif_data,
-        width: processed_image.width(),
-        height: processed_image.height(),
-        content_type: "image/avif".to_string(),
+        // Convert to AVIF format
+        let avif_data =
+            encode_to_avif(&processed_image).with_context(|| "Failed to encode image to AVIF")?;
+
+        Ok(ProcessedImage {
+            data: avif_data,
+            width: processed_image.width(),
+            height: processed_image.height(),
+            content_type: "image/avif".to_string(),
+        })
     })
+    .await
+    .with_context(|| "Image processing task was cancelled")?
 }
 
 /// Detect image format from content type
@@ -102,9 +114,21 @@ fn crop_to_max_dimension(image: DynamicImage) -> DynamicImage {
 fn encode_to_avif(image: &DynamicImage) -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
 
+    // Optimize encoding settings based on image size for better performance
+    let (width, height) = image.dimensions();
+    let pixel_count = width * height;
+    
+    // Use faster encoding for larger images to reduce processing time
+    let (speed, quality) = if pixel_count > 2_000_000 {
+        // Large images (>2MP): prioritize speed over perfect quality
+        (6, 80) // Faster encoding, slightly lower quality
+    } else {
+        // Smaller images: maintain high quality with moderate speed
+        (4, 85) // Balanced encoding
+    };
+
     // Create AVIF encoder with optimized settings
-    // Speed 4 (good balance of speed/quality), Quality 85 (high quality)
-    let encoder = AvifEncoder::new_with_speed_quality(&mut buffer, 4, 85)
+    let encoder = AvifEncoder::new_with_speed_quality(&mut buffer, speed, quality)
         .with_num_threads(Some(std::thread::available_parallelism()?.get()));
 
     // Convert image to RGBA8 format for encoding

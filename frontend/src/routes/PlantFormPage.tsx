@@ -32,31 +32,31 @@ export const PlantFormPage: Component = () => {
     }
   });
 
-  // Handle selecting an existing photo as thumbnail
+  // Handle selecting an existing photo as preview
   const handlePhotoSelect = async (photoId: string) => {
     if (!params.id) return;
     try {
-      await plantsStore.setPlantThumbnail(params.id, photoId);
-      // Reload plant data to get updated thumbnail
+      await plantsStore.setPlantPreview(params.id, photoId);
+      // Reload plant data to get updated preview
       await plantsStore.loadPlant(params.id);
     } catch (error) {
-      console.error('Failed to set thumbnail:', error);
+      console.error('Failed to set preview:', error);
     }
   };
 
-  // Handle clearing the current thumbnail
+  // Handle clearing the current preview
   const handleClearThumbnail = async () => {
     if (!params.id) return;
     try {
-      // The API doesn't have a clear thumbnail endpoint, but we could implement it
-      // For now, we'll just indicate that no thumbnail is selected
-      console.log('Clear thumbnail - this would need an API endpoint');
+      // The API doesn't have a clear preview endpoint, but we could implement it
+      // For now, we'll just indicate that no preview is selected
+      console.log('Clear preview - this would need an API endpoint');
     } catch (error) {
-      console.error('Failed to clear thumbnail:', error);
+      console.error('Failed to clear preview:', error);
     }
   };
 
-  const handleSubmit = async (data: PlantFormData & { thumbnailFile?: File }) => {
+  const handleSubmit = async (data: PlantFormData & { previewFile?: File }) => {
     try {
       setLoading(true);
       
@@ -64,13 +64,13 @@ export const PlantFormPage: Component = () => {
         // Update existing plant
         await plantsStore.updatePlant(params.id, data);
         
-        // If a thumbnail file was provided, upload it and set as thumbnail
-        if (data.thumbnailFile) {
+        // If a preview file was provided, upload it and set as preview
+        if (data.previewFile) {
           try {
-            const photo = await plantsStore.uploadPhoto(params.id, data.thumbnailFile);
-            await plantsStore.setPlantThumbnail(params.id, photo.id);
-          } catch (thumbnailError) {
-            console.warn('Failed to upload thumbnail:', thumbnailError);
+            const photo = await plantsStore.uploadPhoto(params.id, data.previewFile);
+            await plantsStore.setPlantPreview(params.id, photo.id);
+          } catch (previewError) {
+            console.warn('Failed to upload preview:', previewError);
           }
         }
         
@@ -219,11 +219,11 @@ export const PlantFormPage: Component = () => {
                       dataType: m.dataType as 'Number' | 'Text' | 'Boolean'
                     })) || []
                   } : undefined}
-                  existingThumbnailUrl={isEditing() && plantsStore.selectedPlant?.thumbnailUrl ? plantsStore.selectedPlant.thumbnailUrl : null}
+                  existingPreviewUrl={isEditing() && plantsStore.selectedPlant?.previewUrl ? plantsStore.selectedPlant.previewUrl : null}
                   existingPhotos={existingPhotos()}
                   onSubmit={handleSubmit}
                   onPhotoSelect={handlePhotoSelect}
-                  onClearThumbnail={handleClearThumbnail}
+                  onClearPreview={handleClearThumbnail}
                   submitText={getSubmitText()}
                   loading={loading()}
                 />

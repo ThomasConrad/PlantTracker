@@ -29,7 +29,7 @@ build-frontend:
 # Build frontend for release (optimized)
 build-frontend-release:
     @echo "🏗️ Building frontend for release..."
-    cd frontend && npm run build --mode production
+    cd frontend && npm run build
 
 # Build backend
 build-backend-release:

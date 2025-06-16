@@ -3,20 +3,58 @@ import { A, useNavigate, useParams } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { PlantForm } from '@/components/plants/PlantForm';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import type { PlantFormData } from '@/types';
+import { apiClient } from '@/api/client';
+import type { PlantFormData, Photo } from '@/types';
 
 export const PlantFormPage: Component = () => {
   const navigate = useNavigate();
   const params = useParams();
   const [loading, setLoading] = createSignal(false);
+  const [existingPhotos, setExistingPhotos] = createSignal<Photo[]>([]);
 
   const isEditing = () => !!params.id;
+
+  // Load existing photos for edit mode
+  const loadExistingPhotos = async (plantId: string) => {
+    try {
+      const photosResponse = await apiClient.getPlantPhotos(plantId);
+      setExistingPhotos(photosResponse.photos || []);
+    } catch (error) {
+      console.error('Failed to load existing photos:', error);
+      setExistingPhotos([]);
+    }
+  };
 
   createEffect(() => {
     if (params.id) {
       plantsStore.loadPlant(params.id);
+      loadExistingPhotos(params.id);
     }
   });
+
+  // Handle selecting an existing photo as thumbnail
+  const handlePhotoSelect = async (photoId: string) => {
+    if (!params.id) return;
+    try {
+      await plantsStore.setPlantThumbnail(params.id, photoId);
+      // Reload plant data to get updated thumbnail
+      await plantsStore.loadPlant(params.id);
+    } catch (error) {
+      console.error('Failed to set thumbnail:', error);
+    }
+  };
+
+  // Handle clearing the current thumbnail
+  const handleClearThumbnail = async () => {
+    if (!params.id) return;
+    try {
+      // The API doesn't have a clear thumbnail endpoint, but we could implement it
+      // For now, we'll just indicate that no thumbnail is selected
+      console.log('Clear thumbnail - this would need an API endpoint');
+    } catch (error) {
+      console.error('Failed to clear thumbnail:', error);
+    }
+  };
 
   const handleSubmit = async (data: PlantFormData & { thumbnailFile?: File }) => {
     try {
@@ -181,7 +219,11 @@ export const PlantFormPage: Component = () => {
                       dataType: m.dataType as 'Number' | 'Text' | 'Boolean'
                     })) || []
                   } : undefined}
+                  existingThumbnailUrl={isEditing() && plantsStore.selectedPlant?.thumbnailUrl ? plantsStore.selectedPlant.thumbnailUrl : null}
+                  existingPhotos={existingPhotos()}
                   onSubmit={handleSubmit}
+                  onPhotoSelect={handlePhotoSelect}
+                  onClearThumbnail={handleClearThumbnail}
                   submitText={getSubmitText()}
                   loading={loading()}
                 />

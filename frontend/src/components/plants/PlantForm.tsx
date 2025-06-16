@@ -2,11 +2,15 @@ import { Component, createSignal, For } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ThumbnailUpload } from '@/components/plants/ThumbnailUpload';
-import type { PlantFormData } from '@/types';
+import type { PlantFormData, Photo } from '@/types';
 
 interface PlantFormProps {
   initialData?: Partial<PlantFormData>;
+  existingThumbnailUrl?: string | null;
+  existingPhotos?: Photo[];
   onSubmit: (data: PlantFormData & { thumbnailFile?: File }) => Promise<void>;
+  onPhotoSelect?: (photoId: string) => Promise<void>;
+  onClearThumbnail?: () => Promise<void>;
   submitText?: string;
   loading?: boolean;
 }
@@ -322,7 +326,11 @@ value={formData().fertilizingSchedule?.notes || ''}
 
       <ThumbnailUpload
         onFileSelect={handleThumbnailSelect}
+        onPhotoSelect={props.onPhotoSelect}
+        onClearThumbnail={props.onClearThumbnail}
         selectedFile={thumbnailFile()}
+        existingThumbnailUrl={props.existingThumbnailUrl}
+        existingPhotos={props.existingPhotos}
         error={thumbnailError()}
         loading={props.loading}
       />

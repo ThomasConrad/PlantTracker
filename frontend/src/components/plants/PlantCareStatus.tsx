@@ -345,17 +345,17 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
                             <div class="flex items-center space-x-2">
                               <Show when={entry.entryType === 'watering' && entry.value && typeof entry.value === 'object' && 'amount' in entry.value}>
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                                  {(entry.value as any).amount} {(entry.value as any).unit}
+                                  {String((entry.value as Record<string, unknown>).amount)} {String((entry.value as Record<string, unknown>).unit)}
                                 </span>
                               </Show>
                               <Show when={entry.entryType === 'fertilizing' && entry.value && typeof entry.value === 'object' && 'type' in entry.value}>
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                  {(entry.value as any).type}
-                                  <Show when={'amount' in (entry.value as any)}>
-                                    {' '}• {(entry.value as any).amount} {(entry.value as any).unit}
+                                  {String((entry.value as Record<string, unknown>).type)}
+                                  <Show when={'amount' in (entry.value as Record<string, unknown>)}>
+                                    {' '}• {String((entry.value as Record<string, unknown>).amount)} {String((entry.value as Record<string, unknown>).unit)}
                                   </Show>
-                                  <Show when={'dilution' in (entry.value as any)}>
-                                    {' '}• {(entry.value as any).dilution}
+                                  <Show when={'dilution' in (entry.value as Record<string, unknown>)}>
+                                    {' '}• {String((entry.value as Record<string, unknown>).dilution)}
                                   </Show>
                                 </span>
                               </Show>

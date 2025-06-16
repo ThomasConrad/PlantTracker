@@ -59,23 +59,7 @@ pub struct Plant {
 }
 
 impl Plant {
-    pub fn watering_schedule(&self) -> CareSchedule {
-        CareSchedule {
-            interval_days: self.watering_interval_days,
-            amount: self.watering_amount,
-            unit: self.watering_unit.clone(),
-            notes: self.watering_notes.clone(),
-        }
-    }
-
-    pub fn fertilizing_schedule(&self) -> CareSchedule {
-        CareSchedule {
-            interval_days: self.fertilizing_interval_days,
-            amount: self.fertilizing_amount,
-            unit: self.fertilizing_unit.clone(),
-            notes: self.fertilizing_notes.clone(),
-        }
-    }
+    // Removed unused watering_schedule and fertilizing_schedule methods
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]

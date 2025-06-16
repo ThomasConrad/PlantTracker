@@ -58,7 +58,7 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
         unit: waterUnit(),
       };
     } else if (entryType() === 'fertilizing') {
-      const fertValue: any = {};
+      const fertValue: Record<string, unknown> = {};
       if (fertilizerType()) fertValue.type = fertilizerType();
       if (fertilizerBrand()) fertValue.brand = fertilizerBrand();
       if (fertilizerAmount()) {

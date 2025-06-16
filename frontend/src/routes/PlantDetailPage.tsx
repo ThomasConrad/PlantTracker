@@ -20,6 +20,7 @@ export const PlantDetailPage: Component = () => {
   const [isDragging, setIsDragging] = createSignal(false);
   const [dragStartY, setDragStartY] = createSignal(0);
   const [dragStartOffset, setDragStartOffset] = createSignal(0);
+  const [dragFromHandle, setDragFromHandle] = createSignal(false);
 
   createEffect(() => {
     if (params.id) {
@@ -42,35 +43,42 @@ export const PlantDetailPage: Component = () => {
   });
 
   // Touch event handlers for mobile swipe panel
-  const handleTouchStart = (e: TouchEvent) => {
+  const handleDragHandleTouchStart = (e: TouchEvent) => {
     if (!isMobile()) return;
+    e.stopPropagation(); // Prevent event bubbling
     setIsDragging(true);
+    setDragFromHandle(true);
     setDragStartY(e.touches[0].clientY);
     setDragStartOffset(panelOffset());
   };
 
   const handleTouchMove = (e: TouchEvent) => {
-    if (!isMobile() || !isDragging()) return;
+    if (!isMobile() || !isDragging() || !dragFromHandle()) return;
+    e.preventDefault(); // Prevent scrolling while dragging
     
     const currentY = e.touches[0].clientY;
     const deltaY = currentY - dragStartY();
-    const windowHeight = window.innerHeight;
-    const deltaPercent = (deltaY / windowHeight) * 100;
     
-    const newOffset = Math.max(10, Math.min(90, dragStartOffset() + deltaPercent));
+    // Get the content area height (excluding header)
+    const contentAreaHeight = window.innerHeight - 80; // 80px header height
+    const deltaPercent = (deltaY / contentAreaHeight) * 100;
+    
+    // Prevent dragging below 75% (always keep some panel visible)
+    const newOffset = Math.max(10, Math.min(75, dragStartOffset() + deltaPercent));
     setPanelOffset(newOffset);
   };
 
   const handleTouchEnd = () => {
     if (!isMobile() || !isDragging()) return;
     setIsDragging(false);
+    setDragFromHandle(false);
     
     // Snap to positions based on final offset
     const currentOffset = panelOffset();
     if (currentOffset < 30) {
       setPanelOffset(10); // Fully expanded
-    } else if (currentOffset > 70) {
-      setPanelOffset(85); // Mostly hidden
+    } else if (currentOffset > 65) {
+      setPanelOffset(75); // Mostly hidden (but always recoverable)
     } else {
       setPanelOffset(60); // Default position
     }
@@ -114,7 +122,7 @@ export const PlantDetailPage: Component = () => {
         if (isMobile()) {
           // Mobile layout with swipe-up panel
           return (
-            <div class="h-screen flex flex-col overflow-hidden">
+            <div class="h-full flex flex-col overflow-hidden">
               {/* Full-screen plant preview background */}
               <div class="absolute inset-0">
                 <Show when={plant.previewUrl} fallback={
@@ -135,7 +143,7 @@ export const PlantDetailPage: Component = () => {
               </div>
 
               {/* Fixed header with back button and plant name */}
-              <div class="relative z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
+              <div class="relative z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent flex-shrink-0" style={{ height: '80px' }}>
                 <A
                   href="/plants"
                   class="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
@@ -158,28 +166,33 @@ export const PlantDetailPage: Component = () => {
                 </A>
               </div>
 
-              {/* Swipe-up content panel */}
-              <div 
-                class="relative z-20 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out"
-                style={{
-                  transform: `translateY(${panelOffset()}vh)`,
-                  height: `${100 - panelOffset() + 10}vh`,
-                  'min-height': '20vh'
-                }}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-              >
-                {/* Drag handle */}
-                <div class="flex justify-center pt-3 pb-1">
-                  <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
-                </div>
-                
-                {/* Content */}
-                <div class="px-4 pb-8 overflow-y-auto h-full">
-                  <div class="space-y-6">
-                    <PlantCareStatus plant={plant} />
-                    <ActivityLog plant={plant} />
+              {/* Content area below header */}
+              <div class="flex-1 relative overflow-hidden">
+                {/* Swipe-up content panel */}
+                <div 
+                  class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out z-30"
+                  style={{
+                    transform: `translateY(${panelOffset()}%)`,
+                    height: `${100 - panelOffset() + 10}%`,
+                    'min-height': '20%'
+                  }}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  {/* Drag handle */}
+                  <div 
+                    class="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing"
+                    onTouchStart={handleDragHandleTouchStart}
+                  >
+                    <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
+                  </div>
+                  
+                  {/* Content */}
+                  <div class="px-4 pb-8 overflow-y-auto flex-1" style={{ height: 'calc(100% - 32px)' }}>
+                    <div class="space-y-6">
+                      <PlantCareStatus plant={plant} />
+                      <ActivityLog plant={plant} />
+                    </div>
                   </div>
                 </div>
               </div>

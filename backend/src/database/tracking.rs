@@ -375,6 +375,7 @@ pub async fn get_tracking_entry(
             "fertilizing" => EntryType::Fertilizing,
             "measurement" => EntryType::CustomMetric,
             "note" => EntryType::Note,
+            "photo" => EntryType::Photo,
             _ => EntryType::Watering, // fallback
         },
         timestamp: chrono::DateTime::parse_from_rfc3339(&timestamp_str)
@@ -845,6 +846,40 @@ mod tests {
         
         if let Some(value) = entry.value {
             assert_eq!(value, serde_json::Value::Number(serde_json::Number::from(25)));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_photo_entry() {
+        let pool = setup_test_db().await;
+        let (user_id, plant_id) = create_test_user_and_plant(&pool).await;
+
+        let photo_ids = vec![Uuid::new_v4()];
+        let request = CreateTrackingEntryRequest {
+            entry_type: EntryType::Photo,
+            timestamp: Utc::now(),
+            value: None,
+            notes: None,
+            metric_id: None,
+            photo_ids: Some(photo_ids.clone()),
+        };
+
+        let result = create_tracking_entry(&pool, &plant_id, &user_id, &request).await;
+        if result.is_err() {
+            eprintln!("Error creating photo entry: {:?}", result);
+        }
+        assert!(result.is_ok());
+
+        let entry = result.unwrap();
+        assert_eq!(entry.plant_id, plant_id);
+        assert!(matches!(entry.entry_type, EntryType::Photo));
+        
+        // Verify photo_ids are stored correctly
+        if let Some(stored_photo_ids) = entry.photo_ids {
+            let parsed_ids: Vec<Uuid> = serde_json::from_value(stored_photo_ids).unwrap();
+            assert_eq!(parsed_ids, photo_ids);
+        } else {
+            panic!("Photo IDs should be stored");
         }
     }
 

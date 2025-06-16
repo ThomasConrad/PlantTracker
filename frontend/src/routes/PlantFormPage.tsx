@@ -48,9 +48,9 @@ export const PlantFormPage: Component = () => {
   const handleClearThumbnail = async () => {
     if (!params.id) return;
     try {
-      // The API doesn't have a clear preview endpoint, but we could implement it
-      // For now, we'll just indicate that no preview is selected
-      console.log('Clear preview - this would need an API endpoint');
+      await plantsStore.clearPlantPreview(params.id);
+      // Reload plant data to get updated preview
+      await plantsStore.loadPlant(params.id);
     } catch (error) {
       console.error('Failed to clear preview:', error);
     }

@@ -366,6 +366,20 @@ export const PlantCareStatus: Component<PlantCareStatusProps> = (props) => {
                           </Show>
                         </div>
                       </Show>
+                      <Show when={entry.photoIds && Array.isArray(entry.photoIds) && entry.photoIds.length > 0}>
+                        <div class="mt-2 flex flex-wrap gap-1">
+                          <For each={entry.photoIds as string[]}>
+                            {(photoId) => (
+                              <img
+                                src={`/api/v1/plants/${props.plant.id}/photos/${photoId}`}
+                                alt="Activity photo"
+                                class="w-8 h-8 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => window.open(`/api/v1/plants/${props.plant.id}/photos/${photoId}`, '_blank')}
+                              />
+                            )}
+                          </For>
+                        </div>
+                      </Show>
                     </div>
                   </div>
                 )}

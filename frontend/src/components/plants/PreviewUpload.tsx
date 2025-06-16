@@ -54,8 +54,8 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   // Compress image if it's too large
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve) => {
-      // If file is smaller than 1MB, don't compress
-      if (file.size < 1024 * 1024) {
+      // If file is smaller than 2MB, don't compress
+      if (file.size < 2 * 1024 * 1024) {
         resolve(file);
         return;
       }
@@ -67,8 +67,8 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
       const img = new Image();
       
       img.onload = () => {
-        // Calculate new dimensions (max 1920x1920 for large images)
-        const maxDimension = 1920;
+        // Calculate new dimensions (max 4K for large images)
+        const maxDimension = 3840;
         let { width, height } = img;
         
         if (width > maxDimension || height > maxDimension) {
@@ -99,7 +99,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
           } else {
             resolve(file);
           }
-        }, 'image/jpeg', 0.8); // 80% quality
+        }, 'image/jpeg', 0.9); // 90% quality
       };
       
       img.src = URL.createObjectURL(file);

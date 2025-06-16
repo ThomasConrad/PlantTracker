@@ -157,10 +157,17 @@ export const PlantDetailPage: Component = () => {
                       <div class="space-y-1">
                         <div class="flex items-center justify-between">
                           <label class="text-sm font-medium text-gray-500">Watering Schedule</label>
-                          <div class="flex items-center gap-1.5">
-                            <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
-                            <span class="text-xs text-gray-400">Active</span>
-                          </div>
+                          <Show when={plant.wateringSchedule?.intervalDays} fallback={
+                            <div class="flex items-center gap-1.5">
+                              <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                              <span class="text-xs text-gray-400">Inactive</span>
+                            </div>
+                          }>
+                            <div class="flex items-center gap-1.5">
+                              <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
+                              <span class="text-xs text-gray-400">Active</span>
+                            </div>
+                          </Show>
                         </div>
                         <Show when={plant.wateringSchedule?.intervalDays} fallback={<p class="text-sm text-gray-500 italic">No watering schedule</p>}>
                           <p class="text-sm text-gray-900 font-medium">Every {plant.wateringSchedule.intervalDays} days</p>
@@ -180,10 +187,17 @@ export const PlantDetailPage: Component = () => {
                         <div class="space-y-1">
                           <div class="flex items-center justify-between">
                             <label class="text-sm font-medium text-gray-500">Fertilizing Schedule</label>
-                            <div class="flex items-center gap-1.5">
-                              <div class="w-2 h-2 bg-green-400 rounded-full"></div>
-                              <span class="text-xs text-gray-400">Active</span>
-                            </div>
+                            <Show when={plant.fertilizingSchedule?.intervalDays} fallback={
+                              <div class="flex items-center gap-1.5">
+                                <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                                <span class="text-xs text-gray-400">Inactive</span>
+                              </div>
+                            }>
+                              <div class="flex items-center gap-1.5">
+                                <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span class="text-xs text-gray-400">Active</span>
+                              </div>
+                            </Show>
                           </div>
                           <Show when={plant.fertilizingSchedule?.intervalDays} fallback={<p class="text-sm text-gray-500 italic">No fertilizing schedule</p>}>
                             <p class="text-sm text-gray-900 font-medium">Every {plant.fertilizingSchedule.intervalDays} days</p>

@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use image::codecs::avif::AvifEncoder;
-use image::{ColorType, DynamicImage, GenericImageView, ImageEncoder, ImageFormat};
+use image::{ColorType, DynamicImage, ImageEncoder, ImageFormat};
 
 /// Maximum dimensions for image processing (4K-ish resolution)
 const MAX_DIMENSION: u32 = 3840; // 4K width/height

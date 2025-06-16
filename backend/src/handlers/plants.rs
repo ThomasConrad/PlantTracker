@@ -25,6 +25,7 @@ pub fn routes() -> Router<AppState> {
             get(get_plant).put(update_plant).delete(delete_plant),
         )
         .route("/:id/preview/:photo_id", put(set_plant_preview))
+        .route("/:id/preview", delete(clear_plant_preview))
         .nest("/:plant_id", photos::routes())
         .merge(tracking::routes())
 }
@@ -266,5 +267,31 @@ async fn set_plant_preview(
         photo_id,
         user.id
     );
+    Ok(Json(plant))
+}
+
+async fn clear_plant_preview(
+    auth_session: AuthSession,
+    State(app_state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<PlantResponse>> {
+    let user = auth_session.user.ok_or_else(|| AppError::Authentication {
+        message: "User not authenticated".to_string(),
+    })?;
+
+    tracing::info!(
+        "Clear preview request for plant: {} by user: {}",
+        id,
+        user.id
+    );
+
+    let plant = db_plants::clear_plant_preview(&app_state.pool, id, &user.id).await?;
+
+    tracing::info!(
+        "Cleared preview for plant: {} for user: {}",
+        id,
+        user.id
+    );
+
     Ok(Json(plant))
 }

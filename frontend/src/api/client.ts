@@ -6,6 +6,7 @@ type LoginRequest = components['schemas']['LoginRequest'];
 type UserResponse = components['schemas']['UserResponse'];
 type User = UserResponse;
 type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
+type UpdatePlantRequest = components['schemas']['UpdatePlantRequest'];
 type TrackingEntry = components['schemas']['TrackingEntry'];
 type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
@@ -17,13 +18,6 @@ interface RegisterRequest {
   email: string;
   password: string;
   name: string;
-}
-
-interface UpdatePlantRequest {
-  name?: string;
-  genus?: string;
-  wateringIntervalDays?: number;
-  fertilizingIntervalDays?: number;
 }
 
 interface UpdateTrackingEntryRequest {

@@ -27,7 +27,14 @@ pub struct CreateCareScheduleRequest {
     pub notes: Option<String>,
 }
 
-type UpdateCareScheduleRequest = CreateCareScheduleRequest;
+#[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCareScheduleRequest {
+    pub interval_days: Option<i32>,
+    pub amount: Option<f64>,
+    pub unit: Option<String>,
+    pub notes: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -161,7 +168,7 @@ pub struct CreateCustomMetricRequest {
     pub data_type: MetricDataType,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 #[allow(dead_code)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdatePlantRequest {
@@ -206,7 +213,7 @@ impl UpdatePlantRequest {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 #[allow(dead_code)]
 pub struct UpdateCustomMetricRequest {
     pub id: Option<Uuid>,

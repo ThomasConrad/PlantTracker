@@ -323,6 +323,260 @@
         ]
       }
     },
+    "/plants": {
+      "get": {
+        "tags": [
+          "plants"
+        ],
+        "operationId": "list_plants",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of plants to return",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "nullable": true
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of plants to skip",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "nullable": true
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search term for plant names",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort order: date_asc, date_desc, name_asc, name_desc",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of plants",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "plants"
+        ],
+        "operationId": "create_plant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Plant created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{id}": {
+      "get": {
+        "tags": [
+          "plants"
+        ],
+        "operationId": "get_plant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "plants"
+        ],
+        "operationId": "update_plant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Plant updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "plants"
+        ],
+        "operationId": "delete_plant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Plant deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/plants/{plant_id}/entries": {
       "get": {
         "tags": [
@@ -552,6 +806,16 @@
           },
           "genus": {
             "type": "string"
+          },
+          "lastFertilized": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastWatered": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           },
           "name": {
             "type": "string"
@@ -1050,6 +1314,89 @@
             "format": "date-time"
           },
           "value": {
+            "nullable": true
+          }
+        }
+      },
+      "UpdateCareScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "intervalDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateCustomMetricRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "unit",
+          "data_type"
+        ],
+        "properties": {
+          "data_type": {
+            "$ref": "#/components/schemas/MetricDataType"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdatePlantRequest": {
+        "type": "object",
+        "properties": {
+          "customMetrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateCustomMetricRequest"
+            },
+            "nullable": true
+          },
+          "fertilizingSchedule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCareScheduleRequest"
+              }
+            ],
+            "nullable": true
+          },
+          "genus": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "wateringSchedule": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UpdateCareScheduleRequest"
+              }
+            ],
             "nullable": true
           }
         }

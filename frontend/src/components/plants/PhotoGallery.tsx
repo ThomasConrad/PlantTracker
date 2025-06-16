@@ -14,11 +14,32 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
   const [loading, setLoading] = createSignal(false);
   const [uploading, setUploading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  
+  // Full-screen photo modal state
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = createSignal<number | null>(null);
+  const [showPhotoModal, setShowPhotoModal] = createSignal(false);
 
   let fileInputRef: HTMLInputElement | undefined;
 
   createEffect(() => {
     loadPhotos();
+  });
+
+  // Add keyboard event listeners for photo modal
+  createEffect(() => {
+    if (showPhotoModal()) {
+      document.addEventListener('keydown', handleKeyPress);
+      document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    } else {
+      document.removeEventListener('keydown', handleKeyPress);
+      document.body.style.overflow = 'auto';
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyPress);
+      document.body.style.overflow = 'auto';
+    };
   });
 
   const loadPhotos = async () => {
@@ -83,6 +104,48 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to set preview';
       setError(errorMessage);
+    }
+  };
+
+  const openPhotoModal = (photoIndex: number) => {
+    setSelectedPhotoIndex(photoIndex);
+    setShowPhotoModal(true);
+  };
+
+  const closePhotoModal = () => {
+    setShowPhotoModal(false);
+    setSelectedPhotoIndex(null);
+  };
+
+  const navigatePhoto = (direction: 'prev' | 'next') => {
+    const currentIndex = selectedPhotoIndex();
+    if (currentIndex === null) return;
+    
+    const totalPhotos = photos().length;
+    let newIndex;
+    
+    if (direction === 'prev') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : totalPhotos - 1;
+    } else {
+      newIndex = currentIndex < totalPhotos - 1 ? currentIndex + 1 : 0;
+    }
+    
+    setSelectedPhotoIndex(newIndex);
+  };
+
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if (!showPhotoModal()) return;
+    
+    switch (e.key) {
+      case 'ArrowLeft':
+        navigatePhoto('prev');
+        break;
+      case 'ArrowRight':
+        navigatePhoto('next');
+        break;
+      case 'Escape':
+        closePhotoModal();
+        break;
     }
   };
 
@@ -163,13 +226,14 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
           >
             <div class="grid grid-cols-2 gap-3">
               <For each={photos()}>
-                {(photo) => (
+                {(photo, index) => (
                   <div class="relative group">
                     <img
                       src={apiClient.getPhotoUrl(props.plantId, photo.id)}
                       alt={photo.originalFilename}
-                      class="w-full h-24 object-cover rounded-lg bg-gray-100"
+                      class="w-full h-24 object-cover rounded-lg bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
                       loading="lazy"
+                      onClick={() => openPhotoModal(index())}
                       onError={(e) => {
                         // If image fails to load, show a placeholder
                         e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgMTZMOC41ODYgMTEuNDE0QzguOTYxIDExLjAzOSA5LjQ1OSAxMC44MjkgMTAgMTAuODI5QzEwLjU0MSAxMC44MjkgMTEuMDM5IDExLjAzOSAxMS40MTQgMTEuNDE0TDE2IDE2TTE0IDE0TDE1LjU4NiAxMi40MTRDMTUuOTYxIDEyLjAzOSAxNi40NTkgMTEuODI5IDE3IDExLjgyOUMxNy41NDEgMTEuODI5IDE4LjAzOSAxMi4wMzkgMTguNDE0IDEyLjQxNEwyMCAxNE0xOCA4VjhNNiAyMEgxOEMxOC41MzA0IDIwIDE5LjAzOTEgMTkuNzg5MyAxOS40MTQyIDE5LjQxNDJDMTkuNzg5MyAxOS4wMzkxIDIwIDE4LjUzMDQgMjAgMThWNkMyMCA1LjQ2OTU3IDE5Ljc4OTMgNC45NjA4NiAxOS40MTQyIDQuNTg1NzlDMTkuMDM5MSA0LjIxMDcxIDE4LjUzMDQgNCA4IDRINkM1LjQ2OTU3IDQgNC45NjA4NiA0LjIxMDcxIDQuNTg1NzkgNC41ODU3OUM0LjIxMDcxIDQuOTYwODYgNCA1LjQ2OTU3IDQgNlYxOEM0IDE4LjUzMDQgNC4yMTA3MSAxOS4wMzkxIDQuNTg1NzkgMTkuNDE0MkM0Ljk2MDg2IDE5Ljc4OTMgNS40Njk1NyAyMCA2IDIwWiIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
@@ -177,8 +241,11 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
                     />
                     <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => handleSetPreview(photo.id)}
-                        class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetPreview(photo.id);
+                        }}
+                        class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-blue-700 transition-colors"
                         aria-label="Set as preview"
                         title="Set as preview"
                       >
@@ -187,8 +254,11 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
                         </svg>
                       </button>
                       <button
-                        onClick={() => handleDeletePhoto(photo.id)}
-                        class="bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeletePhoto(photo.id);
+                        }}
+                        class="bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-700 transition-colors"
                         aria-label="Delete photo"
                       >
                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -207,6 +277,88 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
           </Show>
         </Show>
       </div>
+      
+      {/* Full-screen Photo Modal */}
+      <Show when={showPhotoModal() && selectedPhotoIndex() !== null}>
+        {(() => {
+          const currentPhoto = photos()[selectedPhotoIndex()!];
+          const totalPhotos = photos().length;
+          const currentIndex = selectedPhotoIndex()! + 1;
+          
+          return (
+            <div 
+              class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+              onClick={closePhotoModal}
+            >
+              <div class="relative w-full h-full flex items-center justify-center p-4">
+                {/* Close button */}
+                <button
+                  onClick={closePhotoModal}
+                  class="absolute top-4 right-4 z-10 text-white hover:text-gray-300 transition-colors p-2"
+                  aria-label="Close"
+                >
+                  <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                {/* Photo counter */}
+                <div class="absolute top-4 left-4 z-10 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+                  {currentIndex} of {totalPhotos}
+                </div>
+
+                {/* Main photo */}
+                <img
+                  src={apiClient.getPhotoUrl(props.plantId, currentPhoto.id)}
+                  alt={currentPhoto.originalFilename}
+                  class="max-w-full max-h-full object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+
+                {/* Navigation arrows - only show if more than 1 photo */}
+                <Show when={totalPhotos > 1}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigatePhoto('prev');
+                    }}
+                    class="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 transition-colors p-2 bg-black bg-opacity-30 rounded-full"
+                    aria-label="Previous photo"
+                  >
+                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigatePhoto('next');
+                    }}
+                    class="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:text-gray-300 transition-colors p-2 bg-black bg-opacity-30 rounded-full"
+                    aria-label="Next photo"
+                  >
+                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </Show>
+
+                {/* Photo info */}
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg text-center">
+                  <p class="font-medium">{currentPhoto.originalFilename}</p>
+                  <p class="text-sm text-gray-300">
+                    {(currentPhoto.size / 1024 / 1024).toFixed(1)}MB
+                    {currentPhoto.width && currentPhoto.height && (
+                      <span> • {currentPhoto.width}×{currentPhoto.height}</span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </Show>
     </div>
   );
 };

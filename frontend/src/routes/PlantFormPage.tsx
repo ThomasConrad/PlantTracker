@@ -206,13 +206,13 @@ export const PlantFormPage: Component = () => {
                       amount: plantsStore.selectedPlant.wateringSchedule.amount || undefined,
                       unit: plantsStore.selectedPlant.wateringSchedule.unit || undefined,
                       notes: plantsStore.selectedPlant.wateringSchedule.notes || undefined,
-                    } : undefined,
+                    } : { intervalDays: 7 }, // Default to 7 days when no existing schedule
                     fertilizingSchedule: plantsStore.selectedPlant.fertilizingSchedule?.intervalDays ? {
                       intervalDays: plantsStore.selectedPlant.fertilizingSchedule.intervalDays,
                       amount: plantsStore.selectedPlant.fertilizingSchedule.amount || undefined,
                       unit: plantsStore.selectedPlant.fertilizingSchedule.unit || undefined,
                       notes: plantsStore.selectedPlant.fertilizingSchedule.notes || undefined,
-                    } : undefined,
+                    } : { intervalDays: 14 }, // Default to 14 days when no existing schedule
                     customMetrics: plantsStore.selectedPlant.customMetrics?.map(m => ({
                       name: m.name,
                       unit: m.unit,

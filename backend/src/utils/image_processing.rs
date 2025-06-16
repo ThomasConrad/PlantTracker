@@ -114,18 +114,8 @@ fn crop_to_max_dimension(image: DynamicImage) -> DynamicImage {
 fn encode_to_avif(image: &DynamicImage) -> Result<Vec<u8>> {
     let mut buffer = Vec::new();
 
-    // Optimize encoding settings based on image size for better performance
-    let (width, height) = image.dimensions();
-    let pixel_count = width * height;
-    
-    // Use faster encoding for larger images to reduce processing time
-    let (speed, quality) = if pixel_count > 2_000_000 {
-        // Large images (>2MP): prioritize speed over perfect quality
-        (6, 80) // Faster encoding, slightly lower quality
-    } else {
-        // Smaller images: maintain high quality with moderate speed
-        (4, 85) // Balanced encoding
-    };
+    // Use consistent speed 4 encoding with high quality
+    let (speed, quality) = (4, 85);
 
     // Create AVIF encoder with optimized settings
     let encoder = AvifEncoder::new_with_speed_quality(&mut buffer, speed, quality)

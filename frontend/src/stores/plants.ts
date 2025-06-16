@@ -178,9 +178,31 @@ const plantsStore = {
       setPlants(prev => prev.map(plant => 
         plant.id === plantId ? updatedPlant : plant
       ));
+      if (selectedPlant()?.id === plantId) {
+        setSelectedPlant(updatedPlant);
+      }
       return updatedPlant;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to set plant preview';
+      setError(errorMessage);
+      throw err;
+    }
+  },
+
+  async clearPlantPreview(plantId: string): Promise<Plant> {
+    try {
+      setError(null);
+      const updatedPlant = await apiClient.clearPlantPreview(plantId);
+      // Update the plant in our local store
+      setPlants(prev => prev.map(plant => 
+        plant.id === plantId ? updatedPlant : plant
+      ));
+      if (selectedPlant()?.id === plantId) {
+        setSelectedPlant(updatedPlant);
+      }
+      return updatedPlant;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to clear plant preview';
       setError(errorMessage);
       throw err;
     }

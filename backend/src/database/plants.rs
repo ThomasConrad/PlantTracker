@@ -312,67 +312,98 @@ pub async fn update_plant(
         UPDATE plants SET 
             name = COALESCE(?, name),
             genus = COALESCE(?, genus),
-            watering_interval_days = CASE WHEN ? THEN ? ELSE watering_interval_days END,
-            fertilizing_interval_days = CASE WHEN ? THEN ? ELSE fertilizing_interval_days END,
-            watering_amount = CASE WHEN ? THEN ? ELSE watering_amount END,
-            watering_unit = CASE WHEN ? THEN ? ELSE watering_unit END,
-            watering_notes = CASE WHEN ? THEN ? ELSE watering_notes END,
-            fertilizing_amount = CASE WHEN ? THEN ? ELSE fertilizing_amount END,
-            fertilizing_unit = CASE WHEN ? THEN ? ELSE fertilizing_unit END,
-            fertilizing_notes = CASE WHEN ? THEN ? ELSE fertilizing_notes END,
+            watering_interval_days = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_interval_days END,
+            fertilizing_interval_days = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_interval_days END,
+            watering_amount = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_amount END,
+            watering_unit = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_unit END,
+            watering_notes = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_notes END,
+            fertilizing_amount = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_amount END,
+            fertilizing_unit = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_unit END,
+            fertilizing_notes = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_notes END,
             updated_at = ?
         WHERE id = ? AND user_id = ?
     ";
 
     let mut query_builder = sqlx::query(query).bind(&request.name).bind(&request.genus);
 
-    // Handle watering schedule fields
+    // Handle watering schedule fields with explicit null handling
+    let watering_schedule_provided = request.watering_schedule.is_some();
+    
+    // Watering interval days
     if let Some(watering_interval) = request.watering_interval_days() {
-        query_builder = query_builder.bind(true).bind(watering_interval);
+        query_builder = query_builder.bind(true).bind(watering_interval).bind(false);
+    } else if watering_schedule_provided {
+        // Schedule provided but interval is None = explicitly disabled
+        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<i32>>);
+        // Schedule not provided = no change
+        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(false);
     }
 
+    // Fertilizing interval days
+    let fertilizing_schedule_provided = request.fertilizing_schedule.is_some();
     if let Some(fertilizing_interval) = request.fertilizing_interval_days() {
-        query_builder = query_builder.bind(true).bind(fertilizing_interval);
+        query_builder = query_builder.bind(true).bind(fertilizing_interval).bind(false);
+    } else if fertilizing_schedule_provided {
+        // Schedule provided but interval is None = explicitly disabled
+        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<i32>>);
+        // Schedule not provided = no change
+        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(false);
     }
 
+    // Watering amount
     if let Some(watering_amount) = request.watering_amount() {
-        query_builder = query_builder.bind(true).bind(watering_amount);
+        query_builder = query_builder.bind(true).bind(watering_amount).bind(false);
+    } else if watering_schedule_provided {
+        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<f64>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(false);
     }
 
+    // Watering unit
     if let Some(watering_unit) = request.watering_unit() {
-        query_builder = query_builder.bind(true).bind(watering_unit);
+        query_builder = query_builder.bind(true).bind(watering_unit).bind(false);
+    } else if watering_schedule_provided {
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
     }
 
+    // Watering notes
     if let Some(watering_notes) = request.watering_notes() {
-        query_builder = query_builder.bind(true).bind(watering_notes);
+        query_builder = query_builder.bind(true).bind(watering_notes).bind(false);
+    } else if watering_schedule_provided {
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
     }
 
+    // Fertilizing amount
     if let Some(fertilizing_amount) = request.fertilizing_amount() {
-        query_builder = query_builder.bind(true).bind(fertilizing_amount);
+        query_builder = query_builder.bind(true).bind(fertilizing_amount).bind(false);
+    } else if fertilizing_schedule_provided {
+        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<f64>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(false);
     }
 
+    // Fertilizing unit
     if let Some(fertilizing_unit) = request.fertilizing_unit() {
-        query_builder = query_builder.bind(true).bind(fertilizing_unit);
+        query_builder = query_builder.bind(true).bind(fertilizing_unit).bind(false);
+    } else if fertilizing_schedule_provided {
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
     }
 
+    // Fertilizing notes
     if let Some(fertilizing_notes) = request.fertilizing_notes() {
-        query_builder = query_builder.bind(true).bind(fertilizing_notes);
+        query_builder = query_builder.bind(true).bind(fertilizing_notes).bind(false);
+    } else if fertilizing_schedule_provided {
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>);
+        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
     }
 
     query_builder = query_builder
@@ -485,6 +516,46 @@ pub async fn set_plant_preview(
     if result.rows_affected() != 1 {
         return Err(AppError::Internal {
             message: "Failed to update plant thumbnail".to_string(),
+        });
+    }
+
+    // Return the updated plant
+    get_plant_by_id(pool, plant_id).await
+}
+pub async fn clear_plant_preview(
+    pool: &DatabasePool,
+    plant_id: Uuid,
+    user_id: &str,
+) -> Result<PlantResponse, AppError> {
+    let plant_id_str = plant_id.to_string();
+
+    // First verify the plant exists and belongs to the user
+    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
+        .bind(&plant_id_str)
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await?;
+
+    if plant_exists.is_none() {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    // Clear the plant's preview_id
+    let now = Utc::now().to_rfc3339();
+    let result = sqlx::query!(
+        "UPDATE plants SET preview_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?",
+        now,
+        plant_id_str,
+        user_id
+    )
+    .execute(pool)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
         });
     }
 

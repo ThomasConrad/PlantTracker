@@ -200,6 +200,24 @@ class ApiClient {
     return response.json();
   }
 
+  async clearPlantPreview(plantId: string): Promise<Plant> {
+    const response = await fetch(`${this.baseUrl}/plants/${plantId}/preview`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.message || `HTTP ${response.status}`,
+        response.status,
+        errorData
+      );
+    }
+
+    return response.json();
+  }
+
   async setPlantPreview(plantId: string, photoId: string): Promise<Plant> {
     const response = await fetch(`${this.baseUrl}/plants/${plantId}/preview/${photoId}`, {
       method: 'PUT',

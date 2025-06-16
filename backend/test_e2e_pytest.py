@@ -402,6 +402,19 @@ class TestPlantCRUD:
         assert response_data["wateringSchedule"]["intervalDays"] == 10
         assert response_data["genus"] == plant_data["genus"]  # Should remain unchanged
         
+        # Test removing schedules by setting them to null
+        update_data_remove_schedules = {
+            "wateringSchedule": {"intervalDays": None},
+            "fertilizingSchedule": {"intervalDays": None}
+        }
+        response = client.request("PUT", f"/plants/{plant['id']}", json=update_data_remove_schedules)
+        assert response.status_code == 200
+        
+        response_data = response.json()
+        assert response_data["wateringSchedule"]["intervalDays"] is None
+        assert response_data["fertilizingSchedule"]["intervalDays"] is None
+        assert response_data["name"] == "Updated Plant"  # Other fields should remain
+        
     def test_delete_plant(self, client):
         """Test deleting a plant"""
         # Create a plant
@@ -871,12 +884,12 @@ class TestPhotoUpload:
         assert len(photos_response["photos"]) == 0
         assert photos_response["total"] == 0
 
-    def test_plant_thumbnail_functionality(self):
-        """Test that setting a plant thumbnail correctly updates the thumbnailUrl in plant responses"""
+    def test_plant_preview_functionality(self):
+        """Test that setting a plant preview correctly updates the previewUrl in plant responses"""
         # Create a plant first
         plant_data = {
-            "name": "Thumbnail Test Plant",
-            "genus": "Thumbnailicus", 
+            "name": "preview Test Plant",
+            "genus": "previewicus", 
             "wateringSchedule": {"intervalDays": 7},
             "fertilizingSchedule": {"intervalDays": 14}
         }
@@ -886,9 +899,9 @@ class TestPhotoUpload:
         plant = plant_response.json()
         plant_id = plant["id"]
         
-        # Initially, the plant should have no thumbnail
-        assert plant.get("thumbnailId") is None
-        assert plant.get("thumbnailUrl") is None
+        # Initially, the plant should have no preview
+        assert plant.get("previewId") is None
+        assert plant.get("previewUrl") is None
         
         # Upload a photo using Pillow to create proper JPEG
         from PIL import Image
@@ -902,7 +915,7 @@ class TestPhotoUpload:
         
         import requests
         files = {
-            'file': ('thumbnail-test.jpg', io.BytesIO(fake_image_data), 'image/jpeg')
+            'file': ('preview-test.jpg', io.BytesIO(fake_image_data), 'image/jpeg')
         }
         
         upload_response = requests.post(
@@ -914,25 +927,25 @@ class TestPhotoUpload:
         photo = upload_response.json()
         photo_id = photo["id"]
         
-        # Set the uploaded photo as the plant's thumbnail
-        thumbnail_response = self.client.request("PUT", f"/plants/{plant_id}/thumbnail/{photo_id}")
-        assert thumbnail_response.status_code == 200
-        updated_plant = thumbnail_response.json()
+        # Set the uploaded photo as the plant's preview
+        preview_response = self.client.request("PUT", f"/plants/{plant_id}/preview/{photo_id}")
+        assert preview_response.status_code == 200
+        updated_plant = preview_response.json()
         
-        # Verify the thumbnail is set
-        assert updated_plant["thumbnailId"] == photo_id
-        assert updated_plant["thumbnailUrl"] is not None
-        assert updated_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}"
+        # Verify the preview is set
+        assert updated_plant["previewId"] == photo_id
+        assert updated_plant["previewUrl"] is not None
+        assert updated_plant["previewUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}"
         
-        # Verify that fetching the plant individually also returns the thumbnail
+        # Verify that fetching the plant individually also returns the preview
         get_response = self.client.request("GET", f"/plants/{plant_id}")
         assert get_response.status_code == 200
         fetched_plant = get_response.json()
         
-        assert fetched_plant["thumbnailId"] == photo_id
-        assert fetched_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}"
+        assert fetched_plant["previewId"] == photo_id
+        assert fetched_plant["previewUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}"
         
-        # Verify that listing plants also returns the thumbnail
+        # Verify that listing plants also returns the preview
         list_response = self.client.request("GET", "/plants")
         assert list_response.status_code == 200
         plants_response = list_response.json()
@@ -945,11 +958,11 @@ class TestPhotoUpload:
                 break
         
         assert our_plant is not None
-        assert our_plant["thumbnailId"] == photo_id
-        assert our_plant["thumbnailUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}"
+        assert our_plant["previewId"] == photo_id
+        assert our_plant["previewUrl"] == f"/api/v1/plants/{plant_id}/photos/{photo_id}"
 
-    def test_async_thumbnail_generation(self):
-        """Test asynchronous thumbnail generation during photo upload"""
+    def test_async_preview_generation(self):
+        """Test asynchronous preview generation during photo upload"""
         # Create a plant first
         plant_data = {
             "name": "Async Test Plant",

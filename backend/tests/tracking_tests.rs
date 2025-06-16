@@ -428,6 +428,44 @@ async fn test_delete_tracking_entry() {
 }
 
 #[tokio::test]
+async fn test_create_photo_entry() {
+    let app = TestApp::new().await;
+
+    // Register and login user
+    common::create_test_user(&app, "photo@example.com", "Photo User", "password123").await;
+
+    // Create a plant
+    let plant = common::create_test_plant(&app, "Photo Plant", "Photicus").await;
+    let plant_id = plant["id"].as_str().unwrap();
+
+    // Create photo tracking entry
+    let photo_id = uuid::Uuid::new_v4();
+    let response = app
+        .client
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
+        .json(&serde_json::json!({
+            "entryType": "photo",
+            "timestamp": "2024-01-01T16:00:00Z",
+            "photoIds": [photo_id]
+        }))
+        .send()
+        .await
+        .expect("Failed to send photo entry request");
+
+    assert_eq!(response.status(), 201);
+
+    let body: serde_json::Value = response.json().await.expect("Failed to parse response");
+    assert!(body["id"].is_string());
+    assert_eq!(body["entryType"], "photo");
+    assert_eq!(body["plantId"], plant_id);
+    
+    // Verify photo IDs are stored
+    let photo_ids = body["photoIds"].as_array().unwrap();
+    assert_eq!(photo_ids.len(), 1);
+    assert_eq!(photo_ids[0], photo_id.to_string());
+}
+
+#[tokio::test]
 async fn test_list_tracking_entries_with_various_types() {
     let app = TestApp::new().await;
 
@@ -454,6 +492,11 @@ async fn test_list_tracking_entries_with_various_types() {
             "entryType": "note",
             "timestamp": "2024-01-03T14:00:00Z",
             "notes": "New leaf spotted!"
+        }),
+        serde_json::json!({
+            "entryType": "photo",
+            "timestamp": "2024-01-04T15:00:00Z",
+            "photoIds": [uuid::Uuid::new_v4()]
         })
     ];
 
@@ -481,8 +524,8 @@ async fn test_list_tracking_entries_with_various_types() {
 
     let body: serde_json::Value = list_response.json().await.expect("Failed to parse list response");
     let entries_list = body["entries"].as_array().unwrap();
-    assert_eq!(entries_list.len(), 3);
-    assert_eq!(body["total"], 3);
+    assert_eq!(entries_list.len(), 4);
+    assert_eq!(body["total"], 4);
 
     // Verify entries are ordered by timestamp (newest first)
     let timestamps: Vec<&str> = entries_list
@@ -491,7 +534,8 @@ async fn test_list_tracking_entries_with_various_types() {
         .collect();
     
     // Should be in descending order (newest first)
-    assert_eq!(timestamps[0], "2024-01-03T14:00:00Z"); // note
-    assert_eq!(timestamps[1], "2024-01-02T13:00:00Z"); // fertilizing
-    assert_eq!(timestamps[2], "2024-01-01T12:00:00Z"); // watering
+    assert_eq!(timestamps[0], "2024-01-04T15:00:00Z"); // photo
+    assert_eq!(timestamps[1], "2024-01-03T14:00:00Z"); // note
+    assert_eq!(timestamps[2], "2024-01-02T13:00:00Z"); // fertilizing
+    assert_eq!(timestamps[3], "2024-01-01T12:00:00Z"); // watering
 }

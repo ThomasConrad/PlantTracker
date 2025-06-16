@@ -38,7 +38,6 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
 
   // Photo fields
   const [selectedPhoto, setSelectedPhoto] = createSignal<File | null>(null);
-  const [photoCaption, setPhotoCaption] = createSignal('');
   const [uploadingPhoto, setUploadingPhoto] = createSignal(false);
   const [photoError, setPhotoError] = createSignal('');
 
@@ -96,14 +95,10 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
       if (entryType() === 'photo' && selectedPhoto()) {
         setUploadingPhoto(true);
         try {
-          // Upload the photo first
-          const photoResponse = await plantsStore.uploadPhoto(props.plant.id, selectedPhoto()!, photoCaption());
+          // Upload the photo first (no caption needed)
+          const photoResponse = await plantsStore.uploadPhoto(props.plant.id, selectedPhoto()!);
           // Add the photo ID to the tracking entry
           baseData.photoIds = [photoResponse.id];
-          // Use the caption as notes if provided
-          if (photoCaption()) {
-            baseData.notes = photoCaption();
-          }
         } catch (photoError) {
           console.error('Failed to upload photo:', photoError);
           setPhotoError('Failed to upload photo. Please try again.');
@@ -135,7 +130,6 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
     setSelectedMetricId('');
     setCustomValue('');
     setSelectedPhoto(null);
-    setPhotoCaption('');
     setPhotoError('');
   };
 
@@ -382,12 +376,6 @@ export const TrackingEntryForm: Component<TrackingEntryFormProps> = (props) => {
                   selectedFile={selectedPhoto()}
                   error={photoError()}
                   loading={uploadingPhoto()}
-                />
-                <Input
-                  label="Photo Caption (optional)"
-                  value={photoCaption()}
-                  onInput={(e) => setPhotoCaption(e.currentTarget.value)}
-                  placeholder="Describe what's in the photo..."
                 />
               </div>
             </Show>

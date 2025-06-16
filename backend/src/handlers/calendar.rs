@@ -1,6 +1,6 @@
 use axum::{
     extract::{Path, Query, State},
-    http::{header, StatusCode, Uri},
+    http::{header, HeaderMap, StatusCode, Uri},
     response::{IntoResponse, Response},
     routing::get,
     Router,
@@ -12,6 +12,35 @@ use crate::auth::AuthSession;
 use crate::database::plants as db_plants;
 use crate::utils::calendar::{generate_calendar_token, generate_plant_calendar};
 use crate::utils::errors::{AppError, Result};
+
+/// Extract base URL from request headers
+fn get_base_url_from_headers(headers: &HeaderMap, _uri: &Uri) -> String {
+    // Try to get the host from headers
+    let host = headers
+        .get("host")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("localhost:3000");
+    
+    // Check for forwarded protocol headers (common in reverse proxies)
+    let scheme = headers
+        .get("x-forwarded-proto")
+        .and_then(|h| h.to_str().ok())
+        .or_else(|| {
+            headers
+                .get("x-forwarded-protocol")
+                .and_then(|h| h.to_str().ok())
+        })
+        .unwrap_or_else(|| {
+            // Default to https for production domains, http for localhost
+            if host.starts_with("localhost") || host.starts_with("127.0.0.1") {
+                "http"
+            } else {
+                "https"
+            }
+        });
+    
+    format!("{}://{}", scheme, host)
+}
 
 /// Create calendar routes
 pub fn routes() -> Router<AppState> {
@@ -49,6 +78,8 @@ pub async fn get_calendar_feed(
     State(app_state): State<AppState>,
     Path(user_id_with_ext): Path<String>,
     Query(params): Query<CalendarQuery>,
+    uri: Uri,
+    headers: HeaderMap,
 ) -> Result<Response> {
     // Extract user_id by removing .ics extension if present
     let user_id = user_id_with_ext.strip_suffix(".ics").unwrap_or(&user_id_with_ext);
@@ -102,12 +133,11 @@ pub async fn get_calendar_feed(
                       plant.last_watered, plant.last_fertilized);
     }
 
-    // Get base URL from request headers or use default
-    // In a production system, you'd configure this properly
-    let base_url = "https://your-domain.com"; // TODO: Get from config or request
+    // Get base URL from request headers
+    let base_url = get_base_url_from_headers(&headers, &uri);
 
     // Generate the iCalendar feed
-    let calendar_content = generate_plant_calendar(&plants, user_id, base_url)?;
+    let calendar_content = generate_plant_calendar(&plants, user_id, &base_url)?;
 
     tracing::info!(
         "Generated calendar feed for user: {} with {} plants, content length: {} chars",
@@ -148,6 +178,7 @@ pub async fn get_calendar_feed(
 pub async fn get_calendar_subscription_info(
     auth_session: AuthSession,
     uri: Uri,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
@@ -158,9 +189,9 @@ pub async fn get_calendar_subscription_info(
     // Generate a calendar token for this user
     let calendar_token = generate_calendar_token(&user.id);
 
-    // Get base URL from config or environment
-    let base_url =
-        std::env::var("BASE_URL").unwrap_or_else(|_| "https://your-domain.com".to_string());
+    // Get base URL from request headers or environment
+    let base_url = std::env::var("BASE_URL")
+        .unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
 
     // Determine API prefix from current request URI
     let api_path = if uri.path().starts_with("/api/v1/") {
@@ -209,6 +240,7 @@ pub async fn get_calendar_subscription_info(
 pub async fn regenerate_calendar_token(
     auth_session: AuthSession,
     uri: Uri,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
@@ -219,9 +251,9 @@ pub async fn regenerate_calendar_token(
     // Generate a new calendar token
     let calendar_token = generate_calendar_token(&user.id);
 
-    // Get base URL from config or environment
-    let base_url =
-        std::env::var("BASE_URL").unwrap_or_else(|_| "https://your-domain.com".to_string());
+    // Get base URL from request headers or environment
+    let base_url = std::env::var("BASE_URL")
+        .unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
 
     // Determine API prefix from current request URI
     let api_path = if uri.path().starts_with("/api/v1/") {

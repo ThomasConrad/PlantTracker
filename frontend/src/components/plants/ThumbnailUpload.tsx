@@ -1,9 +1,14 @@
-import { Component, createSignal, Show, onMount, onCleanup } from 'solid-js';
+import { Component, createSignal, Show, onMount, onCleanup, For } from 'solid-js';
 import { Button } from '@/components/ui/Button';
+import type { Photo } from '@/types/api';
 
 interface ThumbnailUploadProps {
   onFileSelect: (file: File) => void;
+  onPhotoSelect?: (photoId: string) => void;
+  onClearThumbnail?: () => void;
   selectedFile?: File | null;
+  existingThumbnailUrl?: string | null;
+  existingPhotos?: Photo[];
   error?: string;
   loading?: boolean;
 }
@@ -12,6 +17,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
   const [preview, setPreview] = createSignal<string | null>(null);
   const [isMobile, setIsMobile] = createSignal(false);
   const [showCamera, setShowCamera] = createSignal(false);
+  const [showPhotoSelection, setShowPhotoSelection] = createSignal(false);
   const [stream, setStream] = createSignal<MediaStream | null>(null);
   const [compressing, setCompressing] = createSignal(false);
   
@@ -193,23 +199,52 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
     if (fileInputRef) {
       fileInputRef.value = '';
     }
+    props.onClearThumbnail?.();
+  };
+
+  const selectExistingPhoto = (photoId: string) => {
+    setShowPhotoSelection(false);
+    props.onPhotoSelect?.(photoId);
+  };
+
+  // Determine what to show as the current thumbnail
+  const getCurrentThumbnail = () => {
+    if (preview()) {
+      return preview();
+    }
+    return props.existingThumbnailUrl;
+  };
+
+  const hasCurrentThumbnail = () => {
+    return preview() || props.existingThumbnailUrl;
   };
 
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <label class="block text-sm font-medium text-gray-700">
-          Plant Thumbnail
+          Plant Preview
         </label>
-        <Show when={preview()}>
-          <button
-            type="button"
-            onClick={removePhoto}
-            class="text-sm text-red-600 hover:text-red-700"
-          >
-            Remove
-          </button>
-        </Show>
+        <div class="flex items-center gap-2">
+          <Show when={props.existingPhotos && props.existingPhotos.length > 0}>
+            <button
+              type="button"
+              onClick={() => setShowPhotoSelection(true)}
+              class="text-sm text-blue-600 hover:text-blue-700"
+            >
+              Choose from existing
+            </button>
+          </Show>
+          <Show when={hasCurrentThumbnail()}>
+            <button
+              type="button"
+              onClick={removePhoto}
+              class="text-sm text-red-600 hover:text-red-700"
+            >
+              Remove
+            </button>
+          </Show>
+        </div>
       </div>
 
       {/* Camera Modal */}
@@ -259,7 +294,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
 
       {/* Preview or Upload Area */}
       <Show
-        when={preview()}
+        when={hasCurrentThumbnail()}
         fallback={
           <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
             <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
@@ -267,7 +302,7 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
             </svg>
             <div class="mt-4">
               <p class="text-sm text-gray-600 mb-4">
-                Add a thumbnail photo for your plant
+                Add a preview photo for your plant
               </p>
               
               <div class="flex flex-col sm:flex-row gap-2 justify-center">
@@ -308,8 +343,8 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
       >
         <div class="relative">
           <img
-            src={preview()!}
-            alt="Plant thumbnail preview"
+            src={getCurrentThumbnail()!}
+            alt="Plant preview"
             class="w-full h-48 object-cover rounded-lg border border-gray-200"
           />
           <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-10 transition-colors rounded-lg flex items-center justify-center opacity-0 hover:opacity-100">
@@ -322,6 +357,63 @@ export const ThumbnailUpload: Component<ThumbnailUploadProps> = (props) => {
             >
               Change Photo
             </Button>
+          </div>
+        </div>
+      </Show>
+
+      {/* Photo Selection Modal */}
+      <Show when={showPhotoSelection()}>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-4 border-b">
+              <div class="flex items-center justify-between">
+                <h3 class="text-lg font-semibold">Choose Existing Photo</h3>
+                <button
+                  onClick={() => setShowPhotoSelection(false)}
+                  class="text-gray-400 hover:text-gray-600"
+                >
+                  <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div class="p-4">
+              <Show 
+                when={props.existingPhotos && props.existingPhotos.length > 0}
+                fallback={
+                  <div class="text-center py-8 text-gray-500">
+                    No existing photos to choose from
+                  </div>
+                }
+              >
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <For each={props.existingPhotos}>
+                    {(photo) => (
+                      <button
+                        type="button"
+                        onClick={() => selectExistingPhoto(photo.id)}
+                        class="relative group overflow-hidden rounded-lg border-2 border-gray-200 hover:border-blue-500 transition-colors"
+                      >
+                        <img
+                          src={`/api/v1/plants/${photo.plantId}/photos/${photo.id}`}
+                          alt="Plant photo"
+                          class="w-full h-32 object-cover"
+                        />
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center">
+                          <div class="bg-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </button>
+                    )}
+                  </For>
+                </div>
+              </Show>
+            </div>
           </div>
         </div>
       </Show>

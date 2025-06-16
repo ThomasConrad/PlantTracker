@@ -6,6 +6,7 @@ type TrackingEntry = components['schemas']['TrackingEntry'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
 type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
+type UpdatePlantRequest = components['schemas']['UpdatePlantRequest'];
 
 interface UpdateTrackingEntryRequest {
   timestamp?: string;
@@ -105,7 +106,21 @@ const plantsStore = {
       setLoading(true);
       setError(null);
       
-      const updatedPlant = await apiClient.updatePlant(plantId, plantData);
+      // Convert CreatePlantRequest format to UpdatePlantRequest format
+      const updateData: UpdatePlantRequest = {
+        name: plantData.name,
+        genus: plantData.genus,
+        wateringSchedule: plantData.wateringSchedule,
+        fertilizingSchedule: plantData.fertilizingSchedule,
+        customMetrics: plantData.customMetrics?.map(metric => ({
+          id: undefined, // For updates, we don't send ID for new metrics
+          name: metric.name,
+          unit: metric.unit,
+          data_type: metric.dataType
+        }))
+      };
+      
+      const updatedPlant = await apiClient.updatePlant(plantId, updateData);
       
       setPlants(prev =>
         prev.map(plant => plant.id === plantId ? updatedPlant : plant)

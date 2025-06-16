@@ -155,6 +155,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_plants"];
+        put?: never;
+        post: operations["create_plant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_plant"];
+        put: operations["update_plant"];
+        post?: never;
+        delete: operations["delete_plant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plants/{plant_id}/entries": {
         parameters: {
             query?: never;
@@ -217,6 +249,10 @@ export interface components {
             customMetrics?: components["schemas"]["CreateCustomMetricRequest"][] | null;
             fertilizingSchedule?: components["schemas"]["CreateCareScheduleRequest"] | null;
             genus: string;
+            /** Format: date-time */
+            lastFertilized?: string | null;
+            /** Format: date-time */
+            lastWatered?: string | null;
             name: string;
             wateringSchedule?: components["schemas"]["CreateCareScheduleRequest"] | null;
         };
@@ -381,6 +417,28 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             value?: unknown;
+        };
+        UpdateCareScheduleRequest: {
+            /** Format: double */
+            amount?: number | null;
+            /** Format: int32 */
+            intervalDays?: number | null;
+            notes?: string | null;
+            unit?: string | null;
+        };
+        UpdateCustomMetricRequest: {
+            data_type: components["schemas"]["MetricDataType"];
+            /** Format: uuid */
+            id?: string | null;
+            name: string;
+            unit: string;
+        };
+        UpdatePlantRequest: {
+            customMetrics?: components["schemas"]["UpdateCustomMetricRequest"][] | null;
+            fertilizingSchedule?: components["schemas"]["UpdateCareScheduleRequest"] | null;
+            genus?: string | null;
+            name?: string | null;
+            wateringSchedule?: components["schemas"]["UpdateCareScheduleRequest"] | null;
         };
         UserResponse: {
             /** Format: date-time */
@@ -715,6 +773,228 @@ export interface operations {
                 content?: never;
             };
             /** @description Failed to sync tasks */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_plants: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of plants to return */
+                limit?: number | null;
+                /** @description Number of plants to skip */
+                offset?: number | null;
+                /** @description Search term for plant names */
+                search?: string | null;
+                /** @description Sort order: date_asc, date_desc, name_asc, name_desc */
+                sort?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of plants */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_plant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantRequest"];
+            };
+        };
+        responses: {
+            /** @description Plant created successfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantResponse"];
+                };
+            };
+            /** @description Invalid request data */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_plant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plant details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_plant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlantRequest"];
+            };
+        };
+        responses: {
+            /** @description Plant updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_plant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plant deleted successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;

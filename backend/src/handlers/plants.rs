@@ -37,6 +37,25 @@ struct ListPlantsQuery {
     sort: Option<String>, // "date_asc", "date_desc" (default), "name_asc", "name_desc"
 }
 
+#[utoipa::path(
+    get,
+    path = "/plants",
+    params(
+        ("limit" = Option<i64>, Query, description = "Maximum number of plants to return"),
+        ("offset" = Option<i64>, Query, description = "Number of plants to skip"),
+        ("search" = Option<String>, Query, description = "Search term for plant names"),
+        ("sort" = Option<String>, Query, description = "Sort order: date_asc, date_desc, name_asc, name_desc")
+    ),
+    responses(
+        (status = 200, description = "List of plants", body = PlantsResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "plants",
+    security(
+        ("session" = [])
+    )
+)]
 async fn list_plants(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
@@ -74,6 +93,21 @@ async fn list_plants(
     Ok(Json(response))
 }
 
+#[utoipa::path(
+    post,
+    path = "/plants",
+    request_body = CreatePlantRequest,
+    responses(
+        (status = 201, description = "Plant created successfully", body = PlantResponse),
+        (status = 400, description = "Invalid request data"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "plants",
+    security(
+        ("session" = [])
+    )
+)]
 async fn create_plant(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
@@ -96,6 +130,23 @@ async fn create_plant(
     Ok((StatusCode::CREATED, Json(plant)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/plants/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Plant ID")
+    ),
+    responses(
+        (status = 200, description = "Plant details", body = PlantResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "plants",
+    security(
+        ("session" = [])
+    )
+)]
 async fn get_plant(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
@@ -120,6 +171,24 @@ async fn get_plant(
     Ok(Json(plant))
 }
 
+#[utoipa::path(
+    put,
+    path = "/plants/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Plant ID")
+    ),
+    request_body = UpdatePlantRequest,
+    responses(
+        (status = 200, description = "Plant updated successfully", body = PlantResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "plants",
+    security(
+        ("session" = [])
+    )
+)]
 async fn update_plant(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
@@ -139,6 +208,23 @@ async fn update_plant(
     Ok(Json(plant))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/plants/{id}",
+    params(
+        ("id" = Uuid, Path, description = "Plant ID")
+    ),
+    responses(
+        (status = 204, description = "Plant deleted successfully"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "plants",
+    security(
+        ("session" = [])
+    )
+)]
 async fn delete_plant(
     auth_session: AuthSession,
     State(app_state): State<AppState>,

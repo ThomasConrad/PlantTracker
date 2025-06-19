@@ -3,6 +3,8 @@ import type { Plant, Photo, components } from '@/types/api';
 // Generated API types
 type AuthResponse = components['schemas']['AuthResponse'];
 type LoginRequest = components['schemas']['LoginRequest'];
+type CreateUserRequest = components['schemas']['CreateUserRequest'];
+type ValidateInviteRequest = components['schemas']['ValidateInviteRequest'];
 type UserResponse = components['schemas']['UserResponse'];
 type User = UserResponse;
 type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
@@ -12,13 +14,6 @@ type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
 type PhotosResponse = components['schemas']['PhotosResponse'];
 type PlantsResponse = components['schemas']['PlantsResponse'];
-
-// Local types for compatibility
-interface RegisterRequest {
-  email: string;
-  password: string;
-  name: string;
-}
 
 interface UpdateTrackingEntryRequest {
   timestamp?: string;
@@ -101,12 +96,19 @@ class ApiClient {
     return response;
   }
 
-  async register(userData: RegisterRequest): Promise<AuthResponse> {
+  async register(userData: CreateUserRequest): Promise<AuthResponse> {
     const response = await this.request<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
     return response;
+  }
+
+  async validateInvite(request: ValidateInviteRequest): Promise<{ valid: boolean; uses_remaining: number }> {
+    return this.request<{ valid: boolean; uses_remaining: number }>('/invites/validate', {
+      method: 'POST', 
+      body: JSON.stringify(request),
+    });
   }
 
   async getCurrentUser(): Promise<User> {

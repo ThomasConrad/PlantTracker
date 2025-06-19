@@ -323,6 +323,165 @@
         ]
       }
     },
+    "/invites/create": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "operationId": "create_invite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Invite code created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/invites/list": {
+      "get": {
+        "tags": [
+          "invites"
+        ],
+        "operationId": "list_invites",
+        "parameters": [
+          {
+            "name": "created_by",
+            "in": "query",
+            "description": "Filter by creator user ID",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of invite codes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InviteResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/invites/validate": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "operationId": "validate_invite",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateInviteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Invite code is valid"
+          },
+          "400": {
+            "description": "Invalid or expired invite code"
+          }
+        }
+      }
+    },
+    "/invites/waitlist": {
+      "post": {
+        "tags": [
+          "invites"
+        ],
+        "operationId": "join_waitlist",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaitlistSignupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Added to waitlist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaitlistResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or email already exists"
+          }
+        }
+      }
+    },
+    "/invites/waitlist/list": {
+      "get": {
+        "tags": [
+          "invites"
+        ],
+        "operationId": "list_waitlist",
+        "responses": {
+          "200": {
+            "description": "List of waitlist entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WaitlistResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/plants": {
       "get": {
         "tags": [
@@ -782,6 +941,21 @@
           }
         }
       },
+      "CreateInviteRequest": {
+        "type": "object",
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "max_uses": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
       "CreatePlantRequest": {
         "type": "object",
         "required": [
@@ -876,6 +1050,10 @@
         "properties": {
           "email": {
             "type": "string"
+          },
+          "invite_code": {
+            "type": "string",
+            "nullable": true
           },
           "name": {
             "type": "string"
@@ -1013,6 +1191,45 @@
               "type": "string"
             },
             "nullable": true
+          }
+        }
+      },
+      "InviteResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "max_uses",
+          "current_uses",
+          "is_active",
+          "created_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current_uses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "max_uses": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -1429,6 +1646,64 @@
             "format": "date-time"
           }
         }
+      },
+      "ValidateInviteRequest": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "WaitlistResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "status",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "WaitlistSignupRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        }
       }
     }
   },
@@ -1436,6 +1711,10 @@
     {
       "name": "auth",
       "description": "Authentication endpoints"
+    },
+    {
+      "name": "invites",
+      "description": "Invite system and waitlist endpoints"
     },
     {
       "name": "plants",

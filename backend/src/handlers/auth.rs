@@ -85,6 +85,28 @@ async fn register(
 ) -> Result<(axum::http::StatusCode, Json<AuthResponse>)> {
     tracing::info!("Registration attempt for email: {}", payload.email);
 
+    // Validate invite code if provided
+    if let Some(invite_code) = &payload.invite_code {
+        use crate::database::invites as db_invites;
+        
+        let invite = db_invites::validate_invite_code(&auth_session.backend.db, invite_code)
+            .await
+            .map_err(|_| AppError::Authentication {
+                message: "Invalid or expired invite code".to_string(),
+            })?;
+
+        if !invite.is_valid() {
+            return Err(AppError::Authentication {
+                message: "Invalid or expired invite code".to_string(),
+            });
+        }
+    } else {
+        // No invite code provided - registration not allowed
+        return Err(AppError::Authentication {
+            message: "Registration requires a valid invite code".to_string(),
+        });
+    }
+
     // Create user in database
     let user = db_users::create_user(&auth_session.backend.db, &payload)
         .await
@@ -97,6 +119,27 @@ async fn register(
                 _ => e,
             }
         })?;
+
+    // Mark invite code as used
+    if let Some(invite_code) = &payload.invite_code {
+        use crate::database::invites as db_invites;
+        
+        if let Err(e) = db_invites::use_invite_code(&auth_session.backend.db, invite_code, &user.id).await {
+            tracing::error!("Failed to mark invite code as used: {}", e);
+            // Don't fail registration if we can't update invite code
+        }
+
+        // Update waitlist status if user was on waitlist
+        if let Err(e) = db_invites::update_waitlist_status(
+            &auth_session.backend.db, 
+            &payload.email, 
+            "registered", 
+            Some(invite_code)
+        ).await {
+            tracing::debug!("User was not on waitlist or failed to update status: {}", e);
+            // This is fine - user might not have been on waitlist
+        }
+    }
 
     // Log the user in immediately after registration
     if let Err(e) = auth_session.login(&user).await {

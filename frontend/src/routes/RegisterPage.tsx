@@ -1,17 +1,26 @@
-import { Component, createSignal } from 'solid-js';
-import { A, useNavigate } from '@solidjs/router';
+import { Component, createSignal, onMount } from 'solid-js';
+import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 export const RegisterPage: Component = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [name, setName] = createSignal('');
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
   const [confirmPassword, setConfirmPassword] = createSignal('');
+  const [inviteCode, setInviteCode] = createSignal('');
   const [loading, setLoading] = createSignal(false);
   const [errors, setErrors] = createSignal<Record<string, string>>({});
+
+  onMount(() => {
+    const invite = searchParams.invite;
+    if (invite) {
+      setInviteCode(invite);
+    }
+  });
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -36,6 +45,10 @@ export const RegisterPage: Component = () => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
+    if (!inviteCode().trim()) {
+      newErrors.inviteCode = 'Invite code is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -51,6 +64,7 @@ export const RegisterPage: Component = () => {
         name: name().trim(),
         email: email().trim(),
         password: password(),
+        invite_code: inviteCode().trim(),
       });
       navigate('/plants');
     } catch (error) {
@@ -113,6 +127,16 @@ export const RegisterPage: Component = () => {
           autocomplete="new-password"
         />
 
+        <Input
+          label="Invite code"
+          type="text"
+          value={inviteCode()}
+          onInput={(e) => setInviteCode(e.currentTarget.value)}
+          error={errors().inviteCode}
+          required
+          placeholder="Enter your invite code"
+        />
+
         {authStore.error && (
           <div class="bg-red-50 border border-red-200 rounded-md p-4">
             <p class="text-sm text-red-600">{authStore.error}</p>
@@ -123,7 +147,7 @@ export const RegisterPage: Component = () => {
           type="submit"
           class="w-full"
           loading={loading()}
-          disabled={!name() || !email() || !password() || !confirmPassword()}
+          disabled={!name() || !email() || !password() || !confirmPassword() || !inviteCode()}
         >
           Create account
         </Button>

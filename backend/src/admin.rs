@@ -127,7 +127,7 @@ pub async fn get_system_stats(pool: &SqlitePool) -> Result<SystemStats> {
     })
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
 pub struct SystemStats {
     pub total_users: i32,
     pub max_total_users: i32,

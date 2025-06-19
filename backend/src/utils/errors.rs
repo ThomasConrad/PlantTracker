@@ -31,6 +31,8 @@ pub enum AppError {
     Configuration { message: String },
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Parse error: {message}")]
+    Parse { message: String },
 }
 
 #[derive(Serialize)]
@@ -132,6 +134,15 @@ impl IntoResponse for AppError {
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "io_error",
                     "An I/O error occurred",
+                    None,
+                )
+            }
+            Self::Parse { message } => {
+                tracing::error!("Parse error: {}", message);
+                (
+                    StatusCode::BAD_REQUEST,
+                    "parse_error",
+                    message.as_str(),
                     None,
                 )
             }

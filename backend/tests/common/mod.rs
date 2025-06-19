@@ -6,7 +6,7 @@ use tokio::net::TcpListener;
 
 use planty_api::app_state::AppState;
 use planty_api::auth;
-use planty_api::handlers::{auth as auth_handlers, google_tasks, plants};
+use planty_api::handlers::{auth as auth_handlers, google_tasks, plants, invites};
 
 pub struct TestApp {
     pub address: String,
@@ -41,6 +41,7 @@ impl TestApp {
         let app = Router::new()
             .nest("/auth", auth_handlers::routes())
             .nest("/plants", plants::routes())
+            .nest("/invites", invites::routes())
             .nest("/google-tasks", google_tasks::routes())
             .with_state(app_state)
             .layer(auth_layer)
@@ -88,13 +89,76 @@ pub async fn create_test_user(
     name: &str,
     password: &str,
 ) -> serde_json::Value {
+    // First create an admin user directly in the database to create invites
+    use planty_api::database::users as db_users;
+    use planty_api::models::{CreateUserRequest, UserRole};
+    use planty_api::database::invites as db_invites;
+
+    // Create admin if it doesn't exist
+    let admin_email = "test-admin@example.com";
+    let admin_exists = sqlx::query_scalar!("SELECT id FROM users WHERE email = ?", admin_email)
+        .fetch_optional(&app.db_pool)
+        .await
+        .unwrap()
+        .is_some();
+
+    if !admin_exists {
+        let admin_request = CreateUserRequest {
+            name: "Test Admin".to_string(),
+            email: admin_email.to_string(),
+            password: "admin123".to_string(),
+            invite_code: None,
+        };
+
+        let _admin_user = db_users::create_user_internal(
+            &app.db_pool,
+            &admin_request,
+            UserRole::Admin,
+            true,
+            None,
+        )
+        .await
+        .expect("Failed to create admin user");
+    }
+
+    // Login as admin to create invite
+    let login_response = app
+        .client
+        .post(app.url("/auth/login"))
+        .json(&serde_json::json!({
+            "email": admin_email,
+            "password": "admin123"
+        }))
+        .send()
+        .await
+        .expect("Failed to login as admin");
+    
+    assert_eq!(login_response.status(), 200);
+
+    // Create invite
+    let invite_response = app
+        .client
+        .post(app.url("/invites/create"))
+        .json(&serde_json::json!({
+            "max_uses": 1
+        }))
+        .send()
+        .await
+        .expect("Failed to create invite");
+    
+    assert_eq!(invite_response.status(), 201);
+    let invite_data: serde_json::Value = invite_response.json().await.unwrap();
+    let invite_code = invite_data["code"].as_str().unwrap();
+
+    // Now register the user with the invite
     let response = app
         .client
         .post(app.url("/auth/register"))
         .json(&serde_json::json!({
             "email": email,
             "name": name,
-            "password": password
+            "password": password,
+            "invite_code": invite_code
         }))
         .send()
         .await

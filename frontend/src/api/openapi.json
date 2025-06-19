@@ -9,6 +9,332 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/admin/dashboard": {
+      "get": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "Get admin dashboard data",
+        "operationId": "get_admin_dashboard",
+        "responses": {
+          "200": {
+            "description": "Admin dashboard data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDashboardResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/admin/health": {
+      "get": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "Get system health information",
+        "operationId": "get_system_health",
+        "responses": {
+          "200": {
+            "description": "System health information"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/admin/settings": {
+      "get": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "Get admin settings",
+        "operationId": "get_admin_settings",
+        "responses": {
+          "200": {
+            "description": "Admin settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "Update admin settings",
+        "operationId": "update_admin_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAdminSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Settings updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettingsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "List all users with pagination",
+        "operationId": "list_users",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page (default: 20)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "Filter by role",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/admin/users/bulk": {
+      "post": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "Perform bulk actions on users",
+        "operationId": "bulk_user_action",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkUserActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Bulk action completed successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/admin/users/{user_id}": {
+      "put": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "Update a user's role and permissions",
+        "operationId": "update_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User ID to update",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "crate::handlers::admin"
+        ],
+        "summary": "Delete a user (admin only)",
+        "operationId": "delete_user",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "description": "User ID to delete",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Admin access required"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/auth/login": {
       "post": {
         "tags": [
@@ -836,6 +1162,52 @@
   },
   "components": {
     "schemas": {
+      "AdminDashboardResponse": {
+        "type": "object",
+        "required": [
+          "system_stats",
+          "recent_users",
+          "recent_invites"
+        ],
+        "properties": {
+          "recent_invites": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InviteInfo"
+            }
+          },
+          "recent_users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserResponse"
+            }
+          },
+          "system_stats": {
+            "$ref": "#/components/schemas/SystemStats"
+          }
+        }
+      },
+      "AdminSettingsResponse": {
+        "type": "object",
+        "required": [
+          "max_total_users",
+          "default_user_invite_limit",
+          "registration_enabled"
+        ],
+        "properties": {
+          "default_user_invite_limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "max_total_users": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "registration_enabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "AuthResponse": {
         "type": "object",
         "required": [
@@ -844,6 +1216,57 @@
         "properties": {
           "user": {
             "$ref": "#/components/schemas/UserResponse"
+          }
+        }
+      },
+      "BulkUserAction": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "delete"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "set_role"
+            ],
+            "properties": {
+              "set_role": {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            }
+          },
+          {
+            "type": "string",
+            "enum": [
+              "enable_invites"
+            ]
+          },
+          {
+            "type": "string",
+            "enum": [
+              "disable_invites"
+            ]
+          }
+        ]
+      },
+      "BulkUserActionRequest": {
+        "type": "object",
+        "required": [
+          "user_ids",
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/BulkUserAction"
+          },
+          "user_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -1194,6 +1617,51 @@
           }
         }
       },
+      "InviteInfo": {
+        "type": "object",
+        "required": [
+          "id",
+          "code",
+          "max_uses",
+          "current_uses",
+          "is_active",
+          "created_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_by_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "current_uses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expires_at": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "max_uses": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "InviteResponse": {
         "type": "object",
         "required": [
@@ -1465,6 +1933,43 @@
           }
         }
       },
+      "SystemStats": {
+        "type": "object",
+        "required": [
+          "total_users",
+          "max_total_users",
+          "total_invites",
+          "active_invites",
+          "used_invites",
+          "admin_count"
+        ],
+        "properties": {
+          "active_invites": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admin_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "max_total_users": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total_invites": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total_users": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "used_invites": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "TrackingEntriesResponse": {
         "type": "object",
         "required": [
@@ -1531,6 +2036,25 @@
             "format": "date-time"
           },
           "value": {
+            "nullable": true
+          }
+        }
+      },
+      "UpdateAdminSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "default_user_invite_limit": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "max_total_users": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "registration_enabled": {
+            "type": "boolean",
             "nullable": true
           }
         }
@@ -1618,16 +2142,78 @@
           }
         }
       },
+      "UpdateUserRequest": {
+        "type": "object",
+        "properties": {
+          "can_create_invites": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "max_invites": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserRole"
+              }
+            ],
+            "nullable": true
+          }
+        }
+      },
+      "UserListResponse": {
+        "type": "object",
+        "required": [
+          "users",
+          "total",
+          "page",
+          "limit",
+          "total_pages"
+        ],
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total_pages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "users": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserResponse"
+            }
+          }
+        }
+      },
       "UserResponse": {
         "type": "object",
         "required": [
           "id",
           "email",
           "name",
+          "role",
+          "canCreateInvites",
+          "invitesCreated",
           "createdAt",
           "updatedAt"
         ],
         "properties": {
+          "canCreateInvites": {
+            "type": "boolean"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1638,14 +2224,39 @@
           "id": {
             "type": "string"
           },
+          "invitesCreated": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invitesRemaining": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "maxInvites": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "name": {
             "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
           },
           "updatedAt": {
             "type": "string",
             "format": "date-time"
           }
         }
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "admin",
+          "moderator",
+          "user"
+        ]
       },
       "ValidateInviteRequest": {
         "type": "object",
@@ -1711,6 +2322,10 @@
     {
       "name": "auth",
       "description": "Authentication endpoints"
+    },
+    {
+      "name": "admin",
+      "description": "Admin user and system management endpoints"
     },
     {
       "name": "invites",

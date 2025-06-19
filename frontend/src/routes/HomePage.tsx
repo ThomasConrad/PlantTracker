@@ -18,7 +18,6 @@ export const HomePage: Component = () => {
     try {
       // TODO: Replace with actual API call when backend is ready
       // await apiClient.joinWaitlist({ email: email(), name: name(), message: message() });
-      console.log('Waitlist signup:', { email: email(), name: name(), message: message() });
       setSubmitted(true);
     } catch (error) {
       console.error('Waitlist signup failed:', error);

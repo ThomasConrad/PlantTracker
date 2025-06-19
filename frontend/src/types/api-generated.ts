@@ -4,6 +4,110 @@
  */
 
 export interface paths {
+    "/admin/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get admin dashboard data */
+        get: operations["get_admin_dashboard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get system health information */
+        get: operations["get_system_health"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get admin settings */
+        get: operations["get_admin_settings"];
+        /** Update admin settings */
+        put: operations["update_admin_settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all users with pagination */
+        get: operations["list_users"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Perform bulk actions on users */
+        post: operations["bulk_user_action"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a user's role and permissions */
+        put: operations["update_user"];
+        post?: never;
+        /** Delete a user (admin only) */
+        delete: operations["delete_user"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -287,8 +391,27 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdminDashboardResponse: {
+            recent_invites: components["schemas"]["InviteInfo"][];
+            recent_users: components["schemas"]["UserResponse"][];
+            system_stats: components["schemas"]["SystemStats"];
+        };
+        AdminSettingsResponse: {
+            /** Format: int32 */
+            default_user_invite_limit: number;
+            /** Format: int32 */
+            max_total_users: number;
+            registration_enabled: boolean;
+        };
         AuthResponse: {
             user: components["schemas"]["UserResponse"];
+        };
+        BulkUserAction: "delete" | {
+            set_role: components["schemas"]["UserRole"];
+        } | "enable_invites" | "disable_invites";
+        BulkUserActionRequest: {
+            action: components["schemas"]["BulkUserAction"];
+            user_ids: string[];
         };
         CareSchedule: {
             /** Format: double */
@@ -399,6 +522,19 @@ export interface components {
             expires_at?: string | null;
             scopes?: string[] | null;
         };
+        InviteInfo: {
+            code: string;
+            created_at: string;
+            created_by?: string | null;
+            created_by_name?: string | null;
+            /** Format: int32 */
+            current_uses: number;
+            expires_at?: string | null;
+            id: string;
+            is_active: boolean;
+            /** Format: int32 */
+            max_uses: number;
+        };
         InviteResponse: {
             code: string;
             /** Format: date-time */
@@ -495,6 +631,20 @@ export interface components {
              */
             replace_existing?: boolean | null;
         };
+        SystemStats: {
+            /** Format: int32 */
+            active_invites: number;
+            /** Format: int32 */
+            admin_count: number;
+            /** Format: int32 */
+            max_total_users: number;
+            /** Format: int32 */
+            total_invites: number;
+            /** Format: int32 */
+            total_users: number;
+            /** Format: int32 */
+            used_invites: number;
+        };
         TrackingEntriesResponse: {
             entries: components["schemas"]["TrackingEntry"][];
             /** Format: int64 */
@@ -518,6 +668,13 @@ export interface components {
             updatedAt: string;
             value?: unknown;
         };
+        UpdateAdminSettingsRequest: {
+            /** Format: int32 */
+            default_user_invite_limit?: number | null;
+            /** Format: int32 */
+            max_total_users?: number | null;
+            registration_enabled?: boolean | null;
+        };
         UpdateCareScheduleRequest: {
             /** Format: double */
             amount?: number | null;
@@ -540,15 +697,42 @@ export interface components {
             name?: string | null;
             wateringSchedule?: components["schemas"]["UpdateCareScheduleRequest"] | null;
         };
+        UpdateUserRequest: {
+            can_create_invites?: boolean | null;
+            /** Format: int32 */
+            max_invites?: number | null;
+            role?: components["schemas"]["UserRole"] | null;
+        };
+        UserListResponse: {
+            /** Format: int32 */
+            limit: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            total_pages: number;
+            users: components["schemas"]["UserResponse"][];
+        };
         UserResponse: {
+            canCreateInvites: boolean;
             /** Format: date-time */
             createdAt: string;
             email: string;
             id: string;
+            /** Format: int32 */
+            invitesCreated: number;
+            /** Format: int32 */
+            invitesRemaining?: number | null;
+            /** Format: int32 */
+            maxInvites?: number | null;
             name: string;
+            role: components["schemas"]["UserRole"];
             /** Format: date-time */
             updatedAt: string;
         };
+        /** @enum {string} */
+        UserRole: "admin" | "moderator" | "user";
         ValidateInviteRequest: {
             code: string;
         };
@@ -574,6 +758,318 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get_admin_dashboard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin dashboard data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDashboardResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_system_health: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description System health information */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_admin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin settings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSettingsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_admin_settings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdminSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Settings updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminSettingsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_users: {
+        parameters: {
+            query?: {
+                /** @description Page number (default: 1) */
+                page?: number | null;
+                /** @description Items per page (default: 20) */
+                limit?: number | null;
+                /** @description Filter by role */
+                role?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of users */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserListResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bulk_user_action: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkUserActionRequest"];
+            };
+        };
+        responses: {
+            /** @description Bulk action completed successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User ID to update */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateUserRequest"];
+            };
+        };
+        responses: {
+            /** @description User updated successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_user: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description User ID to delete */
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description User deleted successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden - Admin access required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description User not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     login: {
         parameters: {
             query?: never;

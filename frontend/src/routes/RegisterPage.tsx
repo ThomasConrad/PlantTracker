@@ -16,7 +16,8 @@ export const RegisterPage: Component = () => {
   const [errors, setErrors] = createSignal<Record<string, string>>({});
 
   onMount(() => {
-    const invite = searchParams.invite;
+    // Check both 'invite' and 'code' parameters for backwards compatibility
+    const invite = searchParams.invite || searchParams.code;
     if (invite) {
       setInviteCode(invite);
     }

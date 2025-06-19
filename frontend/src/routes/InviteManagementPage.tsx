@@ -33,7 +33,7 @@ export const InviteManagementPage: Component = () => {
       setError('');
       const response = await apiClient.request<{ invites: InviteCode[] }>('/invites/list');
       setInvites(response.invites || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('Failed to load invites');
       console.error('Failed to load invites:', err);
     } finally {
@@ -63,7 +63,7 @@ export const InviteManagementPage: Component = () => {
       setInvites([newInvite, ...invites()]);
       setMaxUses(1);
       setExpiresInDays(undefined);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError('Failed to create invite');
       console.error('Failed to create invite:', err);
     } finally {
@@ -86,7 +86,7 @@ export const InviteManagementPage: Component = () => {
         </A>
       </div>
 
-      <Show when={!authStore.user?.can_create_invites}>
+      <Show when={!authStore.user?.canCreateInvites}>
         <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
           <p class="text-sm text-yellow-800">
             You don't have permission to create invite codes. Contact an administrator for access.
@@ -94,19 +94,19 @@ export const InviteManagementPage: Component = () => {
         </div>
       </Show>
 
-      <Show when={authStore.user?.can_create_invites}>
+      <Show when={authStore.user?.canCreateInvites}>
         <div class="bg-white shadow rounded-lg p-6">
           <h2 class="text-lg font-medium text-gray-900 mb-4">Create New Invite</h2>
           
-          <Show when={authStore.user?.max_invites !== null}>
+          <Show when={authStore.user?.maxInvites !== null}>
             <div class="mb-4 p-4 bg-blue-50 rounded-md">
               <p class="text-sm text-blue-700">
-                Invites remaining: {authStore.user?.invites_remaining ?? 0} / {authStore.user?.max_invites ?? 0}
+                Invites remaining: {authStore.user?.invitesRemaining ?? 0} / {authStore.user?.maxInvites ?? 0}
               </p>
             </div>
           </Show>
 
-          <Show when={authStore.user?.max_invites === null}>
+          <Show when={authStore.user?.maxInvites === null}>
             <div class="mb-4 p-4 bg-green-50 rounded-md">
               <p class="text-sm text-green-700">
                 You have unlimited invite creation privileges.
@@ -114,7 +114,7 @@ export const InviteManagementPage: Component = () => {
             </div>
           </Show>
 
-          <Show when={(authStore.user?.invites_remaining ?? 0) > 0 || authStore.user?.max_invites === null}>
+          <Show when={(authStore.user?.invitesRemaining ?? 0) > 0 || authStore.user?.maxInvites === null}>
             <form onSubmit={createInvite} class="space-y-4">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
@@ -157,7 +157,7 @@ export const InviteManagementPage: Component = () => {
             </form>
           </Show>
 
-          <Show when={(authStore.user?.invites_remaining ?? 0) <= 0 && authStore.user?.max_invites !== null}>
+          <Show when={(authStore.user?.invitesRemaining ?? 0) <= 0 && authStore.user?.maxInvites !== null}>
             <div class="bg-orange-50 border border-orange-200 rounded-md p-4">
               <p class="text-sm text-orange-800">
                 You have reached your invite creation limit. Contact an administrator to increase your limit.

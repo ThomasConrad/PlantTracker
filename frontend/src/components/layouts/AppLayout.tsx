@@ -111,7 +111,7 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
                         <p class="font-medium">{authStore.user?.name}</p>
                         <p class="text-gray-500">{authStore.user?.email}</p>
                       </div>
-                      <Show when={authStore.user?.can_create_invites}>
+                      <Show when={authStore.user?.canCreateInvites}>
                         <A
                           href="/invites"
                           class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

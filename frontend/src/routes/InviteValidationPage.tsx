@@ -25,9 +25,10 @@ export const InviteValidationPage: Component = () => {
       await apiClient.validateInvite({ code: inviteCode().trim() });
       
       navigate(`/register?invite=${encodeURIComponent(inviteCode().trim())}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Invite validation failed:', error);
-      if (error?.response?.status === 400) {
+      if (error && typeof error === 'object' && 'response' in error && 
+          (error as { response?: { status?: number } }).response?.status === 400) {
         setError('Invalid or expired invite code. Please check your code and try again.');
       } else {
         setError('Failed to validate invite code. Please try again.');

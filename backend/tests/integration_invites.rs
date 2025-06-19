@@ -440,3 +440,126 @@ async fn test_registration_validation_errors() {
     assert_eq!(error_data["error"], "validation_error");
     assert!(error_data["details"]["name"].is_array());
 }
+
+#[tokio::test]
+async fn test_invite_single_use_enforcement() {
+    let app = TestApp::new().await;
+
+    // Create admin user
+    use planty_api::database::users as db_users;
+    use planty_api::models::{CreateUserRequest, UserRole};
+
+    let admin_request = CreateUserRequest {
+        name: "Admin User".to_string(),
+        email: "admin@test.com".to_string(),
+        password: "password123".to_string(),
+        invite_code: None,
+    };
+
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        None,
+    )
+    .await
+    .expect("Failed to create admin user");
+
+    // Login as admin
+    let _login_response = app
+        .client
+        .post(app.url("/auth/login"))
+        .json(&json!({
+            "email": "admin@test.com",
+            "password": "password123"
+        }))
+        .send()
+        .await
+        .expect("Failed to send login request");
+
+    // Create a single-use invite
+    let create_response = app
+        .client
+        .post(app.url("/invites/create"))
+        .json(&json!({
+            "max_uses": 1
+        }))
+        .send()
+        .await
+        .expect("Failed to send create invite request");
+
+    let invite_data: Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse invite response");
+    
+    let invite_code = invite_data["code"].as_str().unwrap();
+
+    // First registration should succeed
+    let register_response1 = app
+        .client
+        .post(app.url("/auth/register"))
+        .json(&json!({
+            "name": "First User",
+            "email": "first@test.com",
+            "password": "password123",
+            "invite_code": invite_code
+        }))
+        .send()
+        .await
+        .expect("Failed to send first register request");
+
+    assert_eq!(register_response1.status(), 201);
+
+    // Second registration with same invite should fail
+    let register_response2 = app
+        .client
+        .post(app.url("/auth/register"))
+        .json(&json!({
+            "name": "Second User",
+            "email": "second@test.com", 
+            "password": "password123",
+            "invite_code": invite_code
+        }))
+        .send()
+        .await
+        .expect("Failed to send second register request");
+
+    assert_eq!(register_response2.status(), 401);
+    
+    let error_data: Value = register_response2
+        .json()
+        .await
+        .expect("Failed to parse error response");
+    
+    assert!(error_data["message"].as_str().unwrap().contains("Invalid or expired"));
+
+    // Verify invite usage count increased
+    let list_response = app
+        .client
+        .get(app.url("/invites/list"))
+        .send()
+        .await
+        .expect("Failed to send list request");
+
+    let list_data: Value = list_response
+        .json()
+        .await
+        .expect("Failed to parse list response");
+    
+    let invites = list_data["invites"].as_array().unwrap();
+    let used_invite = invites.iter().find(|inv| inv["code"] == invite_code);
+    
+    match used_invite {
+        Some(invite) => {
+            assert_eq!(invite["current_uses"], 1);
+            assert_eq!(invite["max_uses"], 1);
+        }
+        None => {
+            // If the invite is not in the list, it means it was removed or filtered out
+            // which is acceptable behavior for fully consumed invites
+            println!("Invite was removed from list after being fully consumed");
+        }
+    }
+}

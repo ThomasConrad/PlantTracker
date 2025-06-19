@@ -155,6 +155,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/invites/create": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["create_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_invites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["validate_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/waitlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["join_waitlist"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/invites/waitlist/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_waitlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plants": {
         parameters: {
             query?: never;
@@ -245,6 +325,12 @@ export interface components {
             /** @example 💧 Water Fiddle Leaf Fig */
             title: string;
         };
+        CreateInviteRequest: {
+            /** Format: date-time */
+            expires_at?: string | null;
+            /** Format: int32 */
+            max_uses?: number | null;
+        };
         CreatePlantRequest: {
             customMetrics?: components["schemas"]["CreateCustomMetricRequest"][] | null;
             fertilizingSchedule?: components["schemas"]["CreateCareScheduleRequest"] | null;
@@ -268,6 +354,7 @@ export interface components {
         };
         CreateUserRequest: {
             email: string;
+            invite_code?: string | null;
             name: string;
             password: string;
         };
@@ -311,6 +398,19 @@ export interface components {
             /** Format: date-time */
             expires_at?: string | null;
             scopes?: string[] | null;
+        };
+        InviteResponse: {
+            code: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: int32 */
+            current_uses: number;
+            /** Format: date-time */
+            expires_at?: string | null;
+            id: string;
+            is_active: boolean;
+            /** Format: int32 */
+            max_uses: number;
         };
         LoginRequest: {
             email: string;
@@ -448,6 +548,22 @@ export interface components {
             name: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        ValidateInviteRequest: {
+            code: string;
+        };
+        WaitlistResponse: {
+            /** Format: date-time */
+            created_at: string;
+            email: string;
+            id: string;
+            name?: string | null;
+            status: string;
+        };
+        WaitlistSignupRequest: {
+            email: string;
+            message?: string | null;
+            name?: string | null;
         };
     };
     responses: never;
@@ -774,6 +890,161 @@ export interface operations {
             };
             /** @description Failed to sync tasks */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Invite code created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_invites: {
+        parameters: {
+            query?: {
+                /** @description Filter by creator user ID */
+                created_by?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of invite codes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InviteResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    validate_invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValidateInviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Invite code is valid */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired invite code */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    join_waitlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WaitlistSignupRequest"];
+            };
+        };
+        responses: {
+            /** @description Added to waitlist */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaitlistResponse"];
+                };
+            };
+            /** @description Invalid request or email already exists */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_waitlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of waitlist entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaitlistResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

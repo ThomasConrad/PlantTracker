@@ -73,6 +73,7 @@ pub struct CreateUserRequest {
     pub name: String,
     #[validate(length(min = 8))]
     pub password: String,
+    pub invite_code: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -120,6 +121,7 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "John Doe".to_string(),
             password: "password123".to_string(),
+            invite_code: Some("INVITE123".to_string()),
         };
 
         assert!(request.validate().is_ok());
@@ -131,6 +133,7 @@ mod tests {
             email: "invalid-email".to_string(),
             name: "John Doe".to_string(),
             password: "password123".to_string(),
+            invite_code: Some("INVITE123".to_string()),
         };
 
         let validation_result = request.validate();
@@ -146,6 +149,7 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "A".to_string(), // Too short (minimum 2 characters)
             password: "password123".to_string(),
+            invite_code: Some("INVITE123".to_string()),
         };
 
         let validation_result = request.validate();
@@ -161,6 +165,7 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "John Doe".to_string(),
             password: "short".to_string(), // Too short (minimum 8 characters)
+            invite_code: Some("INVITE123".to_string()),
         };
 
         let validation_result = request.validate();

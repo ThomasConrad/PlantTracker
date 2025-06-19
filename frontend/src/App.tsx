@@ -3,8 +3,10 @@ import { Routes, Route, Navigate } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { AppLayout } from '@/components/layouts/AppLayout';
+import { HomePage } from '@/routes/HomePage';
 import { LoginPage } from '@/routes/LoginPage';
 import { RegisterPage } from '@/routes/RegisterPage';
+import { InviteValidationPage } from '@/routes/InviteValidationPage';
 import { PlantsPage } from '@/routes/PlantsPage';
 import { PlantDetailPage } from '@/routes/PlantDetailPage';
 import { PlantFormPage } from '@/routes/PlantFormPage';
@@ -44,6 +46,19 @@ const App: Component = () => {
           )}
         />
         <Route
+          path="/invite"
+          component={() => (
+            <Show
+              when={!authStore.isAuthenticated}
+              fallback={<Navigate href="/plants" />}
+            >
+              <AuthLayout>
+                <InviteValidationPage />
+              </AuthLayout>
+            </Show>
+          )}
+        />
+        <Route
           path="/register"
           component={() => (
             <Show
@@ -61,7 +76,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/login" />}
+              fallback={<Navigate href="/invite" />}
             >
               <AppLayout>
                 <PlantsPage />
@@ -74,7 +89,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/login" />}
+              fallback={<Navigate href="/invite" />}
             >
               <AppLayout>
                 <PlantFormPage />
@@ -87,7 +102,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/login" />}
+              fallback={<Navigate href="/invite" />}
             >
               <AppLayout>
                 <PlantDetailPage />
@@ -100,7 +115,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/login" />}
+              fallback={<Navigate href="/invite" />}
             >
               <AppLayout>
                 <PlantFormPage />
@@ -113,7 +128,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/login" />}
+              fallback={<Navigate href="/invite" />}
             >
               <AppLayout>
                 <CalendarPage />
@@ -126,7 +141,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/login" />}
+              fallback={<Navigate href="/invite" />}
             >
               <AppLayout>
                 <CalendarSettingsPage />
@@ -139,7 +154,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/login" />}
+              fallback={<Navigate href="/invite" />}
             >
               <AppLayout>
                 <SearchPage />
@@ -147,8 +162,18 @@ const App: Component = () => {
             </Show>
           )}
         />
-        <Route path="/" component={() => <Navigate href="/plants" />} />
-        <Route path="*" component={() => <Navigate href="/plants" />} />
+        <Route
+          path="/"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated}
+              fallback={<HomePage />}
+            >
+              <Navigate href="/plants" />
+            </Show>
+          )}
+        />
+        <Route path="*" component={() => <Navigate href="/" />} />
       </Routes>
     </Show>
     </ThemeProvider>

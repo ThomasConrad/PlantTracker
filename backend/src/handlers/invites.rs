@@ -113,7 +113,7 @@ async fn validate_invite(
 async fn list_invites(
     auth_session: AuthSession,
     Query(params): Query<ListInvitesQuery>,
-) -> Result<Json<Vec<InviteResponse>>> {
+) -> Result<Json<serde_json::Value>> {
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Authentication required".to_string(),
     })?;
@@ -124,7 +124,9 @@ async fn list_invites(
     let invites = db_invites::list_invite_codes(&auth_session.backend.db, created_by).await?;
 
     let responses: Vec<InviteResponse> = invites.into_iter().map(Into::into).collect();
-    Ok(Json(responses))
+    Ok(Json(serde_json::json!({
+        "invites": responses
+    })))
 }
 
 #[utoipa::path(

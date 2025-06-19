@@ -14,8 +14,43 @@ pub struct User {
     pub name: String,
     pub password_hash: String,
     pub salt: String,
+    pub role: UserRole,
+    pub can_create_invites: bool,
+    pub max_invites: Option<i32>, // None means unlimited
+    pub invites_created: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum UserRole {
+    Admin,
+    Moderator,
+    User,
+}
+
+impl std::fmt::Display for UserRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRole::Admin => write!(f, "admin"),
+            UserRole::Moderator => write!(f, "moderator"),
+            UserRole::User => write!(f, "user"),
+        }
+    }
+}
+
+impl std::str::FromStr for UserRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "admin" => Ok(UserRole::Admin),
+            "moderator" => Ok(UserRole::Moderator),
+            "user" => Ok(UserRole::User),
+            _ => Err(format!("Invalid user role: {}", s)),
+        }
+    }
 }
 
 #[derive(Debug, FromRow)]
@@ -25,6 +60,10 @@ pub struct UserRow {
     pub name: String,
     pub password_hash: String,
     pub salt: String,
+    pub role: String,
+    pub can_create_invites: bool,
+    pub max_invites: Option<i32>,
+    pub invites_created: i32,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -38,6 +77,14 @@ impl UserRow {
             name: self.name,
             password_hash: self.password_hash,
             salt: self.salt,
+            role: self.role.parse().map_err(|e| {
+                crate::utils::errors::AppError::Internal {
+                    message: format!("Invalid user role in database: {}", e),
+                }
+            })?,
+            can_create_invites: self.can_create_invites,
+            max_invites: self.max_invites,
+            invites_created: self.invites_created,
             created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
                 crate::utils::errors::AppError::Internal {
                     message: "Invalid datetime in database".to_string(),
@@ -89,6 +136,11 @@ pub struct UserResponse {
     pub id: String,
     pub email: String,
     pub name: String,
+    pub role: UserRole,
+    pub can_create_invites: bool,
+    pub max_invites: Option<i32>,
+    pub invites_created: i32,
+    pub invites_remaining: Option<i32>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -98,12 +150,44 @@ pub struct AuthResponse {
     pub user: UserResponse,
 }
 
+impl User {
+    pub fn is_admin(&self) -> bool {
+        self.role == UserRole::Admin
+    }
+
+    pub fn is_moderator_or_above(&self) -> bool {
+        matches!(self.role, UserRole::Admin | UserRole::Moderator)
+    }
+
+    pub fn can_create_invite(&self) -> bool {
+        self.can_create_invites && self.has_invites_remaining()
+    }
+
+    pub fn has_invites_remaining(&self) -> bool {
+        match self.max_invites {
+            None => true, // Unlimited invites
+            Some(max) => self.invites_created < max,
+        }
+    }
+
+    pub fn invites_remaining(&self) -> Option<i32> {
+        self.max_invites.map(|max| max - self.invites_created)
+    }
+}
+
 impl From<User> for UserResponse {
     fn from(user: User) -> Self {
+        let invites_remaining = user.max_invites.map(|max| max - user.invites_created);
+        
         Self {
             id: user.id,
             email: user.email,
             name: user.name,
+            role: user.role,
+            can_create_invites: user.can_create_invites,
+            max_invites: user.max_invites,
+            invites_created: user.invites_created,
+            invites_remaining,
             created_at: user.created_at,
             updated_at: user.updated_at,
         }

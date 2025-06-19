@@ -1,4 +1,4 @@
-import { Component, JSX, createSignal } from 'solid-js';
+import { Component, JSX, createSignal, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
 import { BottomNavigation } from './BottomNavigation';
@@ -111,6 +111,20 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
                         <p class="font-medium">{authStore.user?.name}</p>
                         <p class="text-gray-500">{authStore.user?.email}</p>
                       </div>
+                      <Show when={authStore.user?.can_create_invites}>
+                        <A
+                          href="/invites"
+                          class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <div class="flex items-center">
+                            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Manage Invites
+                          </div>
+                        </A>
+                      </Show>
                       <A
                         href="/calendar/settings"
                         class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

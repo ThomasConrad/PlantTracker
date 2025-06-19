@@ -7,6 +7,7 @@ import { HomePage } from '@/routes/HomePage';
 import { LoginPage } from '@/routes/LoginPage';
 import { RegisterPage } from '@/routes/RegisterPage';
 import { InviteValidationPage } from '@/routes/InviteValidationPage';
+import { InviteManagementPage } from '@/routes/InviteManagementPage';
 import { PlantsPage } from '@/routes/PlantsPage';
 import { PlantDetailPage } from '@/routes/PlantDetailPage';
 import { PlantFormPage } from '@/routes/PlantFormPage';
@@ -158,6 +159,19 @@ const App: Component = () => {
             >
               <AppLayout>
                 <SearchPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/invites"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated}
+              fallback={<Navigate href="/invite" />}
+            >
+              <AppLayout>
+                <InviteManagementPage />
               </AppLayout>
             </Show>
           )}

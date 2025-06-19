@@ -107,7 +107,7 @@ impl InviteCode {
     pub fn is_valid(&self) -> bool {
         self.is_active
             && self.current_uses < self.max_uses
-            && self.expires_at.map_or(true, |exp| exp > Utc::now())
+            && self.expires_at.is_none_or(|exp| exp > Utc::now())
     }
 }
 
@@ -126,6 +126,7 @@ impl From<InviteCode> for InviteResponse {
 }
 
 impl InviteCodeRow {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_invite_code(self) -> Result<InviteCode, crate::utils::errors::AppError> {
         Ok(InviteCode {
             id: self.id,
@@ -159,6 +160,7 @@ impl InviteCodeRow {
 }
 
 impl WaitlistEntryRow {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_waitlist_entry(self) -> Result<WaitlistEntry, crate::utils::errors::AppError> {
         Ok(WaitlistEntry {
             id: self.id,

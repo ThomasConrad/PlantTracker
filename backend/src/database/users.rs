@@ -35,7 +35,7 @@ pub async fn create_user_internal(
     let total_users = sqlx::query_scalar!("SELECT COUNT(*) FROM users")
         .fetch_one(pool)
         .await
-        .map_err(|e| AppError::Database(e))?;
+        .map_err(AppError::Database)?;
 
     let max_total_users = get_max_total_users(pool).await?;
     
@@ -93,7 +93,7 @@ async fn get_default_invite_limit(pool: &DatabasePool) -> Result<i32, AppError> 
     )
     .fetch_optional(pool)
     .await
-    .map_err(|e| AppError::Database(e))?;
+    .map_err(AppError::Database)?;
 
     Ok(limit
         .and_then(|v| v.parse::<i32>().ok())
@@ -106,7 +106,7 @@ async fn get_max_total_users(pool: &DatabasePool) -> Result<i32, AppError> {
     )
     .fetch_optional(pool)
     .await
-    .map_err(|e| AppError::Database(e))?;
+    .map_err(AppError::Database)?;
 
     Ok(max_users
         .and_then(|v| v.parse::<i32>().ok())

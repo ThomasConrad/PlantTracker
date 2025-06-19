@@ -155,14 +155,17 @@ impl User {
         self.role == UserRole::Admin
     }
 
+    #[allow(dead_code)]
     pub fn is_moderator_or_above(&self) -> bool {
         matches!(self.role, UserRole::Admin | UserRole::Moderator)
     }
 
+    #[allow(dead_code)]
     pub fn can_create_invite(&self) -> bool {
         self.can_create_invites && self.has_invites_remaining()
     }
 
+    #[allow(dead_code)]
     pub fn has_invites_remaining(&self) -> bool {
         match self.max_invites {
             None => true, // Unlimited invites
@@ -170,6 +173,7 @@ impl User {
         }
     }
 
+    #[allow(dead_code)]
     pub fn invites_remaining(&self) -> Option<i32> {
         self.max_invites.map(|max| max - self.invites_created)
     }

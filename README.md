@@ -69,22 +69,15 @@ Planty is a comprehensive plant care management system that helps users:
 ## 🚧 Upcoming Features (Priority Order)
 
 ### High Priority
-1. **Google Tasks Integration** - Sync plant care reminders to Google Tasks
-2. **Email Notifications** - Automated care reminder emails
-3. **Plant Templates** - Pre-configured care schedules for common plants
-4. **Data Export/Import** - Backup and restore plant data
-
-### Medium Priority
-5. **Mobile App** - Native iOS/Android apps using Capacitor
-6. **Plant Sharing** - Share plant profiles and care tips with other users
-7. **Advanced Analytics** - Growth charts, care pattern analysis
-8. **Weather Integration** - Adjust care schedules based on local weather
+- [ ] **Google Tasks Integration** - Sync plant care reminders to Google Tasks
 
 ### Low Priority
-9. **Plant Disease Detection** - AI-powered plant health analysis
-10. **Community Features** - Plant forums and expert advice
-11. **IoT Integration** - Connect soil moisture sensors and smart watering systems
-12. **Multi-language Support** - Internationalization for global users
+- [ ] **Weather Integration** - Adjust care schedules based on local weather
+- [ ] **Plant Sharing** - Share plant profiles and care tips with other users
+- [ ] **Plant Disease Detection** - AI-powered plant health analysis
+- [ ] **Community Features** - Plant forums and expert advice
+- [ ] **IoT Integration** - Connect soil moisture sensors and smart watering systems
+- [ ] **Multi-language Support** - Internationalization for global users
 
 ## 🎯 RELEASE TARGET
 

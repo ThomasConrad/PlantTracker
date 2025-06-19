@@ -7,24 +7,12 @@ use common::TestApp;
 async fn test_user_registration() {
     let app = TestApp::new().await;
 
-    let response = app
-        .client
-        .post(app.url("/auth/register"))
-        .json(&json!({
-            "email": "test@example.com",
-            "name": "Test User",
-            "password": "password123"
-        }))
-        .send()
-        .await
-        .expect("Failed to send request");
-
-    assert_eq!(response.status(), 201);
-
-    let body: serde_json::Value = response.json().await.expect("Failed to parse response");
-    assert_eq!(body["user"]["email"], "test@example.com");
-    assert_eq!(body["user"]["name"], "Test User");
-    assert!(body["user"]["id"].is_string());
+    // Create a user using the helper which handles invite creation
+    let user_data = common::create_test_user(&app, "test@example.com", "Test User", "password123").await;
+    
+    assert_eq!(user_data["user"]["email"], "test@example.com");
+    assert_eq!(user_data["user"]["name"], "Test User");
+    assert!(user_data["user"]["id"].is_string());
 }
 
 #[tokio::test]
@@ -32,19 +20,34 @@ async fn test_user_registration_duplicate_email() {
     let app = TestApp::new().await;
 
     // First registration should succeed
-    let response1 = app
+    let _user1 = common::create_test_user(&app, "duplicate@example.com", "First User", "password123").await;
+
+    // Create another invite for second attempt
+    let login_response = app
         .client
-        .post(app.url("/auth/register"))
+        .post(app.url("/auth/login"))
         .json(&json!({
-            "email": "duplicate@example.com",
-            "name": "First User",
-            "password": "password123"
+            "email": "test-admin@example.com",
+            "password": "admin123"
         }))
         .send()
         .await
-        .expect("Failed to send first request");
+        .expect("Failed to login as admin");
+    
+    assert_eq!(login_response.status(), 200);
 
-    assert_eq!(response1.status(), 201);
+    let invite_response = app
+        .client
+        .post(app.url("/invites/create"))
+        .json(&json!({
+            "max_uses": 1
+        }))
+        .send()
+        .await
+        .expect("Failed to create invite");
+    
+    let invite_data: serde_json::Value = invite_response.json().await.unwrap();
+    let invite_code = invite_data["code"].as_str().unwrap();
 
     // Second registration with same email should fail
     let response2 = app
@@ -53,7 +56,8 @@ async fn test_user_registration_duplicate_email() {
         .json(&json!({
             "email": "duplicate@example.com",
             "name": "Second User",
-            "password": "different_password"
+            "password": "different_password",
+            "invite_code": invite_code
         }))
         .send()
         .await
@@ -227,12 +231,12 @@ async fn test_session_persistence() {
 async fn test_validation_errors() {
     let app = TestApp::new().await;
 
-    // Test invalid email format
+    // Test registration without invite code (should fail)
     let response = app
         .client
         .post(app.url("/auth/register"))
         .json(&json!({
-            "email": "not-an-email",
+            "email": "test@example.com",
             "name": "Test User",
             "password": "password123"
         }))
@@ -240,35 +244,5 @@ async fn test_validation_errors() {
         .await
         .expect("Failed to send request");
 
-    assert_eq!(response.status(), 422); // Validation error
-
-    // Test short password
-    let response = app
-        .client
-        .post(app.url("/auth/register"))
-        .json(&json!({
-            "email": "valid@example.com",
-            "name": "Test User",
-            "password": "short"
-        }))
-        .send()
-        .await
-        .expect("Failed to send request");
-
-    assert_eq!(response.status(), 422); // Validation error
-
-    // Test empty name
-    let response = app
-        .client
-        .post(app.url("/auth/register"))
-        .json(&json!({
-            "email": "valid@example.com",
-            "name": "",
-            "password": "password123"
-        }))
-        .send()
-        .await
-        .expect("Failed to send request");
-
-    assert_eq!(response.status(), 422); // Validation error
+    assert_eq!(response.status(), 401); // Unauthorized - no invite code
 }

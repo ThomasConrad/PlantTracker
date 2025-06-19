@@ -112,7 +112,7 @@ impl AuthUser for User {
     }
 }
 
-#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateUserRequest {
     #[validate(email)]
     pub email: String,
@@ -295,6 +295,10 @@ mod tests {
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
             salt: "salt".to_string(),
+            role: UserRole::User,
+            can_create_invites: false,
+            max_invites: Some(5),
+            invites_created: 0,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -312,6 +316,10 @@ mod tests {
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
             salt: "salt".to_string(),
+            role: UserRole::User,
+            can_create_invites: false,
+            max_invites: Some(5),
+            invites_created: 0,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -331,6 +339,11 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            role: UserRole::User,
+            can_create_invites: false,
+            max_invites: Some(5),
+            invites_created: 0,
+            invites_remaining: Some(5),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -354,6 +367,10 @@ mod tests {
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
             salt: "salt".to_string(),
+            role: "user".to_string(),
+            can_create_invites: false,
+            max_invites: Some(5),
+            invites_created: 0,
             created_at: "2024-01-01T12:00:00Z".to_string(),
             updated_at: "2024-01-01T12:00:00Z".to_string(),
         };
@@ -375,6 +392,10 @@ mod tests {
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
             salt: "salt".to_string(),
+            role: "user".to_string(),
+            can_create_invites: false,
+            max_invites: Some(5),
+            invites_created: 0,
             created_at: "invalid-datetime".to_string(),
             updated_at: "2024-01-01T12:00:00Z".to_string(),
         };
@@ -397,6 +418,10 @@ mod tests {
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
             salt: "salt".to_string(),
+            role: UserRole::User,
+            can_create_invites: false,
+            max_invites: Some(5),
+            invites_created: 0,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -417,6 +442,10 @@ mod tests {
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
             salt: "salt".to_string(),
+            role: UserRole::User,
+            can_create_invites: false,
+            max_invites: Some(5),
+            invites_created: 0,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

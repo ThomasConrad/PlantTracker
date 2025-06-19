@@ -165,6 +165,62 @@ async fn test_user_cannot_modify_other_users_plants() {
 async fn test_concurrent_users_isolated_sessions() {
     let app = TestApp::new().await;
 
+    // Create admin user to generate invite codes
+    use planty_api::database::users as db_users;
+    use planty_api::models::{CreateUserRequest, UserRole};
+
+    let admin_request = CreateUserRequest {
+        name: "Admin User".to_string(),
+        email: "admin@test.com".to_string(),
+        password: "admin123".to_string(),
+        invite_code: None,
+    };
+
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        None,
+    )
+    .await
+    .expect("Failed to create admin user");
+
+    // Login as admin to create invites
+    let admin_client = reqwest::Client::builder()
+        .cookie_store(true)
+        .build()
+        .expect("Failed to create admin client");
+
+    let _admin_login = admin_client
+        .post(app.url("/auth/login"))
+        .json(&json!({
+            "email": "admin@test.com",
+            "password": "admin123"
+        }))
+        .send()
+        .await
+        .expect("Failed to login as admin");
+
+    // Create invite codes for both users
+    let invite1_response = admin_client
+        .post(app.url("/invites/create"))
+        .json(&json!({"max_uses": 1}))
+        .send()
+        .await
+        .expect("Failed to create invite1");
+    let invite1_data: serde_json::Value = invite1_response.json().await.unwrap();
+    let invite1_code = invite1_data["code"].as_str().unwrap();
+
+    let invite2_response = admin_client
+        .post(app.url("/invites/create"))
+        .json(&json!({"max_uses": 1}))
+        .send()
+        .await
+        .expect("Failed to create invite2");
+    let invite2_data: serde_json::Value = invite2_response.json().await.unwrap();
+    let invite2_code = invite2_data["code"].as_str().unwrap();
+
     // Create two HTTP clients with separate cookie jars
     let client1 = reqwest::Client::builder()
         .cookie_store(true)
@@ -182,7 +238,8 @@ async fn test_concurrent_users_isolated_sessions() {
         .json(&json!({
             "email": "concurrent1@example.com",
             "name": "Concurrent User 1",
-            "password": "password123"
+            "password": "password123",
+            "invite_code": invite1_code
         }))
         .send()
         .await
@@ -194,7 +251,8 @@ async fn test_concurrent_users_isolated_sessions() {
         .json(&json!({
             "email": "concurrent2@example.com",
             "name": "Concurrent User 2",
-            "password": "password123"
+            "password": "password123",
+            "invite_code": invite2_code
         }))
         .send()
         .await

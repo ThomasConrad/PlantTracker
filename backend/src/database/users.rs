@@ -4,18 +4,45 @@ use chrono::Utc;
 use uuid::Uuid;
 
 use crate::database::DatabasePool;
-use crate::models::{CreateUserRequest, User, UserRow};
+use crate::models::{CreateUserRequest, User, UserRow, UserRole};
 use crate::utils::errors::AppError;
 
 pub async fn create_user(
     pool: &DatabasePool,
     request: &CreateUserRequest,
 ) -> Result<User, AppError> {
+    // Get default invite limit from settings
+    let default_limit = get_default_invite_limit(pool).await?;
+    
+    create_user_internal(pool, request, UserRole::User, false, Some(default_limit)).await
+}
+
+pub async fn create_user_internal(
+    pool: &DatabasePool,
+    request: &CreateUserRequest,
+    role: UserRole,
+    can_create_invites: bool,
+    max_invites: Option<i32>,
+) -> Result<User, AppError> {
     // Check if user with this email already exists
     if get_user_by_email(pool, &request.email).await.is_ok() {
         return Err(AppError::Validation(
             validator::ValidationErrors::new(), // TODO: Add proper validation error
         ));
+    }
+
+    // Check total user limit
+    let total_users = sqlx::query_scalar!("SELECT COUNT(*) FROM users")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| AppError::Database(e))?;
+
+    let max_total_users = get_max_total_users(pool).await?;
+    
+    if total_users >= max_total_users && role != UserRole::Admin {
+        return Err(AppError::Internal {
+            message: "Maximum number of users reached".to_string(),
+        });
     }
 
     let user_id = Uuid::new_v4().to_string();
@@ -25,17 +52,21 @@ pub async fn create_user(
     })?;
 
     let now = Utc::now().to_rfc3339();
+    let role_str = role.to_string();
 
     let result = sqlx::query!(
         r#"
-        INSERT INTO users (id, email, name, password_hash, salt, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (id, email, name, password_hash, salt, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         "#,
         user_id,
         request.email,
         request.name,
         password_hash,
         salt,
+        role_str,
+        can_create_invites,
+        max_invites,
         now,
         now
     )
@@ -54,6 +85,32 @@ pub async fn create_user(
 
     // Return the created user
     get_user_by_id(pool, &user_id).await
+}
+
+async fn get_default_invite_limit(pool: &DatabasePool) -> Result<i32, AppError> {
+    let limit = sqlx::query_scalar!(
+        "SELECT value FROM admin_settings WHERE key = 'default_user_invite_limit'"
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Database(e))?;
+
+    Ok(limit
+        .and_then(|v| v.parse::<i32>().ok())
+        .unwrap_or(5))
+}
+
+async fn get_max_total_users(pool: &DatabasePool) -> Result<i32, AppError> {
+    let max_users = sqlx::query_scalar!(
+        "SELECT value FROM admin_settings WHERE key = 'max_total_users'"
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| AppError::Database(e))?;
+
+    Ok(max_users
+        .and_then(|v| v.parse::<i32>().ok())
+        .unwrap_or(1000))
 }
 
 pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, AppError> {

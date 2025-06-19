@@ -8,7 +8,7 @@ use crate::app_state::AppState;
 use crate::auth::{AuthSession, Credentials};
 use crate::database::users as db_users;
 use crate::middleware::validation::ValidatedJson;
-use crate::models::{AuthResponse, CreateUserRequest, LoginRequest, UserResponse};
+use crate::models::{AuthResponse, CreateUserRequest, LoginRequest, UserResponse, UserRole};
 use crate::utils::errors::{AppError, Result};
 
 pub fn routes() -> Router<AppState> {
@@ -86,7 +86,7 @@ async fn register(
     tracing::info!("Registration attempt for email: {}", payload.email);
 
     // Validate invite code if provided
-    if let Some(invite_code) = &payload.invite_code {
+    let (is_admin_invite, invite_code) = if let Some(invite_code) = &payload.invite_code {
         use crate::database::invites as db_invites;
         
         let invite = db_invites::validate_invite_code(&auth_session.backend.db, invite_code)
@@ -100,45 +100,63 @@ async fn register(
                 message: "Invalid or expired invite code".to_string(),
             });
         }
+
+        // Check if this is an admin invite code
+        let is_admin = invite_code.starts_with("ADMIN-");
+        (is_admin, invite_code.clone())
     } else {
         // No invite code provided - registration not allowed
         return Err(AppError::Authentication {
             message: "Registration requires a valid invite code".to_string(),
         });
-    }
+    };
 
-    // Create user in database
-    let user = db_users::create_user(&auth_session.backend.db, &payload)
-        .await
-        .map_err(|e| {
-            match e {
-                AppError::Validation(_) => AppError::Validation(
-                    // TODO: Create proper validation error for email already exists
-                    validator::ValidationErrors::new(),
-                ),
-                _ => e,
-            }
-        })?;
+    // Create user in database with appropriate role
+    let user = if is_admin_invite {
+        // Create admin user with unlimited invites
+        db_users::create_user_internal(
+            &auth_session.backend.db, 
+            &payload, 
+            UserRole::Admin, 
+            true, 
+            None // Unlimited invites for admin
+        ).await
+    } else {
+        // Create regular user
+        db_users::create_user(&auth_session.backend.db, &payload).await
+    }.map_err(|e| {
+        match e {
+            AppError::Validation(_) => AppError::Validation(
+                // TODO: Create proper validation error for email already exists
+                validator::ValidationErrors::new(),
+            ),
+            _ => e,
+        }
+    })?;
 
     // Mark invite code as used
-    if let Some(invite_code) = &payload.invite_code {
-        use crate::database::invites as db_invites;
-        
-        if let Err(e) = db_invites::use_invite_code(&auth_session.backend.db, invite_code, &user.id).await {
-            tracing::error!("Failed to mark invite code as used: {}", e);
-            // Don't fail registration if we can't update invite code
-        }
+    use crate::database::invites as db_invites;
+    
+    if let Err(e) = db_invites::use_invite_code(&auth_session.backend.db, &invite_code, &user.id).await {
+        tracing::error!("Failed to mark invite code as used: {}", e);
+        // Don't fail registration if we can't update invite code
+    }
 
-        // Update waitlist status if user was on waitlist
-        if let Err(e) = db_invites::update_waitlist_status(
-            &auth_session.backend.db, 
-            &payload.email, 
-            "registered", 
-            Some(invite_code)
-        ).await {
-            tracing::debug!("User was not on waitlist or failed to update status: {}", e);
-            // This is fine - user might not have been on waitlist
-        }
+    // Update waitlist status if user was on waitlist
+    if let Err(e) = db_invites::update_waitlist_status(
+        &auth_session.backend.db, 
+        &payload.email, 
+        "registered", 
+        Some(&invite_code)
+    ).await {
+        tracing::debug!("User was not on waitlist or failed to update status: {}", e);
+        // This is fine - user might not have been on waitlist
+    }
+
+    // Log admin user creation
+    if is_admin_invite {
+        tracing::info!("🎉 Admin user created: {} ({})", payload.email, user.id);
+        println!("🎉 Admin user successfully created: {}", payload.email);
     }
 
     // Log the user in immediately after registration

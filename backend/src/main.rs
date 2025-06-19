@@ -15,6 +15,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+mod admin;
 mod app_state;
 mod auth;
 mod database;
@@ -83,6 +84,11 @@ async fn main() -> anyhow::Result<()> {
 
     // Run migrations for production (embedded migrations)
     database::run_migrations(&pool).await?;
+
+    // Ensure admin invite exists and print it if needed
+    if let Err(e) = admin::ensure_admin_invite(&pool).await {
+        tracing::error!("Failed to create admin invite: {}", e);
+    }
 
     // Create application state
     let mut app_state = AppState::new(pool.clone());

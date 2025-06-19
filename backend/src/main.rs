@@ -25,7 +25,7 @@ mod models;
 mod utils;
 
 use app_state::AppState;
-use handlers::{auth as auth_handlers, calendar, google_tasks, invites, plants};
+use handlers::{admin as admin_handlers, auth as auth_handlers, calendar, google_tasks, invites, plants};
 use planty_api::ApiDoc;
 use utils::{
     google_tasks::GoogleTasksConfig, 
@@ -148,6 +148,7 @@ async fn main() -> anyhow::Result<()> {
     let api_router = Router::new()
         .route("/health", get(health_check))
         .nest("/auth", auth_handlers::routes())
+        .nest("/admin", admin_handlers::routes())
         .nest("/invites", invites::routes())
         .nest("/plants", plants::routes())
         .nest("/calendar", calendar::routes())

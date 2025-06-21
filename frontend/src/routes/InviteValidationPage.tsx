@@ -1,30 +1,35 @@
-import { Component, createSignal } from 'solid-js';
-import { A, useNavigate } from '@solidjs/router';
+import { Component, createSignal, onMount } from 'solid-js';
+import { A, useNavigate, useSearchParams } from '@solidjs/router';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { apiClient } from '@/api/client';
 
 export const InviteValidationPage: Component = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [inviteCode, setInviteCode] = createSignal('');
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal('');
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
-    
-    if (!inviteCode().trim()) {
-      setError('Please enter an invite code');
-      return;
+  onMount(() => {
+    // Check for invite code in URL parameters
+    const urlCode = searchParams.invite || searchParams.code;
+    if (urlCode) {
+      setInviteCode(urlCode);
+      // Auto-validate and redirect to register page
+      handleInviteValidation(urlCode);
     }
+  });
 
+  const handleInviteValidation = async (code: string) => {
     try {
       setLoading(true);
       setError('');
       
-      await apiClient.validateInvite({ code: inviteCode().trim() });
+      await apiClient.validateInvite({ code: code.trim() });
       
-      navigate(`/register?invite=${encodeURIComponent(inviteCode().trim())}`);
+      // Redirect to register page with the validated invite code
+      navigate(`/register?code=${encodeURIComponent(code.trim())}`);
     } catch (error: unknown) {
       console.error('Invite validation failed:', error);
       if (error && typeof error === 'object' && 'response' in error && 
@@ -36,6 +41,17 @@ export const InviteValidationPage: Component = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: Event) => {
+    e.preventDefault();
+    
+    if (!inviteCode().trim()) {
+      setError('Please enter an invite code');
+      return;
+    }
+
+    await handleInviteValidation(inviteCode());
   };
 
   return (

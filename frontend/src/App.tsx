@@ -8,6 +8,7 @@ import { LoginPage } from '@/routes/LoginPage';
 import { RegisterPage } from '@/routes/RegisterPage';
 import { InviteValidationPage } from '@/routes/InviteValidationPage';
 import { InviteManagementPage } from '@/routes/InviteManagementPage';
+import { AdminDashboardPage } from '@/routes/AdminDashboardPage';
 import { PlantsPage } from '@/routes/PlantsPage';
 import { PlantDetailPage } from '@/routes/PlantDetailPage';
 import { PlantFormPage } from '@/routes/PlantFormPage';
@@ -172,6 +173,19 @@ const App: Component = () => {
             >
               <AppLayout>
                 <InviteManagementPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/admin/dashboard"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
+              fallback={<Navigate href="/plants" />}
+            >
+              <AppLayout>
+                <AdminDashboardPage />
               </AppLayout>
             </Show>
           )}

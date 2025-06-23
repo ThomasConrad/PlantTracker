@@ -9,6 +9,10 @@ import { RegisterPage } from '@/routes/RegisterPage';
 import { InviteValidationPage } from '@/routes/InviteValidationPage';
 import { InviteManagementPage } from '@/routes/InviteManagementPage';
 import { AdminDashboardPage } from '@/routes/AdminDashboardPage';
+import { AdminUsersPage } from '@/routes/AdminUsersPage';
+import { AdminSettingsPage } from '@/routes/AdminSettingsPage';
+import { AdminHealthPage } from '@/routes/AdminHealthPage';
+import { UserSettingsPage } from '@/routes/UserSettingsPage';
 import { PlantsPage } from '@/routes/PlantsPage';
 import { PlantDetailPage } from '@/routes/PlantDetailPage';
 import { PlantFormPage } from '@/routes/PlantFormPage';
@@ -199,6 +203,58 @@ const App: Component = () => {
             >
               <AppLayout>
                 <AdminDashboardPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/admin/users"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
+              fallback={<Navigate href="/plants" />}
+            >
+              <AppLayout>
+                <AdminUsersPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/admin/settings"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
+              fallback={<Navigate href="/plants" />}
+            >
+              <AppLayout>
+                <AdminSettingsPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/admin/health"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
+              fallback={<Navigate href="/plants" />}
+            >
+              <AppLayout>
+                <AdminHealthPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/settings"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated}
+              fallback={<Navigate href="/invite" />}
+            >
+              <AppLayout>
+                <UserSettingsPage />
               </AppLayout>
             </Show>
           )}

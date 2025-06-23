@@ -2,14 +2,15 @@ use axum::{
     extract::{Query, State},
     response::Json,
     routing::{delete, get, post, put},
-    Extension, Json as JsonExtractor, Router,
+    Json as JsonExtractor, Router,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::{
     admin::{get_system_stats, SystemStats},
     app_state::AppState,
-    models::user::{User, UserResponse, UserRole},
+    auth::AuthSession,
+    models::user::{UserResponse, UserRole},
     utils::errors::{AppError, Result},
 };
 
@@ -97,9 +98,13 @@ pub enum BulkUserAction {
     security(("session" = []))
 )]
 pub async fn get_admin_dashboard(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
 ) -> Result<Json<AdminDashboardResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -203,10 +208,14 @@ pub async fn get_admin_dashboard(
     security(("session" = []))
 )]
 pub async fn list_users(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
     Query(query): Query<UserListQuery>,
 ) -> Result<Json<UserListResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -294,11 +303,15 @@ pub async fn list_users(
     security(("session" = []))
 )]
 pub async fn update_user(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
     axum::extract::Path(user_id): axum::extract::Path<String>,
     JsonExtractor(request): JsonExtractor<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -412,10 +425,14 @@ pub async fn update_user(
     security(("session" = []))
 )]
 pub async fn delete_user(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
     axum::extract::Path(user_id): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -463,9 +480,13 @@ pub async fn delete_user(
     security(("session" = []))
 )]
 pub async fn get_admin_settings(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
 ) -> Result<Json<AdminSettingsResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -515,10 +536,14 @@ pub async fn get_admin_settings(
     security(("session" = []))
 )]
 pub async fn update_admin_settings(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
     JsonExtractor(request): JsonExtractor<UpdateAdminSettingsRequest>,
 ) -> Result<Json<AdminSettingsResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -561,8 +586,34 @@ pub async fn update_admin_settings(
         .await?;
     }
 
-    // Return updated settings
-    get_admin_settings(State(state), Extension(user)).await
+    // Return updated settings by fetching them again
+    let max_total_users_opt =
+        sqlx::query_scalar!("SELECT value FROM admin_settings WHERE key = 'max_total_users'")
+            .fetch_one(&state.pool)
+            .await?;
+
+    let max_total_users = max_total_users_opt.parse::<i32>().unwrap_or(1000);
+
+    let default_user_invite_limit_opt = sqlx::query_scalar!(
+        "SELECT value FROM admin_settings WHERE key = 'default_user_invite_limit'"
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let default_user_invite_limit = default_user_invite_limit_opt.parse::<i32>().unwrap_or(5);
+
+    let registration_enabled_opt =
+        sqlx::query_scalar!("SELECT value FROM admin_settings WHERE key = 'registration_enabled'")
+            .fetch_one(&state.pool)
+            .await?;
+
+    let registration_enabled = registration_enabled_opt.parse::<bool>().unwrap_or(true);
+
+    Ok(Json(AdminSettingsResponse {
+        max_total_users,
+        default_user_invite_limit,
+        registration_enabled,
+    }))
 }
 
 /// Perform bulk actions on users
@@ -579,10 +630,14 @@ pub async fn update_admin_settings(
     security(("session" = []))
 )]
 pub async fn bulk_user_action(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
     JsonExtractor(request): JsonExtractor<BulkUserActionRequest>,
 ) -> Result<Json<serde_json::Value>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -675,9 +730,13 @@ pub async fn bulk_user_action(
     security(("session" = []))
 )]
 pub async fn get_system_health(
+    auth_session: AuthSession,
     State(state): State<AppState>,
-    Extension(user): Extension<User>,
 ) -> Result<Json<serde_json::Value>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {

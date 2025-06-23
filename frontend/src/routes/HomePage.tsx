@@ -264,9 +264,9 @@ export const HomePage: Component = () => {
               <span class="text-xl font-bold text-white">Planty</span>
             </div>
             <div class="flex items-center space-x-6">
-              <a href="#" class="text-gray-400 hover:text-white">Privacy</a>
-              <a href="#" class="text-gray-400 hover:text-white">Terms</a>
-              <a href="#" class="text-gray-400 hover:text-white">Contact</a>
+              <A href="/privacy" class="text-gray-400 hover:text-white">Privacy</A>
+              <A href="/terms" class="text-gray-400 hover:text-white">Terms</A>
+              <A href="/contact" class="text-gray-400 hover:text-white">Contact</A>
             </div>
           </div>
           <div class="mt-8 pt-8 border-t border-gray-800 text-center">

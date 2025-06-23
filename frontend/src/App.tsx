@@ -16,6 +16,9 @@ import { CalendarPage } from '@/routes/CalendarPage';
 import { CalendarSettingsPage } from '@/routes/CalendarSettingsPage';
 import { SearchPage } from '@/routes/SearchPage';
 import { NotFoundPage } from '@/routes/NotFoundPage';
+import { PrivacyPage } from '@/routes/PrivacyPage';
+import { TermsPage } from '@/routes/TermsPage';
+import { ContactPage } from '@/routes/ContactPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 
@@ -76,8 +79,11 @@ const App: Component = () => {
           )}
         />
         
-        {/* 404 page - accessible to all */}
+        {/* Legal and info pages - accessible to all */}
         <Route path="/404" component={NotFoundPage} />
+        <Route path="/privacy" component={PrivacyPage} />
+        <Route path="/terms" component={TermsPage} />
+        <Route path="/contact" component={ContactPage} />
         
         {/* Protected routes */}
         <Route

@@ -413,11 +413,11 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
       {/* Month Picker Modal - Unified Design */}
       <Show when={showMonthPicker()}>
         <div 
-          class="modal-overlay"
+          class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
           onClick={() => setShowMonthPicker(false)}
         >
           <div 
-            class="modal-content"
+            class="bg-white rounded-lg shadow-xl max-w-sm w-full"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with Year Navigation */}

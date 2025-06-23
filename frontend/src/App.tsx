@@ -15,6 +15,7 @@ import { PlantFormPage } from '@/routes/PlantFormPage';
 import { CalendarPage } from '@/routes/CalendarPage';
 import { CalendarSettingsPage } from '@/routes/CalendarSettingsPage';
 import { SearchPage } from '@/routes/SearchPage';
+import { NotFoundPage } from '@/routes/NotFoundPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 
@@ -34,6 +35,7 @@ const App: Component = () => {
         }
       >
       <Routes>
+        {/* Public routes */}
         <Route
           path="/login"
           component={() => (
@@ -73,6 +75,11 @@ const App: Component = () => {
             </Show>
           )}
         />
+        
+        {/* 404 page - accessible to all */}
+        <Route path="/404" component={NotFoundPage} />
+        
+        {/* Protected routes */}
         <Route
           path="/plants"
           component={() => (
@@ -190,6 +197,8 @@ const App: Component = () => {
             </Show>
           )}
         />
+        
+        {/* Home route */}
         <Route
           path="/"
           component={() => (
@@ -201,7 +210,9 @@ const App: Component = () => {
             </Show>
           )}
         />
-        <Route path="*" component={() => <Navigate href="/" />} />
+        
+        {/* Catch-all 404 route - must be last */}
+        <Route path="*" component={NotFoundPage} />
       </Routes>
     </Show>
     </ThemeProvider>

@@ -214,8 +214,15 @@ async fn health_check() -> Json<Value> {
 }
 
 // API 404 handler - returns proper 404 for unknown API routes
-async fn api_not_found() -> StatusCode {
-    StatusCode::NOT_FOUND
+async fn api_not_found() -> (StatusCode, Json<Value>) {
+    (
+        StatusCode::NOT_FOUND,
+        Json(json!({
+            "error": "Not Found",
+            "message": "The requested API endpoint was not found",
+            "status": 404
+        }))
+    )
 }
 
 // SPA fallback handler - serves index.html for unmatched routes

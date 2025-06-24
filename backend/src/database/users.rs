@@ -3,6 +3,10 @@ use bcrypt::{hash, verify, DEFAULT_COST};
 use chrono::Utc;
 use uuid::Uuid;
 
+// Use lower cost for tests to speed them up
+#[cfg(test)]
+const TEST_COST: u32 = 4; // Much faster than DEFAULT_COST (12)
+
 use crate::database::DatabasePool;
 use crate::models::{CreateUserRequest, User, UserRow, UserRole};
 use crate::utils::errors::AppError;
@@ -195,14 +199,15 @@ pub async fn update_user_login_time(pool: &DatabasePool, user_id: &str) -> Resul
 
 #[cfg(test)]
 mod tests {
-    use bcrypt::{hash, verify, DEFAULT_COST};
+    use bcrypt::{hash, verify};
+    use super::TEST_COST;
 
     #[test]
     fn test_password_hashing_and_verification() {
         let password = "test_password_123";
 
-        // Test hashing
-        let hash_result = hash(password, DEFAULT_COST);
+        // Test hashing - use TEST_COST for faster tests
+        let hash_result = hash(password, TEST_COST);
         assert!(hash_result.is_ok());
 
         let password_hash = hash_result.unwrap();
@@ -225,8 +230,8 @@ mod tests {
     fn test_password_hash_uniqueness() {
         let password = "same_password";
 
-        let hash1 = hash(password, DEFAULT_COST).unwrap();
-        let hash2 = hash(password, DEFAULT_COST).unwrap();
+        let hash1 = hash(password, TEST_COST).unwrap();
+        let hash2 = hash(password, TEST_COST).unwrap();
 
         // Even with the same password, hashes should be different due to salt
         assert_ne!(hash1, hash2);
@@ -241,7 +246,7 @@ mod tests {
         let empty_password = "";
 
         // Should be able to hash empty password (though not recommended)
-        let hash_result = hash(empty_password, DEFAULT_COST);
+        let hash_result = hash(empty_password, TEST_COST);
         assert!(hash_result.is_ok());
 
         let password_hash = hash_result.unwrap();
@@ -253,7 +258,7 @@ mod tests {
     fn test_long_password_handling() {
         let long_password = "a".repeat(100); // Long but reasonable password
 
-        let hash_result = hash(&long_password, DEFAULT_COST);
+        let hash_result = hash(&long_password, TEST_COST);
         assert!(hash_result.is_ok());
 
         let password_hash = hash_result.unwrap();
@@ -268,7 +273,7 @@ mod tests {
     fn test_special_characters_in_password() {
         let special_password = "p@ssw0rd!#$%^&*()_+-=[]{}|;:'\",.<>?/~`";
 
-        let hash_result = hash(special_password, DEFAULT_COST);
+        let hash_result = hash(special_password, TEST_COST);
         assert!(hash_result.is_ok());
 
         let password_hash = hash_result.unwrap();
@@ -283,7 +288,7 @@ mod tests {
     fn test_unicode_password_handling() {
         let unicode_password = "pásswörd123🔒";
 
-        let hash_result = hash(unicode_password, DEFAULT_COST);
+        let hash_result = hash(unicode_password, TEST_COST);
         assert!(hash_result.is_ok());
 
         let password_hash = hash_result.unwrap();
@@ -298,7 +303,7 @@ mod tests {
     fn test_case_sensitivity() {
         let password = "TestPassword123";
 
-        let hash_result = hash(password, DEFAULT_COST);
+        let hash_result = hash(password, TEST_COST);
         assert!(hash_result.is_ok());
 
         let password_hash = hash_result.unwrap();

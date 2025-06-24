@@ -1,24 +1,24 @@
 use anyhow::{Context, Result};
-use image::codecs::avif::AvifEncoder;
-use image::{ColorType, DynamicImage, ImageEncoder, ImageFormat};
+use image::{DynamicImage, ImageFormat};
+use webp::{Encoder, WebPMemory};
 
 /// Maximum dimensions for image processing (4K-ish resolution)
 const MAX_DIMENSION: u32 = 3840; // 4K width/height
 
-/// Processed image result containing the optimized AVIF data and metadata
+/// Processed image result containing the optimized WebP data and metadata
 #[derive(Debug)]
 pub struct ProcessedImage {
-    /// Optimized AVIF image data
+    /// Optimized WebP image data
     pub data: Vec<u8>,
     /// Final image width after processing
     pub width: u32,
     /// Final image height after processing  
     pub height: u32,
-    /// Content type (always "image/avif")
+    /// Content type (always "image/webp")
     pub content_type: String,
 }
 
-/// Process an uploaded image by converting to AVIF and optionally cropping to 4K
+/// Process an uploaded image by converting to WebP and optionally cropping to 4K
 ///
 /// This function offloads CPU-intensive image processing to a blocking thread pool
 /// to avoid blocking the async runtime during heavy image operations.
@@ -28,12 +28,12 @@ pub struct ProcessedImage {
 /// * `content_type` - Original content type for format detection
 ///
 /// # Returns
-/// * `ProcessedImage` - Optimized AVIF image with metadata
+/// * `ProcessedImage` - Optimized WebP image with metadata
 ///
 /// # Errors
 /// * Returns error if image format is unsupported
 /// * Returns error if image processing fails
-/// * Returns error if AVIF encoding fails
+/// * Returns error if WebP encoding fails
 pub async fn process_uploaded_image(
     image_data: &[u8],
     content_type: &str,
@@ -54,15 +54,15 @@ pub async fn process_uploaded_image(
         // Crop to 4K if the image is larger
         let processed_image = crop_to_max_dimension(image);
 
-        // Convert to AVIF format
-        let avif_data =
-            encode_to_avif(&processed_image).with_context(|| "Failed to encode image to AVIF")?;
+        // Convert to WebP format
+        let webp_data =
+            encode_to_webp(&processed_image).with_context(|| "Failed to encode image to WebP")?;
 
         Ok(ProcessedImage {
-            data: avif_data,
+            data: webp_data,
             width: processed_image.width(),
             height: processed_image.height(),
-            content_type: "image/avif".to_string(),
+            content_type: "image/webp".to_string(),
         })
     })
     .await
@@ -110,27 +110,19 @@ fn crop_to_max_dimension(image: DynamicImage) -> DynamicImage {
     image.resize(new_width, new_height, filter)
 }
 
-/// Encode image to AVIF format with optimized quality and speed settings
-fn encode_to_avif(image: &DynamicImage) -> Result<Vec<u8>> {
-    let mut buffer = Vec::new();
+/// Encode image to WebP format with optimized quality settings
+fn encode_to_webp(image: &DynamicImage) -> Result<Vec<u8>> {
+    // Convert to RGB8 format for WebP encoding
+    let rgb_image = image.to_rgb8();
+    let (width, height) = rgb_image.dimensions();
 
-    // Use consistent speed 4 encoding with high quality
-    let (speed, quality) = (4, 85);
-
-    // Create AVIF encoder with optimized settings
-    let encoder = AvifEncoder::new_with_speed_quality(&mut buffer, speed, quality)
-        .with_num_threads(Some(std::thread::available_parallelism()?.get()));
-
-    // Convert image to RGBA8 format for encoding
-    let rgba_image = image.to_rgba8();
-    let (width, height) = rgba_image.dimensions();
-
-    // Encode the image data
-    encoder
-        .write_image(rgba_image.as_raw(), width, height, ColorType::Rgba8)
-        .with_context(|| "Failed to encode image as AVIF")?;
-
-    Ok(buffer)
+    // Create WebP encoder with lossy compression at 85% quality
+    let encoder = Encoder::from_rgb(&rgb_image, width, height);
+    
+    // Encode with 85% quality for good balance of size/quality
+    let webp_memory: WebPMemory = encoder.encode(85f32);
+    
+    Ok(webp_memory.to_vec())
 }
 
 #[cfg(test)]
@@ -149,7 +141,7 @@ mod tests {
 
         let result = process_uploaded_image(&buffer, "image/jpeg").await.unwrap();
 
-        assert_eq!(result.content_type, "image/avif");
+        assert_eq!(result.content_type, "image/webp");
         assert_eq!(result.width, 100);
         assert_eq!(result.height, 100);
         assert!(!result.data.is_empty());
@@ -157,14 +149,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_crop_large_image() {
-        // Create a large test image (5000x3000)
-        let large_img = DynamicImage::new_rgb8(5000, 3000);
+        // Create a smaller but still large test image (1200x800) to test cropping logic
+        // This is much faster than 5000x3000 but still tests the same functionality
+        let large_img = DynamicImage::new_rgb8(1200, 800);
         let cropped = crop_to_max_dimension(large_img);
 
+        // Should remain unchanged since it's within MAX_DIMENSION (3840)
+        assert_eq!(cropped.width(), 1200);
+        assert_eq!(cropped.height(), 800);
+        
+        // Test with image that actually needs cropping (4000x2000)
+        let oversized_img = DynamicImage::new_rgb8(4000, 2000);
+        let cropped_oversized = crop_to_max_dimension(oversized_img);
+        
         // Should be scaled down to fit within MAX_DIMENSION
-        assert!(cropped.width() <= MAX_DIMENSION);
-        assert!(cropped.height() <= MAX_DIMENSION);
-        assert_eq!(cropped.width(), MAX_DIMENSION); // Wider dimension should hit the limit
+        assert!(cropped_oversized.width() <= MAX_DIMENSION);
+        assert!(cropped_oversized.height() <= MAX_DIMENSION);
+        assert_eq!(cropped_oversized.width(), MAX_DIMENSION); // Wider dimension should hit the limit
     }
 
     #[test]
@@ -180,6 +181,10 @@ mod tests {
         assert!(matches!(
             detect_image_format("image/webp").unwrap(),
             ImageFormat::WebP
+        ));
+        assert!(matches!(
+            detect_image_format("image/avif").unwrap(),
+            ImageFormat::Avif
         ));
         assert!(detect_image_format("image/bmp").is_err());
     }

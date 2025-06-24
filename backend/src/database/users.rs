@@ -1,11 +1,30 @@
 use anyhow::Result;
-use bcrypt::{hash, verify, DEFAULT_COST};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use argon2::password_hash::{rand_core::OsRng, SaltString};
 use chrono::Utc;
 use uuid::Uuid;
 
-// Use lower cost for tests to speed them up
+// Argon2id configuration following OWASP recommendations:
+// - 19 MiB of memory (19456 KB)
+// - 2 iterations
+// - 1 degree of parallelism
+fn get_argon2_config() -> Argon2<'static> {
+    Argon2::new(
+        argon2::Algorithm::Argon2id,
+        argon2::Version::V0x13,
+        argon2::Params::new(19456, 2, 1, None).unwrap()
+    )
+}
+
+// For tests, use faster but still secure parameters
 #[cfg(test)]
-const TEST_COST: u32 = 4; // Much faster than DEFAULT_COST (12)
+fn get_argon2_test_config() -> Argon2<'static> {
+    Argon2::new(
+        argon2::Algorithm::Argon2id,
+        argon2::Version::V0x13,
+        argon2::Params::new(4096, 1, 1, None).unwrap() // Faster for tests
+    )
+}
 
 use crate::database::DatabasePool;
 use crate::models::{CreateUserRequest, User, UserRow, UserRole};
@@ -50,24 +69,28 @@ pub async fn create_user_internal(
     }
 
     let user_id = Uuid::new_v4().to_string();
-    let salt = Uuid::new_v4().to_string();
-    let password_hash = hash(&request.password, DEFAULT_COST).map_err(|e| AppError::Internal {
-        message: format!("Failed to hash password: {e}"),
-    })?;
+    
+    // Generate salt and hash password with Argon2id
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = get_argon2_config();
+    let password_hash = argon2.hash_password(request.password.as_bytes(), &salt)
+        .map_err(|e| AppError::Internal {
+            message: format!("Failed to hash password: {e}"),
+        })?
+        .to_string();
 
     let now = Utc::now().to_rfc3339();
     let role_str = role.to_string();
 
     let result = sqlx::query!(
         r#"
-        INSERT INTO users (id, email, name, password_hash, salt, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        INSERT INTO users (id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
         "#,
         user_id,
         request.email,
         request.name,
         password_hash,
-        salt,
         role_str,
         can_create_invites,
         max_invites,
@@ -118,7 +141,9 @@ async fn get_max_total_users(pool: &DatabasePool) -> Result<i32, AppError> {
 }
 
 pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, AppError> {
-    let user_row = sqlx::query_as::<_, UserRow>("SELECT * FROM users WHERE id = ?")
+    let user_row = sqlx::query_as::<_, UserRow>(
+        "SELECT id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?"
+    )
         .bind(user_id)
         .fetch_optional(pool)
         .await
@@ -138,7 +163,9 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, 
 }
 
 pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User, AppError> {
-    let user_row = sqlx::query_as::<_, UserRow>("SELECT * FROM users WHERE email = ?")
+    let user_row = sqlx::query_as::<_, UserRow>(
+        "SELECT id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE email = ?"
+    )
         .bind(email)
         .fetch_optional(pool)
         .await
@@ -164,9 +191,13 @@ pub async fn verify_password(
 ) -> Result<User, AppError> {
     let user = get_user_by_email(pool, email).await?;
 
-    let is_valid = verify(password, &user.password_hash).map_err(|e| AppError::Internal {
-        message: format!("Failed to verify password: {e}"),
+    // Parse the stored password hash and verify with Argon2id
+    let parsed_hash = PasswordHash::new(&user.password_hash).map_err(|e| AppError::Internal {
+        message: format!("Failed to parse password hash: {e}"),
     })?;
+    
+    let argon2 = get_argon2_config();
+    let is_valid = argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok();
 
     if is_valid {
         Ok(user)
@@ -199,129 +230,158 @@ pub async fn update_user_login_time(pool: &DatabasePool, user_id: &str) -> Resul
 
 #[cfg(test)]
 mod tests {
-    use bcrypt::{hash, verify};
-    use super::TEST_COST;
+    use super::*;
+    use argon2::password_hash::{rand_core::OsRng, SaltString};
 
     #[test]
     fn test_password_hashing_and_verification() {
         let password = "test_password_123";
 
-        // Test hashing - use TEST_COST for faster tests
-        let hash_result = hash(password, TEST_COST);
+        // Test hashing with Argon2id
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = get_argon2_test_config();
+        let hash_result = argon2.hash_password(password.as_bytes(), &salt);
         assert!(hash_result.is_ok());
 
-        let password_hash = hash_result.unwrap();
+        let password_hash = hash_result.unwrap().to_string();
         assert!(!password_hash.is_empty());
         assert_ne!(password_hash, password); // Hash should be different from original
 
         // Test verification with correct password
-        let verify_result = verify(password, &password_hash);
+        let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+        let verify_result = argon2.verify_password(password.as_bytes(), &parsed_hash);
         assert!(verify_result.is_ok());
-        assert!(verify_result.unwrap());
 
         // Test verification with incorrect password
         let wrong_password = "wrong_password";
-        let verify_wrong_result = verify(wrong_password, &password_hash);
-        assert!(verify_wrong_result.is_ok());
-        assert!(!verify_wrong_result.unwrap());
+        let verify_wrong_result = argon2.verify_password(wrong_password.as_bytes(), &parsed_hash);
+        assert!(verify_wrong_result.is_err());
     }
 
     #[test]
     fn test_password_hash_uniqueness() {
         let password = "same_password";
+        let argon2 = get_argon2_test_config();
 
-        let hash1 = hash(password, TEST_COST).unwrap();
-        let hash2 = hash(password, TEST_COST).unwrap();
+        let salt1 = SaltString::generate(&mut OsRng);
+        let salt2 = SaltString::generate(&mut OsRng);
+        
+        let hash1 = argon2.hash_password(password.as_bytes(), &salt1).unwrap().to_string();
+        let hash2 = argon2.hash_password(password.as_bytes(), &salt2).unwrap().to_string();
 
         // Even with the same password, hashes should be different due to salt
         assert_ne!(hash1, hash2);
 
         // But both should verify correctly
-        assert!(verify(password, &hash1).unwrap());
-        assert!(verify(password, &hash2).unwrap());
+        let parsed_hash1 = PasswordHash::new(&hash1).unwrap();
+        let parsed_hash2 = PasswordHash::new(&hash2).unwrap();
+        assert!(argon2.verify_password(password.as_bytes(), &parsed_hash1).is_ok());
+        assert!(argon2.verify_password(password.as_bytes(), &parsed_hash2).is_ok());
     }
 
     #[test]
     fn test_empty_password_handling() {
         let empty_password = "";
+        let argon2 = get_argon2_test_config();
 
         // Should be able to hash empty password (though not recommended)
-        let hash_result = hash(empty_password, TEST_COST);
+        let salt = SaltString::generate(&mut OsRng);
+        let hash_result = argon2.hash_password(empty_password.as_bytes(), &salt);
         assert!(hash_result.is_ok());
 
-        let password_hash = hash_result.unwrap();
-        assert!(verify(empty_password, &password_hash).unwrap());
-        assert!(!verify("not_empty", &password_hash).unwrap());
+        let password_hash = hash_result.unwrap().to_string();
+        let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+        assert!(argon2.verify_password(empty_password.as_bytes(), &parsed_hash).is_ok());
+        assert!(argon2.verify_password("not_empty".as_bytes(), &parsed_hash).is_err());
     }
 
     #[test]
     fn test_long_password_handling() {
         let long_password = "a".repeat(100); // Long but reasonable password
+        let argon2 = get_argon2_test_config();
 
-        let hash_result = hash(&long_password, TEST_COST);
+        let salt = SaltString::generate(&mut OsRng);
+        let hash_result = argon2.hash_password(long_password.as_bytes(), &salt);
         assert!(hash_result.is_ok());
 
-        let password_hash = hash_result.unwrap();
-        assert!(verify(&long_password, &password_hash).unwrap());
+        let password_hash = hash_result.unwrap().to_string();
+        let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+        assert!(argon2.verify_password(long_password.as_bytes(), &parsed_hash).is_ok());
 
         // Different password should not verify
         let different_password = "b".repeat(100);
-        assert!(!verify(&different_password, &password_hash).unwrap());
+        assert!(argon2.verify_password(different_password.as_bytes(), &parsed_hash).is_err());
     }
 
     #[test]
     fn test_special_characters_in_password() {
         let special_password = "p@ssw0rd!#$%^&*()_+-=[]{}|;:'\",.<>?/~`";
+        let argon2 = get_argon2_test_config();
 
-        let hash_result = hash(special_password, TEST_COST);
+        let salt = SaltString::generate(&mut OsRng);
+        let hash_result = argon2.hash_password(special_password.as_bytes(), &salt);
         assert!(hash_result.is_ok());
 
-        let password_hash = hash_result.unwrap();
-        assert!(verify(special_password, &password_hash).unwrap());
+        let password_hash = hash_result.unwrap().to_string();
+        let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+        assert!(argon2.verify_password(special_password.as_bytes(), &parsed_hash).is_ok());
 
         // Should not verify with different special characters
         let different_special = "p@ssw0rd!#$%^&*()_+-=[]{}|;:'\",.<>?/~";
-        assert!(!verify(different_special, &password_hash).unwrap());
+        assert!(argon2.verify_password(different_special.as_bytes(), &parsed_hash).is_err());
     }
 
     #[test]
     fn test_unicode_password_handling() {
         let unicode_password = "pásswörd123🔒";
+        let argon2 = get_argon2_test_config();
 
-        let hash_result = hash(unicode_password, TEST_COST);
+        let salt = SaltString::generate(&mut OsRng);
+        let hash_result = argon2.hash_password(unicode_password.as_bytes(), &salt);
         assert!(hash_result.is_ok());
 
-        let password_hash = hash_result.unwrap();
-        assert!(verify(unicode_password, &password_hash).unwrap());
+        let password_hash = hash_result.unwrap().to_string();
+        let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+        assert!(argon2.verify_password(unicode_password.as_bytes(), &parsed_hash).is_ok());
 
         // Different unicode should not verify
         let different_unicode = "pásswörd123🔓"; // Different emoji
-        assert!(!verify(different_unicode, &password_hash).unwrap());
+        assert!(argon2.verify_password(different_unicode.as_bytes(), &parsed_hash).is_err());
     }
 
     #[test]
     fn test_case_sensitivity() {
         let password = "TestPassword123";
+        let argon2 = get_argon2_test_config();
 
-        let hash_result = hash(password, TEST_COST);
+        let salt = SaltString::generate(&mut OsRng);
+        let hash_result = argon2.hash_password(password.as_bytes(), &salt);
         assert!(hash_result.is_ok());
 
-        let password_hash = hash_result.unwrap();
-        assert!(verify(password, &password_hash).unwrap());
+        let password_hash = hash_result.unwrap().to_string();
+        let parsed_hash = PasswordHash::new(&password_hash).unwrap();
+        assert!(argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok());
 
         // Different case should not verify
-        assert!(!verify("testpassword123", &password_hash).unwrap());
-        assert!(!verify("TESTPASSWORD123", &password_hash).unwrap());
-        assert!(!verify("TestPASSWORD123", &password_hash).unwrap());
+        assert!(argon2.verify_password("testpassword123".as_bytes(), &parsed_hash).is_err());
+        assert!(argon2.verify_password("TESTPASSWORD123".as_bytes(), &parsed_hash).is_err());
+        assert!(argon2.verify_password("TestPASSWORD123".as_bytes(), &parsed_hash).is_err());
     }
 
     #[test]
     fn test_invalid_hash_format() {
         let password = "test_password";
-        let invalid_hash = "not_a_valid_bcrypt_hash";
+        let invalid_hash = "not_a_valid_argon2_hash";
+        let argon2 = get_argon2_test_config();
 
         // Should handle invalid hash gracefully
-        let verify_result = verify(password, invalid_hash);
-        assert!(verify_result.is_err());
+        let parse_result = PasswordHash::new(invalid_hash);
+        assert!(parse_result.is_err());
+        
+        // If we somehow get a parsed but invalid hash, verification should fail
+        if let Ok(parsed_hash) = parse_result {
+            let verify_result = argon2.verify_password(password.as_bytes(), &parsed_hash);
+            assert!(verify_result.is_err());
+        }
     }
 }

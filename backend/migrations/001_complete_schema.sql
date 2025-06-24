@@ -1,14 +1,17 @@
--- Consolidated Database Schema for PlantTracker
--- This migration consolidates all previous migrations into a single file
+-- Complete Database Schema for PlantTracker
+-- Consolidated migration including all features and optimizations
 -- Compatible with both SQLite and PostgreSQL
 
--- Users table
+-- Users table with role management and invite system
 CREATE TABLE users (
     id TEXT PRIMARY KEY NOT NULL,
     email TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
-    salt TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'moderator', 'user')),
+    can_create_invites BOOLEAN NOT NULL DEFAULT FALSE,
+    max_invites INTEGER DEFAULT NULL, -- NULL means unlimited (for admins)
+    invites_created INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -32,6 +35,60 @@ CREATE TABLE google_oauth_tokens (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+-- Invite codes table for controlling registration
+CREATE TABLE invite_codes (
+    id TEXT PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    created_by TEXT, -- Admin user who created the invite (nullable for system-generated)
+    used_by TEXT, -- User who used the invite (nullable until used)
+    max_uses INTEGER NOT NULL DEFAULT 1, -- How many times this code can be used
+    current_uses INTEGER NOT NULL DEFAULT 0, -- How many times it has been used
+    users_registered TEXT, -- JSON array of user IDs who registered with this code
+    expires_at TEXT, -- When the invite expires (nullable for no expiry)
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (used_by) REFERENCES users(id) ON DELETE SET NULL,
+    CHECK (current_uses <= max_uses),
+    CHECK (max_uses > 0)
+);
+
+-- Waitlist table for users waiting for access
+CREATE TABLE waitlist (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT,
+    message TEXT, -- Optional message from the user
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'invited', 'registered')),
+    invited_at TEXT, -- When they were sent an invite
+    invite_code TEXT, -- The invite code that was sent to them
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (invite_code) REFERENCES invite_codes(code) ON DELETE SET NULL
+);
+
+-- Admin settings table for global configuration
+CREATE TABLE admin_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    description TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- User invite usage table to track who used whose invites
+CREATE TABLE user_invite_usage (
+    id TEXT PRIMARY KEY,
+    invite_code_id TEXT NOT NULL,
+    creator_user_id TEXT, -- Who created the invite
+    registered_user_id TEXT NOT NULL, -- Who used the invite to register
+    registered_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (invite_code_id) REFERENCES invite_codes(id) ON DELETE CASCADE,
+    FOREIGN KEY (creator_user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (registered_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Plants table with schedule customization
@@ -72,7 +129,7 @@ CREATE TABLE custom_metrics (
     FOREIGN KEY (plant_id) REFERENCES plants(id) ON DELETE CASCADE
 );
 
--- Photos table with AVIF support
+-- Photos table with WebP support
 CREATE TABLE photos (
     id TEXT PRIMARY KEY,
     plant_id TEXT NOT NULL,
@@ -106,11 +163,39 @@ CREATE TABLE tracking_entries (
     FOREIGN KEY (metric_id) REFERENCES custom_metrics(id) ON DELETE SET NULL
 );
 
+-- Insert default admin settings
+INSERT INTO admin_settings (key, value, description) VALUES 
+    ('max_total_users', '1000', 'Maximum total users allowed in the system'),
+    ('default_user_invite_limit', '5', 'Default number of invites new users can create'),
+    ('registration_enabled', 'true', 'Whether new user registration is enabled');
+
 -- Indexes for performance optimization
+
+-- User table indexes
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_role ON users(role);
+CREATE INDEX idx_users_can_create_invites ON users(can_create_invites);
+CREATE INDEX idx_users_invites_created ON users(invites_created);
+
+-- Session and auth indexes
 CREATE INDEX idx_tower_sessions_expiry ON tower_sessions(expiry_date);
 CREATE INDEX idx_google_oauth_tokens_user_id ON google_oauth_tokens(user_id);
 CREATE INDEX idx_google_oauth_tokens_expires_at ON google_oauth_tokens(expires_at);
+
+-- Invite system indexes
+CREATE INDEX idx_invite_codes_code ON invite_codes(code);
+CREATE INDEX idx_invite_codes_created_by ON invite_codes(created_by);
+CREATE INDEX idx_invite_codes_used_by ON invite_codes(used_by);
+CREATE INDEX idx_invite_codes_is_active ON invite_codes(is_active);
+CREATE INDEX idx_invite_codes_expires_at ON invite_codes(expires_at);
+CREATE INDEX idx_waitlist_email ON waitlist(email);
+CREATE INDEX idx_waitlist_status ON waitlist(status);
+CREATE INDEX idx_waitlist_created_at ON waitlist(created_at);
+CREATE INDEX idx_user_invite_usage_creator ON user_invite_usage(creator_user_id);
+CREATE INDEX idx_user_invite_usage_registered_user ON user_invite_usage(registered_user_id);
+CREATE INDEX idx_user_invite_usage_registered_at ON user_invite_usage(registered_at);
+
+-- Plant system indexes
 CREATE INDEX idx_plants_user_id ON plants(user_id);
 CREATE INDEX idx_plants_preview_id ON plants(preview_id);
 CREATE INDEX idx_custom_metrics_plant_id ON custom_metrics(plant_id);
@@ -118,4 +203,4 @@ CREATE INDEX idx_photos_plant_id ON photos(plant_id);
 CREATE INDEX idx_tracking_entries_plant_id ON tracking_entries(plant_id);
 CREATE INDEX idx_tracking_entries_timestamp ON tracking_entries(timestamp);
 CREATE INDEX idx_tracking_entries_entry_type ON tracking_entries(entry_type);
-CREATE INDEX idx_tracking_entries_timestamp_type ON tracking_entries(timestamp, entry_type); 
+CREATE INDEX idx_tracking_entries_timestamp_type ON tracking_entries(timestamp, entry_type);

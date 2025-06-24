@@ -13,7 +13,6 @@ pub struct User {
     pub email: String,
     pub name: String,
     pub password_hash: String,
-    pub salt: String,
     pub role: UserRole,
     pub can_create_invites: bool,
     pub max_invites: Option<i32>, // None means unlimited
@@ -59,7 +58,6 @@ pub struct UserRow {
     pub email: String,
     pub name: String,
     pub password_hash: String,
-    pub salt: String,
     pub role: String,
     pub can_create_invites: bool,
     pub max_invites: Option<i32>,
@@ -76,7 +74,6 @@ impl UserRow {
             email: self.email,
             name: self.name,
             password_hash: self.password_hash,
-            salt: self.salt,
             role: self.role.parse().map_err(|e| {
                 crate::utils::errors::AppError::Internal {
                     message: format!("Invalid user role in database: {}", e),
@@ -294,7 +291,6 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
-            salt: "salt".to_string(),
             role: UserRole::User,
             can_create_invites: false,
             max_invites: Some(5),
@@ -315,7 +311,6 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
-            salt: "salt".to_string(),
             role: UserRole::User,
             can_create_invites: false,
             max_invites: Some(5),
@@ -366,7 +361,6 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
-            salt: "salt".to_string(),
             role: "user".to_string(),
             can_create_invites: false,
             max_invites: Some(5),
@@ -381,7 +375,6 @@ mod tests {
         assert_eq!(user.email, "test@example.com");
         assert_eq!(user.name, "Test User");
         assert_eq!(user.password_hash, "hashed_password");
-        assert_eq!(user.salt, "salt");
     }
 
     #[test]
@@ -391,7 +384,6 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
-            salt: "salt".to_string(),
             role: "user".to_string(),
             can_create_invites: false,
             max_invites: Some(5),
@@ -417,7 +409,6 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
-            salt: "salt".to_string(),
             role: UserRole::User,
             can_create_invites: false,
             max_invites: Some(5),
@@ -431,7 +422,6 @@ mod tests {
         assert_eq!(user.email, cloned_user.email);
         assert_eq!(user.name, cloned_user.name);
         assert_eq!(user.password_hash, cloned_user.password_hash);
-        assert_eq!(user.salt, cloned_user.salt);
     }
 
     #[test]
@@ -441,7 +431,6 @@ mod tests {
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
             password_hash: "hashed_password".to_string(),
-            salt: "salt".to_string(),
             role: UserRole::User,
             can_create_invites: false,
             max_invites: Some(5),

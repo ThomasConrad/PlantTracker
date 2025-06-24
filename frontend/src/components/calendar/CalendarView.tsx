@@ -293,11 +293,11 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
           <div class="responsive-container">
       {/* Mobile Layout */}
       <Show when={isMobile()}>
-        {/* Compact Calendar - Top 2/5 */}
+        {/* Compact Calendar - Top 40% */}
         <div class="flex-none bg-white h-[40vh] overflow-hidden">
           <div class="h-full flex flex-col">
             {/* Compact Header */}
-            <div class="flex items-center justify-between px-3 py-2 border-b border-gray-200">
+            <div class="flex items-center justify-between px-3 py-1.5 border-b border-gray-200">
               <button
                 onClick={() => navigateMonth('prev')}
                 class="nav-button-compact"
@@ -308,7 +308,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
               </button>
               
               <button
-                class="text-base font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                class="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors"
                 onClick={() => setShowMonthPicker(true)}
               >
                 {monthNames[currentDate().getMonth()]} {currentDate().getFullYear()}
@@ -332,15 +332,15 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
 
             <Show when={!loading()}>
               <div 
-                class="flex-1 p-1.5"
+                class="flex-1 px-1 pb-1"
                 onTouchStart={handleCalendarTouchStart}
                 onTouchEnd={handleCalendarTouchEnd}
               >
                 {/* Compact Day Headers */}
-                <div class="grid grid-cols-7 gap-0.5 mb-1">
+                <div class="grid grid-cols-7 gap-0.5 mb-0.5">
                   <For each={dayNamesShort}>
                     {(day) => (
-                      <div class="p-1 text-center text-xs font-medium text-gray-600">
+                      <div class="py-0.5 px-1 text-center text-xs font-medium text-gray-600">
                         {day}
                       </div>
                     )}
@@ -359,13 +359,13 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                       
                       return (
                         <div 
-                          class={`aspect-square flex flex-col items-center justify-center text-center cursor-pointer rounded-lg transition-colors ${
+                          class={`h-10 flex flex-col items-center justify-center text-center cursor-pointer rounded-lg transition-colors ${
                             isSelectedDay ? 'bg-blue-100 border-2 border-blue-500' :
                             !isCurrentMonthDay ? 'text-gray-300' : 'hover:bg-gray-50'
                           }`}
                           onClick={() => handleDateClick(day)}
                         >
-                          <div class={`text-sm font-medium flex items-center justify-center w-8 h-8 ${
+                          <div class={`text-xs font-medium flex items-center justify-center w-6 h-6 ${
                             isTodayDay && !isSelectedDay ? 'bg-gray-900 text-white rounded-full' :
                             isTodayDay && isSelectedDay ? 'bg-blue-700 text-white rounded-full' :
                             isSelectedDay ? 'text-blue-700' :
@@ -375,7 +375,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                           </div>
                           
                           {/* Activity Dots */}
-                          <div class="flex space-x-0.5 mt-0.5">
+                          <div class="flex space-x-0.5 mt-0">
                             <Show when={activities.watering}>
                               <div class="activity-dot bg-blue-500"></div>
                             </Show>

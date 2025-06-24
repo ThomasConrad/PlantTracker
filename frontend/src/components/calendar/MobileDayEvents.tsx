@@ -140,7 +140,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
       onTouchEnd={handleTouchEnd}
     >
       {/* Compact Day Header */}
-      <div class="flex-none px-3 py-2 border-b border-gray-200 bg-white">
+      <div class="flex-none px-3 py-1.5 border-b border-gray-200 bg-white">
         <div class="flex items-center justify-between">
           <button
             onClick={goToPreviousDay}
@@ -152,7 +152,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
           </button>
 
           <div class="text-center">
-            <p class="text-sm text-gray-500">
+            <p class="text-xs text-gray-500">
               {props.events.length} {props.events.length === 1 ? 'activity' : 'activities'}
             </p>
           </div>

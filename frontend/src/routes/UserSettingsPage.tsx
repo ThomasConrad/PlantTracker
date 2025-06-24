@@ -2,7 +2,6 @@ import { Component, createSignal, onMount, Show } from 'solid-js';
 import { authStore } from '@/stores/auth';
 
 export const UserSettingsPage: Component = () => {
-  const [loading, setLoading] = createSignal(false);
   const [saving, setSaving] = createSignal(false);
   const [success, setSuccess] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);

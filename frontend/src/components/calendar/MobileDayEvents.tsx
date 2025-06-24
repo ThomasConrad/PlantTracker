@@ -23,6 +23,8 @@ interface MobileDayEventsProps {
 export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
   const [startX, setStartX] = createSignal(0);
   const [swiping, setSwiping] = createSignal(false);
+  const [swipeOffset, setSwipeOffset] = createSignal(0);
+  const [animating, setAnimating] = createSignal(false);
 
   // Group events by 10-minute intervals
   const eventsByTime = createMemo(() => {
@@ -92,6 +94,19 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
   const handleTouchStart = (e: TouchEvent) => {
     setStartX(e.touches[0].clientX);
     setSwiping(true);
+    setSwipeOffset(0);
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!swiping()) return;
+    
+    const currentX = e.touches[0].clientX;
+    const diffX = currentX - startX();
+    
+    // Limit the swipe offset to prevent excessive drag
+    const maxOffset = 100;
+    const limitedOffset = Math.max(-maxOffset, Math.min(maxOffset, diffX));
+    setSwipeOffset(limitedOffset);
   };
 
   const handleTouchEnd = (e: TouchEvent) => {
@@ -99,6 +114,9 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
 
     const endX = e.changedTouches[0].clientX;
     const diffX = startX() - endX;
+
+    setSwiping(false);
+    setAnimating(true);
 
     // Minimum swipe distance
     if (Math.abs(diffX) > 50) {
@@ -116,7 +134,11 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
       props.onDateChange(newDate);
     }
 
-    setSwiping(false);
+    // Reset offset with animation
+    setTimeout(() => {
+      setSwipeOffset(0);
+      setAnimating(false);
+    }, 300);
   };
 
   const goToPreviousDay = () => {
@@ -137,6 +159,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
     <div
       class="h-full flex flex-col bg-white"
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       {/* Compact Day Header */}
@@ -169,7 +192,10 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
       </div>
 
       {/* Events List */}
-      <div class="flex-1 overflow-y-auto">
+      <div 
+        class={`flex-1 overflow-y-auto ${animating() ? 'transition-transform duration-300' : ''}`}
+        style={`transform: translateX(${swipeOffset()}px)`}
+      >
         <Show
           when={props.events.length > 0}
           fallback={
@@ -257,14 +283,6 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
         </Show>
       </div>
 
-      {/* Swipe Indicator */}
-      <Show when={swiping()}>
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black bg-opacity-75 text-white px-3 py-2 rounded-lg">
-          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-          </svg>
-        </div>
-      </Show>
     </div>
   );
 };

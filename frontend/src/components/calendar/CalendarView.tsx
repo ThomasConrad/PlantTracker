@@ -36,6 +36,8 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
   // Swipe handling for calendar
   const [calendarStartX, setCalendarStartX] = createSignal(0);
   const [calendarSwiping, setCalendarSwiping] = createSignal(false);
+  const [calendarSwipeOffset, setCalendarSwipeOffset] = createSignal(0);
+  const [calendarAnimating, setCalendarAnimating] = createSignal(false);
 
   // Get the first day of the current month
   const firstDayOfMonth = createMemo(() => {
@@ -70,6 +72,46 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     return days;
   });
 
+  // Get previous month calendar days for seamless scrolling
+  const prevMonthDays = createMemo(() => {
+    const days: Date[] = [];
+    const prevMonth = new Date(currentDate());
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    
+    const firstDayOfPrevMonth = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 1);
+    const dayOfWeek = firstDayOfPrevMonth.getDay();
+    const start = new Date(firstDayOfPrevMonth);
+    start.setDate(start.getDate() - dayOfWeek);
+    
+    for (let i = 0; i < 42; i++) {
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+      days.push(day);
+    }
+    
+    return days;
+  });
+
+  // Get next month calendar days for seamless scrolling
+  const nextMonthDays = createMemo(() => {
+    const days: Date[] = [];
+    const nextMonth = new Date(currentDate());
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    
+    const firstDayOfNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 1);
+    const dayOfWeek = firstDayOfNextMonth.getDay();
+    const start = new Date(firstDayOfNextMonth);
+    start.setDate(start.getDate() - dayOfWeek);
+    
+    for (let i = 0; i < 42; i++) {
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+      days.push(day);
+    }
+    
+    return days;
+  });
+
   // Get events for a specific date
   const getEventsForDate = (date: Date) => {
     const dateStr = date.toDateString();
@@ -83,6 +125,22 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     const current = currentDate();
     return date.getMonth() === current.getMonth() && 
            date.getFullYear() === current.getFullYear();
+  };
+
+  // Check if date is in previous month
+  const isPrevMonth = (date: Date) => {
+    const prev = new Date(currentDate());
+    prev.setMonth(prev.getMonth() - 1);
+    return date.getMonth() === prev.getMonth() && 
+           date.getFullYear() === prev.getFullYear();
+  };
+
+  // Check if date is in next month
+  const isNextMonth = (date: Date) => {
+    const next = new Date(currentDate());
+    next.setMonth(next.getMonth() + 1);
+    return date.getMonth() === next.getMonth() && 
+           date.getFullYear() === next.getFullYear();
   };
 
   // Check if date is today
@@ -188,6 +246,19 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
   const handleCalendarTouchStart = (e: TouchEvent) => {
     setCalendarStartX(e.touches[0].clientX);
     setCalendarSwiping(true);
+    setCalendarSwipeOffset(0);
+  };
+
+  const handleCalendarTouchMove = (e: TouchEvent) => {
+    if (!calendarSwiping()) return;
+    
+    const currentX = e.touches[0].clientX;
+    const diffX = currentX - calendarStartX();
+    
+    // Allow full swipe width for seamless transition
+    const containerWidth = 300; // Approximate calendar width
+    const limitedOffset = Math.max(-containerWidth, Math.min(containerWidth, diffX));
+    setCalendarSwipeOffset(limitedOffset);
   };
 
   const handleCalendarTouchEnd = (e: TouchEvent) => {
@@ -196,18 +267,27 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     const endX = e.changedTouches[0].clientX;
     const diffX = calendarStartX() - endX;
     
-    // Minimum swipe distance
-    if (Math.abs(diffX) > 50) {
+    setCalendarSwiping(false);
+    setCalendarAnimating(true);
+    
+    // Threshold for month change - 30% of screen width
+    const threshold = window.innerWidth * 0.3;
+    
+    if (Math.abs(diffX) > threshold) {
       if (diffX > 0) {
         // Swipe left - next month
         navigateMonth('next');
       } else {
-        // Swipe right - previous month
+        // Swipe right - previous month  
         navigateMonth('prev');
       }
     }
     
-    setCalendarSwiping(false);
+    // Reset offset with animation
+    setTimeout(() => {
+      setCalendarSwipeOffset(0);
+      setCalendarAnimating(false);
+    }, 300);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -217,6 +297,17 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
+    
+    // Auto-navigate to the month of the clicked date if it's different
+    const clickedMonth = date.getMonth();
+    const clickedYear = date.getFullYear();
+    const currentMonth = currentDate().getMonth();
+    const currentYear = currentDate().getFullYear();
+    
+    if (clickedMonth !== currentMonth || clickedYear !== currentYear) {
+      setCurrentDate(new Date(clickedYear, clickedMonth, 1));
+    }
+    
     if (isMobile()) {
       // On mobile, always select the date (events shown in bottom view)
       return;
@@ -334,6 +425,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
               <div 
                 class="flex-1 px-1 pb-1"
                 onTouchStart={handleCalendarTouchStart}
+                onTouchMove={handleCalendarTouchMove}
                 onTouchEnd={handleCalendarTouchEnd}
               >
                 {/* Compact Day Headers */}
@@ -347,52 +439,156 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                   </For>
                 </div>
 
-                {/* Compact Calendar Days */}
-                <div class="grid grid-cols-7 gap-0.5">
-                  <For each={calendarDays()}>
-                    {(day) => {
-                      const isCurrentMonthDay = isCurrentMonth(day);
-                      const isTodayDay = isToday(day);
-                      // Highlight selected date regardless of which month it's in
-                      const isSelectedDay = selectedDate()?.toDateString() === day.toDateString();
-                      const activities = getActivityDots(day);
-                      
-                      return (
-                        <div 
-                          class={`h-10 flex flex-col items-center justify-center text-center cursor-pointer rounded-lg transition-colors ${
-                            isSelectedDay ? 'bg-blue-100 border-2 border-blue-500' :
-                            !isCurrentMonthDay ? 'text-gray-300' : 'hover:bg-gray-50'
-                          }`}
-                          onClick={() => handleDateClick(day)}
-                        >
-                          <div class={`text-xs font-medium flex items-center justify-center w-6 h-6 ${
-                            isTodayDay && !isSelectedDay ? 'bg-gray-900 text-white rounded-full' :
-                            isTodayDay && isSelectedDay ? 'bg-blue-700 text-white rounded-full' :
-                            isSelectedDay ? 'text-blue-700' :
-                            !isCurrentMonthDay ? 'text-gray-300' : 'text-gray-900'
-                          }`}>
-                            {day.getDate()}
-                          </div>
-                          
-                          {/* Activity Dots */}
-                          <div class="flex space-x-0.5 mt-0">
-                            <Show when={activities.watering}>
-                              <div class="activity-dot bg-blue-500"></div>
-                            </Show>
-                            <Show when={activities.fertilizing}>
-                              <div class="activity-dot bg-green-500"></div>
-                            </Show>
-                            <Show when={activities.note}>
-                              <div class="activity-dot bg-gray-400"></div>
-                            </Show>
-                            <Show when={activities.customMetric}>
-                              <div class="activity-dot bg-purple-500"></div>
-                            </Show>
-                          </div>
-                        </div>
-                      );
-                    }}
-                  </For>
+                {/* Seamless Three-Month Calendar Container */}
+                <div class="relative overflow-hidden">
+                  <div 
+                    class={`flex ${calendarAnimating() ? 'transition-transform duration-300' : ''}`}
+                    style={`transform: translateX(calc(-100% + ${calendarSwipeOffset()}px))`}
+                  >
+                    {/* Previous Month */}
+                    <div class="w-full flex-shrink-0">
+                      <div class="grid grid-cols-7 gap-0.5">
+                        <For each={prevMonthDays()}>
+                          {(day) => {
+                            const isCurrentMonthDay = isPrevMonth(day);
+                            const isTodayDay = isToday(day);
+                            const isSelectedDay = selectedDate()?.toDateString() === day.toDateString();
+                            const activities = getActivityDots(day);
+                            
+                            return (
+                              <div 
+                                class={`h-10 flex flex-col items-center justify-center text-center cursor-pointer rounded-lg transition-colors ${
+                                  isSelectedDay ? 'bg-blue-100 border-2 border-blue-500' :
+                                  !isCurrentMonthDay ? 'text-gray-300' : 'hover:bg-gray-50'
+                                }`}
+                                onClick={() => handleDateClick(day)}
+                              >
+                                <div class={`text-xs font-medium flex items-center justify-center w-6 h-6 ${
+                                  isTodayDay && !isSelectedDay ? 'bg-gray-900 text-white rounded-full' :
+                                  isTodayDay && isSelectedDay ? 'bg-blue-700 text-white rounded-full' :
+                                  isSelectedDay ? 'text-blue-700' :
+                                  !isCurrentMonthDay ? 'text-gray-300' : 'text-gray-900'
+                                }`}>
+                                  {day.getDate()}
+                                </div>
+                                
+                                <div class="flex space-x-0.5 mt-0">
+                                  <Show when={activities.watering}>
+                                    <div class="activity-dot bg-blue-500"></div>
+                                  </Show>
+                                  <Show when={activities.fertilizing}>
+                                    <div class="activity-dot bg-green-500"></div>
+                                  </Show>
+                                  <Show when={activities.note}>
+                                    <div class="activity-dot bg-gray-400"></div>
+                                  </Show>
+                                  <Show when={activities.customMetric}>
+                                    <div class="activity-dot bg-purple-500"></div>
+                                  </Show>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    </div>
+
+                    {/* Current Month */}
+                    <div class="w-full flex-shrink-0">
+                      <div class="grid grid-cols-7 gap-0.5">
+                        <For each={calendarDays()}>
+                          {(day) => {
+                            const isCurrentMonthDay = isCurrentMonth(day);
+                            const isTodayDay = isToday(day);
+                            const isSelectedDay = selectedDate()?.toDateString() === day.toDateString();
+                            const activities = getActivityDots(day);
+                            
+                            return (
+                              <div 
+                                class={`h-10 flex flex-col items-center justify-center text-center cursor-pointer rounded-lg transition-colors ${
+                                  isSelectedDay ? 'bg-blue-100 border-2 border-blue-500' :
+                                  !isCurrentMonthDay ? 'text-gray-300' : 'hover:bg-gray-50'
+                                }`}
+                                onClick={() => handleDateClick(day)}
+                              >
+                                <div class={`text-xs font-medium flex items-center justify-center w-6 h-6 ${
+                                  isTodayDay && !isSelectedDay ? 'bg-gray-900 text-white rounded-full' :
+                                  isTodayDay && isSelectedDay ? 'bg-blue-700 text-white rounded-full' :
+                                  isSelectedDay ? 'text-blue-700' :
+                                  !isCurrentMonthDay ? 'text-gray-300' : 'text-gray-900'
+                                }`}>
+                                  {day.getDate()}
+                                </div>
+                                
+                                <div class="flex space-x-0.5 mt-0">
+                                  <Show when={activities.watering}>
+                                    <div class="activity-dot bg-blue-500"></div>
+                                  </Show>
+                                  <Show when={activities.fertilizing}>
+                                    <div class="activity-dot bg-green-500"></div>
+                                  </Show>
+                                  <Show when={activities.note}>
+                                    <div class="activity-dot bg-gray-400"></div>
+                                  </Show>
+                                  <Show when={activities.customMetric}>
+                                    <div class="activity-dot bg-purple-500"></div>
+                                  </Show>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    </div>
+
+                    {/* Next Month */}
+                    <div class="w-full flex-shrink-0">
+                      <div class="grid grid-cols-7 gap-0.5">
+                        <For each={nextMonthDays()}>
+                          {(day) => {
+                            const isCurrentMonthDay = isNextMonth(day);
+                            const isTodayDay = isToday(day);
+                            const isSelectedDay = selectedDate()?.toDateString() === day.toDateString();
+                            const activities = getActivityDots(day);
+                            
+                            return (
+                              <div 
+                                class={`h-10 flex flex-col items-center justify-center text-center cursor-pointer rounded-lg transition-colors ${
+                                  isSelectedDay ? 'bg-blue-100 border-2 border-blue-500' :
+                                  !isCurrentMonthDay ? 'text-gray-300' : 'hover:bg-gray-50'
+                                }`}
+                                onClick={() => handleDateClick(day)}
+                              >
+                                <div class={`text-xs font-medium flex items-center justify-center w-6 h-6 ${
+                                  isTodayDay && !isSelectedDay ? 'bg-gray-900 text-white rounded-full' :
+                                  isTodayDay && isSelectedDay ? 'bg-blue-700 text-white rounded-full' :
+                                  isSelectedDay ? 'text-blue-700' :
+                                  !isCurrentMonthDay ? 'text-gray-300' : 'text-gray-900'
+                                }`}>
+                                  {day.getDate()}
+                                </div>
+                                
+                                <div class="flex space-x-0.5 mt-0">
+                                  <Show when={activities.watering}>
+                                    <div class="activity-dot bg-blue-500"></div>
+                                  </Show>
+                                  <Show when={activities.fertilizing}>
+                                    <div class="activity-dot bg-green-500"></div>
+                                  </Show>
+                                  <Show when={activities.note}>
+                                    <div class="activity-dot bg-gray-400"></div>
+                                  </Show>
+                                  <Show when={activities.customMetric}>
+                                    <div class="activity-dot bg-purple-500"></div>
+                                  </Show>
+                                </div>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </Show>

@@ -126,19 +126,23 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
       if (diffX > 0) {
         // Swipe left - next day
         newDate.setDate(currentDate.getDate() + 1);
+        props.onDateChange(newDate);
+        setSwipeOffset(0);
       } else {
         // Swipe right - previous day
         newDate.setDate(currentDate.getDate() - 1);
+        props.onDateChange(newDate);
+        setSwipeOffset(0);
       }
-
-      props.onDateChange(newDate);
-    }
-
-    // Reset offset with animation
-    setTimeout(() => {
+    } else {
+      // Animate back to center position smoothly
       setSwipeOffset(0);
+    }
+    
+    // Turn off animation after transition completes
+    setTimeout(() => {
       setAnimating(false);
-    }, 300);
+    }, 200);
   };
 
   const goToPreviousDay = () => {
@@ -193,7 +197,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
 
       {/* Events List */}
       <div 
-        class={`flex-1 overflow-y-auto ${animating() ? 'transition-transform duration-300' : ''}`}
+        class={`flex-1 overflow-y-auto ${animating() ? 'transition-transform duration-[200ms] ease-out' : ''}`}
         style={`transform: translateX(${swipeOffset()}px)`}
       >
         <Show

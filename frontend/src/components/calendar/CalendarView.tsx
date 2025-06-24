@@ -277,17 +277,21 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
       if (diffX > 0) {
         // Swipe left - next month
         navigateMonth('next');
+        setCalendarSwipeOffset(0);
       } else {
-        // Swipe right - previous month  
+        // Swipe right - previous month
         navigateMonth('prev');
+        setCalendarSwipeOffset(0);
       }
+    } else {
+      // Animate back to center position smoothly
+      setCalendarSwipeOffset(0);
     }
     
-    // Reset offset with animation
+    // Turn off animation after transition completes
     setTimeout(() => {
-      setCalendarSwipeOffset(0);
       setCalendarAnimating(false);
-    }, 300);
+    }, 250);
   };
 
   const handleEventClick = (event: CalendarEvent) => {
@@ -442,7 +446,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                 {/* Seamless Three-Month Calendar Container */}
                 <div class="relative overflow-hidden">
                   <div 
-                    class={`flex ${calendarAnimating() ? 'transition-transform duration-300' : ''}`}
+                    class={`flex ${calendarAnimating() ? 'transition-transform duration-[250ms] ease-out' : ''}`}
                     style={`transform: translateX(calc(-100% + ${calendarSwipeOffset()}px))`}
                   >
                     {/* Previous Month */}

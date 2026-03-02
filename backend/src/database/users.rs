@@ -82,7 +82,7 @@ pub async fn create_user_internal(
 
     let max_total_users = get_max_total_users(pool).await?;
 
-    if total_users >= max_total_users && role != UserRole::Admin {
+    if total_users >= max_total_users {
         return Err(AppError::Internal {
             message: "Maximum number of users reached".to_string(),
         });
@@ -235,31 +235,6 @@ pub async fn update_user_login_time(pool: &DatabasePool, user_id: &str) -> Resul
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
             resource: format!("User with id {user_id}"),
-        });
-    }
-
-    Ok(())
-}
-
-pub async fn consume_invite_quota(pool: &DatabasePool, user_id: &str) -> Result<(), AppError> {
-    let now = Utc::now().to_rfc3339();
-    let updated = sqlx::query(
-        "UPDATE users
-         SET invites_created = invites_created + 1, updated_at = ?
-         WHERE id = ?
-           AND can_create_invites = TRUE
-           AND max_invites IS NOT NULL
-           AND invites_created < max_invites",
-    )
-    .bind(now)
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .map_err(AppError::Database)?;
-
-    if updated.rows_affected() != 1 {
-        return Err(AppError::Authorization {
-            message: "Invite creation limit reached or permission denied".to_string(),
         });
     }
 
@@ -652,6 +627,47 @@ mod tests {
         if let Ok(parsed_hash) = parse_result {
             let verify_result = argon2.verify_password(password.as_bytes(), &parsed_hash);
             assert!(verify_result.is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_max_total_users_applies_to_admin_users() {
+        let pool = crate::database::create_pool_with_url("sqlite::memory:")
+            .await
+            .expect("Failed to create db pool");
+        crate::database::run_migrations(&pool)
+            .await
+            .expect("Failed to run migrations");
+
+        sqlx::query!("UPDATE admin_settings SET value = '1' WHERE key = 'max_total_users'")
+            .execute(&pool)
+            .await
+            .expect("Failed to update max_total_users");
+
+        let first_admin = CreateUserRequest {
+            name: "Admin One".to_string(),
+            email: "admin1@test.com".to_string(),
+            password: "password123".to_string(),
+            invite_code: None,
+        };
+        create_user_internal(&pool, &first_admin, UserRole::Admin, true, Some(50))
+            .await
+            .expect("First admin should be created");
+
+        let second_admin = CreateUserRequest {
+            name: "Admin Two".to_string(),
+            email: "admin2@test.com".to_string(),
+            password: "password123".to_string(),
+            invite_code: None,
+        };
+        let result =
+            create_user_internal(&pool, &second_admin, UserRole::Admin, true, Some(50)).await;
+
+        match result {
+            Err(AppError::Internal { message }) => {
+                assert_eq!(message, "Maximum number of users reached");
+            }
+            other => panic!("Expected max user limit error, got: {other:?}"),
         }
     }
 }

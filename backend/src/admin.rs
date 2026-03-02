@@ -46,7 +46,7 @@ pub async fn ensure_admin_invite(pool: &SqlitePool) -> Result<String> {
     .execute(pool)
     .await?;
 
-    let invite_url = format!("http://localhost:3000/invite?code={}", admin_invite_code);
+    let invite_url = format!("http://localhost:3000/signup?code={}", admin_invite_code);
 
     // Print the admin invite to console
     println!("\n🚀 PLANTY ADMIN SETUP");

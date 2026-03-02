@@ -14,10 +14,7 @@ use models::{
         CreateGoogleTaskRequest, GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse,
         GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
     },
-    invite::{
-        CreateInviteRequest, InviteResponse, ValidateInviteRequest, WaitlistResponse,
-        WaitlistSignupRequest,
-    },
+    invite::{CreateInviteRequest, InviteResponse, ValidateInviteRequest},
     photo::{Photo, PhotosResponse},
     plant::{
         CareSchedule, CreateCareScheduleRequest, CreateCustomMetricRequest, CreatePlantRequest,
@@ -54,8 +51,6 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::invites::create_invite,
         crate::handlers::invites::validate_invite,
         crate::handlers::invites::list_invites,
-        crate::handlers::invites::join_waitlist,
-        crate::handlers::invites::list_waitlist,
         crate::handlers::plants::list_plants,
         crate::handlers::plants::create_plant,
         crate::handlers::plants::get_plant,
@@ -90,8 +85,6 @@ use handlers::google_tasks::StoreTokensRequest;
             CreateInviteRequest,
             InviteResponse,
             ValidateInviteRequest,
-            WaitlistResponse,
-            WaitlistSignupRequest,
             CreateTrackingEntryRequest,
             EntryType,
             TrackingEntriesResponse,
@@ -121,7 +114,7 @@ use handlers::google_tasks::StoreTokensRequest;
     tags(
         (name = "auth", description = "Authentication endpoints"),
         (name = "admin", description = "Admin user and system management endpoints"),
-        (name = "invites", description = "Invite system and waitlist endpoints"),
+        (name = "invites", description = "Invite system endpoints"),
         (name = "plants", description = "Plant management endpoints"),
         (name = "tracking", description = "Plant care tracking endpoints"),
         (name = "photos", description = "Photo management endpoints"),

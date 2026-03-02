@@ -307,38 +307,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/invites/waitlist": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["join_waitlist"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/invites/waitlist/list": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["list_waitlist"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/plants": {
         parameters: {
             query?: never;
@@ -735,19 +703,6 @@ export interface components {
         UserRole: "admin" | "moderator" | "user";
         ValidateInviteRequest: {
             code: string;
-        };
-        WaitlistResponse: {
-            /** Format: date-time */
-            created_at: string;
-            email: string;
-            id: string;
-            name?: string | null;
-            status: string;
-        };
-        WaitlistSignupRequest: {
-            email: string;
-            message?: string | null;
-            name?: string | null;
         };
     };
     responses: never;
@@ -1483,64 +1438,6 @@ export interface operations {
             };
             /** @description Invalid or expired invite code */
             400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    join_waitlist: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WaitlistSignupRequest"];
-            };
-        };
-        responses: {
-            /** @description Added to waitlist */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WaitlistResponse"];
-                };
-            };
-            /** @description Invalid request or email already exists */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    list_waitlist: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of waitlist entries */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WaitlistResponse"][];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
                 headers: {
                     [name: string]: unknown;
                 };

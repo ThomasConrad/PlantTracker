@@ -10,7 +10,6 @@ use utoipa::ToSchema;
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
 use crate::database::invites as db_invites;
-use crate::database::users as db_users;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{
     CreateInviteRequest, InviteResponse, ValidateInviteRequest, WaitlistResponse,
@@ -77,12 +76,14 @@ async fn create_invite(
         });
     }
 
-    db_users::consume_invite_quota(&auth_session.backend.db, &user.id).await?;
-
     tracing::info!("Creating invite code for user: {}", user.id);
 
-    let invite =
-        db_invites::create_invite_code(&auth_session.backend.db, &payload, Some(&user.id)).await?;
+    let invite = db_invites::create_invite_code_consuming_quota(
+        &auth_session.backend.db,
+        &payload,
+        &user.id,
+    )
+    .await?;
 
     tracing::info!("Invite code created: {}", invite.code);
     Ok((axum::http::StatusCode::CREATED, Json(invite.into())))

@@ -60,5 +60,6 @@ pub mod google_oauth;
 pub mod invites;
 pub mod photos;
 pub mod plants;
+pub mod reminders;
 pub mod tracking;
 pub mod users;

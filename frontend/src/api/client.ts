@@ -46,6 +46,34 @@ interface WaitlistResponse {
   created_at: string;
 }
 
+interface ReminderPreferences {
+  enabled: boolean;
+  reminderTime: string;
+  timezone: string;
+  browserNotificationsEnabled: boolean;
+}
+
+interface DueReminder {
+  plantId: string;
+  plantName: string;
+  reminderType: string;
+  dueAt: string;
+  dueDate: string;
+  daysOverdue: number;
+  alreadySent: boolean;
+}
+
+interface DueRemindersResponse {
+  reminders: DueReminder[];
+  totalDue: number;
+  unsentCount: number;
+}
+
+interface DispatchRemindersResponse {
+  reminders: DueReminder[];
+  sentCount: number;
+}
+
 
 // Since frontend is always served from backend, use relative URLs
 const API_BASE_URL = '/api/v1';
@@ -355,6 +383,26 @@ class ApiClient {
     });
   }
 
+  async getReminderPreferences(): Promise<ReminderPreferences> {
+    return this.request<ReminderPreferences>('/reminders/preferences');
+  }
+
+  async updateReminderPreferences(payload: ReminderPreferences): Promise<ReminderPreferences> {
+    return this.request<ReminderPreferences>('/reminders/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async getDueReminders(): Promise<DueRemindersResponse> {
+    return this.request<DueRemindersResponse>('/reminders/due');
+  }
+
+  async dispatchDueReminders(): Promise<DispatchRemindersResponse> {
+    return this.request<DispatchRemindersResponse>('/reminders/dispatch', {
+      method: 'POST',
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

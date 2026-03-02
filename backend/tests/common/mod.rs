@@ -6,7 +6,7 @@ use tokio::net::TcpListener;
 
 use planty_api::app_state::AppState;
 use planty_api::auth;
-use planty_api::handlers::{auth as auth_handlers, google_tasks, invites, plants};
+use planty_api::handlers::{auth as auth_handlers, google_tasks, invites, plants, reminders};
 
 pub struct TestApp {
     pub address: String,
@@ -43,6 +43,7 @@ impl TestApp {
             .nest("/plants", plants::routes())
             .nest("/invites", invites::routes())
             .nest("/google-tasks", google_tasks::routes())
+            .nest("/reminders", reminders::routes())
             .with_state(app_state)
             .layer(auth_layer)
             .layer(session_layer);

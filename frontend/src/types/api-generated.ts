@@ -355,6 +355,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reminders/dispatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["dispatch_due_reminders"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reminders/due": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_due_reminders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reminders/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_preferences"];
+        put: operations["update_preferences"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -457,6 +505,25 @@ export interface components {
             /** Format: uuid */
             plantId: string;
             unit: string;
+        };
+        DispatchRemindersResponse: {
+            reminders: components["schemas"]["DueReminder"][];
+            sentCount: number;
+        };
+        DueReminder: {
+            alreadySent: boolean;
+            /** Format: int64 */
+            daysOverdue: number;
+            dueAt: string;
+            dueDate: string;
+            plantId: string;
+            plantName: string;
+            reminderType: string;
+        };
+        DueRemindersResponse: {
+            reminders: components["schemas"]["DueReminder"][];
+            totalDue: number;
+            unsentCount: number;
         };
         /** @enum {string} */
         EntryType: "watering" | "fertilizing" | "customMetric" | "note" | "photo";
@@ -574,6 +641,12 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        ReminderPreferences: {
+            browserNotificationsEnabled: boolean;
+            enabled: boolean;
+            reminderTime: string;
+            timezone: string;
+        };
         StoreTokensRequest: {
             /** @description The access token from Google OAuth */
             access_token: string;
@@ -664,6 +737,12 @@ export interface components {
             genus?: string | null;
             name?: string | null;
             wateringSchedule?: components["schemas"]["UpdateCareScheduleRequest"] | null;
+        };
+        UpdateReminderPreferencesRequest: {
+            browserNotificationsEnabled: boolean;
+            enabled: boolean;
+            reminderTime: string;
+            timezone: string;
         };
         UpdateUserRequest: {
             can_create_invites?: boolean | null;
@@ -1745,6 +1824,125 @@ export interface operations {
             };
             /** @description Plant not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dispatch_due_reminders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dispatched due reminders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispatchRemindersResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_due_reminders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Due reminders list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DueRemindersResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reminder preferences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderPreferences"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_preferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateReminderPreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated reminder preferences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReminderPreferences"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

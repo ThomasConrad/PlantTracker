@@ -21,6 +21,10 @@ use models::{
         CustomMetric, MetricDataType, PlantResponse, PlantsResponse, UpdateCareScheduleRequest,
         UpdateCustomMetricRequest, UpdatePlantRequest,
     },
+    reminder::{
+        DispatchRemindersResponse, DueReminder, DueRemindersResponse, ReminderPreferences,
+        UpdateReminderPreferencesRequest,
+    },
     tracking_entry::{
         CreateTrackingEntryRequest, EntryType, TrackingEntriesResponse, TrackingEntry,
     },
@@ -65,6 +69,10 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::google_tasks::disconnect_google_tasks,
         crate::handlers::google_tasks::sync_plant_tasks,
         crate::handlers::google_tasks::create_task,
+        crate::handlers::reminders::get_preferences,
+        crate::handlers::reminders::update_preferences,
+        crate::handlers::reminders::get_due_reminders,
+        crate::handlers::reminders::dispatch_due_reminders,
     ),
     components(
         schemas(
@@ -102,6 +110,11 @@ use handlers::google_tasks::StoreTokensRequest;
             UpdateCareScheduleRequest,
             CustomMetric,
             MetricDataType,
+            ReminderPreferences,
+            UpdateReminderPreferencesRequest,
+            DueReminder,
+            DueRemindersResponse,
+            DispatchRemindersResponse,
             CreateGoogleTaskRequest,
             GoogleOAuthCallbackRequest,
             GoogleOAuthSuccessResponse,
@@ -119,6 +132,7 @@ use handlers::google_tasks::StoreTokensRequest;
         (name = "tracking", description = "Plant care tracking endpoints"),
         (name = "photos", description = "Photo management endpoints"),
         (name = "google-tasks", description = "Google Tasks integration endpoints"),
+        (name = "reminders", description = "In-app and browser reminder endpoints"),
     ),
     info(
         title = "Planty API",

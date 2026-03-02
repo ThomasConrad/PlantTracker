@@ -1,6 +1,7 @@
 import { Component, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
+import { remindersStore } from '@/stores/reminders';
 
 interface SettingsMenuProps {
   isOpen: boolean;
@@ -27,6 +28,15 @@ export const SettingsMenu: Component<SettingsMenuProps> = (props) => {
         </svg>
       )
     }] : []),
+    {
+      label: 'Reminders',
+      href: '/reminders',
+      icon: (
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+        </svg>
+      )
+    },
     {
       label: 'Calendar Settings',
       href: '/calendar/settings',
@@ -75,6 +85,11 @@ export const SettingsMenu: Component<SettingsMenuProps> = (props) => {
             >
               <span class="text-gray-400">{item.icon}</span>
               <span class="text-sm font-medium">{item.label}</span>
+              <Show when={item.href === '/reminders' && remindersStore.dueCount > 0}>
+                <span class="ml-auto inline-flex items-center justify-center rounded-full bg-red-600 px-2 py-0.5 text-xs text-white">
+                  {remindersStore.dueCount}
+                </span>
+              </Show>
             </A>
           ))}
         </div>

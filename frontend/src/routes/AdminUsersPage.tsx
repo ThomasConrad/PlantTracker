@@ -35,7 +35,6 @@ export const AdminUsersPage: Component = () => {
   const [editingUser, setEditingUser] = createSignal<User | null>(null);
   const [editingRole, setEditingRole] = createSignal<Role>('user');
   const [editingCanCreateInvites, setEditingCanCreateInvites] = createSignal(false);
-  const [editingMaxInvitesMode, setEditingMaxInvitesMode] = createSignal<'unlimited' | 'limited'>('limited');
   const [editingMaxInvites, setEditingMaxInvites] = createSignal('5');
   const [savingUser, setSavingUser] = createSignal(false);
   const [deletingUserId, setDeletingUserId] = createSignal<string | null>(null);
@@ -132,7 +131,6 @@ export const AdminUsersPage: Component = () => {
     setEditingUser(user);
     setEditingRole((user.role.toLowerCase() as Role) || 'user');
     setEditingCanCreateInvites(user.can_create_invites);
-    setEditingMaxInvitesMode(user.max_invites === null ? 'unlimited' : 'limited');
     setEditingMaxInvites(user.max_invites === null ? '5' : String(user.max_invites));
   };
 
@@ -144,10 +142,7 @@ export const AdminUsersPage: Component = () => {
       setSavingUser(true);
       setError(null);
 
-      const maxInvites =
-        editingMaxInvitesMode() === 'unlimited'
-          ? null
-          : Math.max(0, Number.parseInt(editingMaxInvites() || '0', 10));
+      const maxInvites = Math.max(0, Number.parseInt(editingMaxInvites() || '0', 10));
 
       const response = await fetch(`/api/v1/admin/users/${user.id}`, {
         method: 'PUT',
@@ -422,7 +417,7 @@ export const AdminUsersPage: Component = () => {
                             <div>
                               <div>Can create invites</div>
                               <div class="text-xs text-gray-500">
-                                {user.invites_remaining !== null ? `${user.invites_remaining} remaining` : 'Unlimited'}
+                                {(user.invites_remaining ?? 0)} remaining
                               </div>
                             </div>
                           </Show>
@@ -508,36 +503,13 @@ export const AdminUsersPage: Component = () => {
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Invite limit</label>
-                <div class="flex gap-3">
-                  <label class="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="max_invites_mode"
-                      checked={editingMaxInvitesMode() === 'limited'}
-                      onChange={() => setEditingMaxInvitesMode('limited')}
-                    />
-                    Limited
-                  </label>
-                  <label class="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="max_invites_mode"
-                      checked={editingMaxInvitesMode() === 'unlimited'}
-                      onChange={() => setEditingMaxInvitesMode('unlimited')}
-                    />
-                    Unlimited
-                  </label>
-                </div>
-
-                <Show when={editingMaxInvitesMode() === 'limited'}>
-                  <input
-                    type="number"
-                    min="0"
-                    value={editingMaxInvites()}
-                    onInput={(e) => setEditingMaxInvites(e.currentTarget.value)}
-                    class="mt-2 w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  />
-                </Show>
+                <input
+                  type="number"
+                  min="0"
+                  value={editingMaxInvites()}
+                  onInput={(e) => setEditingMaxInvites(e.currentTarget.value)}
+                  class="mt-2 w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
               </div>
             </div>
 

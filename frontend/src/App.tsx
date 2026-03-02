@@ -57,6 +57,19 @@ const App: Component = () => {
           )}
         />
         <Route
+          path="/signup"
+          component={() => (
+            <Show
+              when={!authStore.isAuthenticated}
+              fallback={<Navigate href="/plants" />}
+            >
+              <AuthLayout>
+                <InviteValidationPage />
+              </AuthLayout>
+            </Show>
+          )}
+        />
+        <Route
           path="/invite"
           component={() => (
             <Show
@@ -95,7 +108,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <PlantsPage />
@@ -108,7 +121,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <PlantFormPage />
@@ -121,7 +134,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <PlantDetailPage />
@@ -134,7 +147,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <PlantFormPage />
@@ -147,7 +160,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <CalendarPage />
@@ -160,7 +173,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <CalendarSettingsPage />
@@ -173,7 +186,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <SearchPage />
@@ -186,7 +199,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <InviteManagementPage />
@@ -251,7 +264,7 @@ const App: Component = () => {
           component={() => (
             <Show
               when={authStore.isAuthenticated}
-              fallback={<Navigate href="/invite" />}
+              fallback={<Navigate href="/signup" />}
             >
               <AppLayout>
                 <UserSettingsPage />

@@ -10,6 +10,7 @@ use utoipa::ToSchema;
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
 use crate::database::invites as db_invites;
+use crate::database::users as db_users;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{
     CreateInviteRequest, InviteResponse, ValidateInviteRequest, WaitlistResponse,
@@ -18,13 +19,25 @@ use crate::models::{
 use crate::utils::errors::{AppError, Result};
 
 pub fn routes() -> Router<AppState> {
-    Router::new()
+    let mut router = Router::new()
         .route("/create", post(create_invite))
         .route("/validate", post(validate_invite))
-        .route("/list", get(list_invites))
-        .route("/waitlist", post(join_waitlist))
-        .route("/waitlist/list", get(list_waitlist))
-        .route("/waitlist/:waitlist_id/invite", post(invite_waitlist_entry))
+        .route("/list", get(list_invites));
+
+    if waitlist_enabled() {
+        router = router
+            .route("/waitlist", post(join_waitlist))
+            .route("/waitlist/list", get(list_waitlist))
+            .route("/waitlist/:waitlist_id/invite", post(invite_waitlist_entry));
+    }
+
+    router
+}
+
+fn waitlist_enabled() -> bool {
+    std::env::var("WAITLIST_ENABLED")
+        .map(|v| v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
 }
 
 #[derive(Deserialize)]
@@ -55,6 +68,16 @@ async fn create_invite(
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Authentication required".to_string(),
     })?;
+
+    if !user.can_create_invite() {
+        return Err(AppError::Authorization {
+            message:
+                "You do not have invite creation permissions or have reached your invite limit"
+                    .to_string(),
+        });
+    }
+
+    db_users::consume_invite_quota(&auth_session.backend.db, &user.id).await?;
 
     tracing::info!("Creating invite code for user: {}", user.id);
 
@@ -146,6 +169,12 @@ async fn join_waitlist(
     auth_session: AuthSession,
     ValidatedJson(payload): ValidatedJson<WaitlistSignupRequest>,
 ) -> Result<(axum::http::StatusCode, Json<WaitlistResponse>)> {
+    if !waitlist_enabled() {
+        return Err(AppError::NotFound {
+            resource: "Waitlist".to_string(),
+        });
+    }
+
     tracing::info!("Adding to waitlist: {}", payload.email);
 
     let entry = db_invites::add_to_waitlist(&auth_session.backend.db, &payload).await?;
@@ -164,9 +193,21 @@ async fn join_waitlist(
     tag = "invites"
 )]
 async fn list_waitlist(auth_session: AuthSession) -> Result<Json<Vec<WaitlistResponse>>> {
-    let _user = auth_session.user.ok_or(AppError::Authentication {
+    if !waitlist_enabled() {
+        return Err(AppError::NotFound {
+            resource: "Waitlist".to_string(),
+        });
+    }
+
+    let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Authentication required".to_string(),
     })?;
+
+    if !user.is_admin() {
+        return Err(AppError::Authorization {
+            message: "Admin access required".to_string(),
+        });
+    }
 
     tracing::info!("Listing waitlist entries");
 
@@ -196,6 +237,12 @@ async fn invite_waitlist_entry(
     Path(waitlist_id): Path<String>,
     Json(payload): Json<InviteWaitlistRequest>,
 ) -> Result<Json<serde_json::Value>> {
+    if !waitlist_enabled() {
+        return Err(AppError::NotFound {
+            resource: "Waitlist".to_string(),
+        });
+    }
+
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Authentication required".to_string(),
     })?;

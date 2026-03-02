@@ -115,7 +115,7 @@ pub async fn create_test_user(
             &admin_request,
             UserRole::Admin,
             true,
-            None,
+            Some(50),
         )
         .await
         .expect("Failed to create admin user");

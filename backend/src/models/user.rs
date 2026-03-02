@@ -188,7 +188,7 @@ impl User {
     #[allow(dead_code)]
     pub fn has_invites_remaining(&self) -> bool {
         match self.max_invites {
-            None => true, // Unlimited invites
+            None => false, // No unlimited invite mode in MVP
             Some(max) => self.invites_created < max,
         }
     }

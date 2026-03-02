@@ -4,6 +4,7 @@ Planty is a full-stack app for tracking plant care schedules, activity logs, pho
 
 ## MVP Features
 - Invite-based registration and session authentication
+- Invite quotas for users (no unlimited user creation)
 - Plant CRUD with watering/fertilizing schedule tracking
 - Tracking entries (watering, fertilizing, notes, custom metrics, photos)
 - Photo uploads and gallery/preview management
@@ -11,6 +12,10 @@ Planty is a full-stack app for tracking plant care schedules, activity logs, pho
 - Google Tasks integration (optional, when configured)
 - Admin dashboard and user/invite management
 - User settings: profile update, password change, data export, account deletion
+
+## Feature Flags
+- `WAITLIST_ENABLED` (backend): defaults to `false`. Enables waitlist API routes when set to `true`.
+- `VITE_WAITLIST_ENABLED` (frontend): defaults to `false`. Shows waitlist UI when set to `true`.
 
 ## Stack
 - Frontend: SolidJS + Vite + TypeScript

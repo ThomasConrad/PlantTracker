@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { apiClient } from '@/api/client';
 
 export const HomePage: Component = () => {
+  const waitlistEnabled = import.meta.env.VITE_WAITLIST_ENABLED === 'true';
   const [email, setEmail] = createSignal('');
   const [name, setName] = createSignal('');
   const [message, setMessage] = createSignal('');
@@ -48,7 +49,7 @@ export const HomePage: Component = () => {
             Sign In
           </A>
           <Button variant="outline" size="sm">
-            <A href="/invite" class="no-underline">
+            <A href="/signup" class="no-underline">
               Get Started
             </A>
           </Button>
@@ -68,7 +69,7 @@ export const HomePage: Component = () => {
             </p>
             <div class="flex flex-col sm:flex-row gap-4">
               <Button size="lg" class="text-lg px-8">
-                <A href="/invite" class="no-underline">
+                <A href="/signup" class="no-underline">
                   Get Started
                 </A>
               </Button>
@@ -201,67 +202,81 @@ export const HomePage: Component = () => {
         </div>
       </section>
 
-      {/* Waitlist Section */}
-      <section class="py-20 bg-green-600">
-        <div class="max-w-4xl mx-auto px-6 text-center">
-          <h2 class="text-3xl font-bold text-white mb-4">
-            Join the Planty Waitlist
-          </h2>
-          <p class="text-xl text-green-100 mb-8">
-            Be among the first to experience the future of plant care. 
-            We'll notify you as soon as Planty is ready!
-          </p>
-          
-          {submitted() ? (
-            <div class="bg-white rounded-lg p-8 max-w-md mx-auto">
-              <div class="text-4xl mb-4">✅</div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-2">You're on the list!</h3>
-              <p class="text-gray-600">
-                Thank you for your interest. We'll be in touch soon with updates and early access.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleWaitlistSubmit} class="max-w-md mx-auto">
-              <div class="space-y-4">
-                <Input
-                  type="email"
-                  placeholder="Your email address"
-                  value={email()}
-                  onInput={(e) => setEmail(e.currentTarget.value)}
-                  required
-                  class="bg-white"
-                />
-                <Input
-                  type="text"
-                  placeholder="Your name (optional)"
-                  value={name()}
-                  onInput={(e) => setName(e.currentTarget.value)}
-                  class="bg-white"
-                />
-                <textarea
-                  placeholder="Tell us about your plant care experience (optional)"
-                  value={message()}
-                  onInput={(e) => setMessage(e.currentTarget.value)}
-                  rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                />
-                <Button
-                  type="submit"
-                  size="lg"
-                  class="w-full bg-white text-green-600 hover:bg-gray-50"
-                  loading={loading()}
-                  disabled={!email().trim()}
-                >
-                  Join the Waitlist
-                </Button>
-                {submitError() ? (
-                  <p class="text-sm text-red-100">{submitError()}</p>
-                ) : null}
+      {/* Signup / Waitlist Section */}
+      {waitlistEnabled ? (
+        <section class="py-20 bg-green-600">
+          <div class="max-w-4xl mx-auto px-6 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">
+              Join the Planty Waitlist
+            </h2>
+            <p class="text-xl text-green-100 mb-8">
+              Be among the first to experience the future of plant care.
+              We'll notify you as soon as Planty is ready!
+            </p>
+
+            {submitted() ? (
+              <div class="bg-white rounded-lg p-8 max-w-md mx-auto">
+                <div class="text-4xl mb-4">✅</div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">You're on the list!</h3>
+                <p class="text-gray-600">
+                  Thank you for your interest. We'll be in touch soon with updates and early access.
+                </p>
               </div>
-            </form>
-          )}
-        </div>
-      </section>
+            ) : (
+              <form onSubmit={handleWaitlistSubmit} class="max-w-md mx-auto">
+                <div class="space-y-4">
+                  <Input
+                    type="email"
+                    placeholder="Your email address"
+                    value={email()}
+                    onInput={(e) => setEmail(e.currentTarget.value)}
+                    required
+                    class="bg-white"
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Your name (optional)"
+                    value={name()}
+                    onInput={(e) => setName(e.currentTarget.value)}
+                    class="bg-white"
+                  />
+                  <textarea
+                    placeholder="Tell us about your plant care experience (optional)"
+                    value={message()}
+                    onInput={(e) => setMessage(e.currentTarget.value)}
+                    rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                  <Button
+                    type="submit"
+                    size="lg"
+                    class="w-full bg-white text-green-600 hover:bg-gray-50"
+                    loading={loading()}
+                    disabled={!email().trim()}
+                  >
+                    Join the Waitlist
+                  </Button>
+                  {submitError() ? (
+                    <p class="text-sm text-red-100">{submitError()}</p>
+                  ) : null}
+                </div>
+              </form>
+            )}
+          </div>
+        </section>
+      ) : (
+        <section class="py-20 bg-green-600">
+          <div class="max-w-4xl mx-auto px-6 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Start with an Invite Link</h2>
+            <p class="text-xl text-green-100 mb-8">
+              Signup is invite-based. Use the signup page to validate an invite code and create your account.
+            </p>
+            <Button size="lg" class="bg-white text-green-700 hover:bg-green-50">
+              <A href="/signup" class="no-underline">Go to Signup</A>
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer class="bg-gray-900 py-12">

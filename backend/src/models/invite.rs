@@ -61,6 +61,7 @@ pub struct WaitlistEntryRow {
 
 #[derive(Debug, Deserialize, Serialize, ToSchema, Validate)]
 pub struct CreateInviteRequest {
+    #[validate(range(min = 1, max = 100))]
     pub max_uses: Option<i32>,
     pub expires_at: Option<DateTime<Utc>>,
 }

@@ -24,6 +24,7 @@ interface WaitlistEntry {
 }
 
 export const InviteManagementPage: Component = () => {
+  const waitlistEnabled = import.meta.env.VITE_WAITLIST_ENABLED === 'true';
   const [invites, setInvites] = createSignal<InviteCode[]>([]);
   const [waitlist, setWaitlist] = createSignal<WaitlistEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
@@ -36,7 +37,7 @@ export const InviteManagementPage: Component = () => {
 
   createEffect(() => {
     loadInvites();
-    if (authStore.user?.role === 'admin') {
+    if (waitlistEnabled && authStore.user?.role === 'admin') {
       loadWaitlist();
     }
   });
@@ -78,7 +79,7 @@ export const InviteManagementPage: Component = () => {
       });
 
       await Promise.all([loadWaitlist(), loadInvites()]);
-      await navigator.clipboard.writeText(`${window.location.origin}/invite?code=${response.invite_code}`);
+      await navigator.clipboard.writeText(`${window.location.origin}/signup?code=${response.invite_code}`);
     } catch (err: unknown) {
       console.error('Failed to invite waitlist entry:', err);
       setError('Failed to create invite for waitlist entry');
@@ -118,7 +119,7 @@ export const InviteManagementPage: Component = () => {
   };
 
   const copyInviteLink = (code: string) => {
-    const url = `${window.location.origin}/invite?code=${code}`;
+    const url = `${window.location.origin}/signup?code=${code}`;
     navigator.clipboard.writeText(url);
     // You could add a toast notification here
   };
@@ -152,15 +153,7 @@ export const InviteManagementPage: Component = () => {
             </div>
           </Show>
 
-          <Show when={authStore.user?.maxInvites === null}>
-            <div class="mb-4 p-4 bg-green-50 rounded-md">
-              <p class="text-sm text-green-700">
-                You have unlimited invite creation privileges.
-              </p>
-            </div>
-          </Show>
-
-          <Show when={(authStore.user?.invitesRemaining ?? 0) > 0 || authStore.user?.maxInvites === null}>
+          <Show when={(authStore.user?.invitesRemaining ?? 0) > 0}>
             <form onSubmit={createInvite} class="space-y-4">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
@@ -203,7 +196,7 @@ export const InviteManagementPage: Component = () => {
             </form>
           </Show>
 
-          <Show when={(authStore.user?.invitesRemaining ?? 0) <= 0 && authStore.user?.maxInvites !== null}>
+          <Show when={(authStore.user?.invitesRemaining ?? 0) <= 0}>
             <div class="bg-orange-50 border border-orange-200 rounded-md p-4">
               <p class="text-sm text-orange-800">
                 You have reached your invite creation limit. Contact an administrator to increase your limit.
@@ -266,7 +259,7 @@ export const InviteManagementPage: Component = () => {
         </Show>
       </div>
 
-      <Show when={authStore.user?.role === 'admin'}>
+      <Show when={waitlistEnabled && authStore.user?.role === 'admin'}>
         <div class="bg-white shadow rounded-lg p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-medium text-gray-900">Waitlist</h2>

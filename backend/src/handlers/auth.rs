@@ -14,6 +14,8 @@ use crate::models::{
 };
 use crate::utils::errors::{AppError, Result};
 
+const DEFAULT_ADMIN_INVITE_LIMIT: i32 = 50;
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/login", post(login))
@@ -120,13 +122,13 @@ async fn register(
 
     // Create user in database with appropriate role
     let user = if is_admin_invite {
-        // Create admin user with unlimited invites
+        // Create admin user with a large but finite invite quota.
         db_users::create_user_internal(
             &auth_session.backend.db,
             &payload,
             UserRole::Admin,
             true,
-            None, // Unlimited invites for admin
+            Some(DEFAULT_ADMIN_INVITE_LIMIT),
         )
         .await
     } else {

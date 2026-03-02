@@ -81,7 +81,7 @@ pub async fn handle_google_oauth_callback(
     Query(params): Query<GoogleOAuthCallbackRequest>,
 ) -> Result<impl IntoResponse> {
     tracing::info!("Handling Google OAuth callback with code: {}", params.code);
-    
+
     let config = GoogleTasksConfig::from_env()?;
     tracing::info!("Google OAuth config loaded successfully");
 
@@ -94,7 +94,7 @@ pub async fn handle_google_oauth_callback(
                 message: "Invalid OAuth state parameter encoding".to_string(),
             }
         })?;
-        
+
         // State format is "random_string:user_id"
         if let Some((_, user_id)) = decoded_state.split_once(':') {
             user_id.to_string()
@@ -148,7 +148,10 @@ pub async fn handle_google_oauth_callback(
 
     let redirect_url = format!("{}/calendar-settings", frontend_url);
 
-    tracing::info!("Google OAuth callback successful, redirecting to: {}", redirect_url);
+    tracing::info!(
+        "Google OAuth callback successful, redirecting to: {}",
+        redirect_url
+    );
     Ok(Redirect::temporary(&redirect_url))
 }
 
@@ -339,7 +342,8 @@ pub async fn sync_plant_tasks(
     let task_list_id = get_or_create_plant_care_task_list(&token).await?;
 
     // Get user's plants
-    let (plants, _) = db_plants::list_plants_for_user(&app_state.pool, &user.id, 1000, 0, None).await?;
+    let (plants, _) =
+        db_plants::list_plants_for_user(&app_state.pool, &user.id, 1000, 0, None).await?;
 
     let days_ahead = request.days_ahead.unwrap_or(365);
     let base_url =
@@ -356,56 +360,55 @@ pub async fn sync_plant_tasks(
                 .last_watered
                 .unwrap_or_else(|| now - chrono::Duration::days(watering_interval as i64));
 
-            let mut next_watering =
-                last_watered + chrono::Duration::days(watering_interval as i64);
-        while next_watering <= end_date && next_watering >= now {
-            match create_plant_care_task(
-                &token,
-                plant,
-                "watering",
-                next_watering,
-                &base_url,
-                &task_list_id,
-            )
-            .await
-            {
-                Ok(_task_id) => created_tasks += 1,
-                Err(e) => {
-                    tracing::error!("Failed to create watering task for {}: {}", plant.name, e)
+            let mut next_watering = last_watered + chrono::Duration::days(watering_interval as i64);
+            while next_watering <= end_date && next_watering >= now {
+                match create_plant_care_task(
+                    &token,
+                    plant,
+                    "watering",
+                    next_watering,
+                    &base_url,
+                    &task_list_id,
+                )
+                .await
+                {
+                    Ok(_task_id) => created_tasks += 1,
+                    Err(e) => {
+                        tracing::error!("Failed to create watering task for {}: {}", plant.name, e)
+                    }
                 }
+                next_watering += chrono::Duration::days(watering_interval as i64);
             }
-            next_watering += chrono::Duration::days(watering_interval as i64);
-        }
         }
 
         // Generate fertilizing tasks
         if let Some(fertilizing_interval) = plant.fertilizing_schedule.interval_days {
-            let last_fertilized = plant.last_fertilized.unwrap_or_else(|| {
-                now - chrono::Duration::days(fertilizing_interval as i64)
-            });
+            let last_fertilized = plant
+                .last_fertilized
+                .unwrap_or_else(|| now - chrono::Duration::days(fertilizing_interval as i64));
 
             let mut next_fertilizing =
                 last_fertilized + chrono::Duration::days(fertilizing_interval as i64);
-        while next_fertilizing <= end_date && next_fertilizing >= now {
-            match create_plant_care_task(
-                &token,
-                plant,
-                "fertilizing",
-                next_fertilizing,
-                &base_url,
-                &task_list_id,
-            )
-            .await
-            {
-                Ok(_task_id) => created_tasks += 1,
-                Err(e) => tracing::error!(
-                    "Failed to create fertilizing task for {}: {}",
-                    plant.name,
-                    e
-                ),
+            while next_fertilizing <= end_date && next_fertilizing >= now {
+                match create_plant_care_task(
+                    &token,
+                    plant,
+                    "fertilizing",
+                    next_fertilizing,
+                    &base_url,
+                    &task_list_id,
+                )
+                .await
+                {
+                    Ok(_task_id) => created_tasks += 1,
+                    Err(e) => tracing::error!(
+                        "Failed to create fertilizing task for {}: {}",
+                        plant.name,
+                        e
+                    ),
+                }
+                next_fertilizing += chrono::Duration::days(fertilizing_interval as i64);
             }
-            next_fertilizing += chrono::Duration::days(fertilizing_interval as i64);
-        }
         }
     }
 

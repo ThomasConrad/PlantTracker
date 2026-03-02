@@ -794,7 +794,8 @@ pub async fn get_system_health(
             "new_invites": invites_last_24h
         },
         "uptime": {
-            "note": "Application uptime tracking not implemented"
+            "started_at": state.started_at.to_rfc3339(),
+            "seconds": (chrono::Utc::now() - state.started_at).num_seconds()
         }
     })))
 }

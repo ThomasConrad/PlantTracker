@@ -1,390 +1,252 @@
 import { Component, createSignal, onMount, Show } from 'solid-js';
+import { apiClient } from '@/api/client';
 import { authStore } from '@/stores/auth';
 
 export const UserSettingsPage: Component = () => {
-  const [saving, setSaving] = createSignal(false);
-  const [success, setSuccess] = createSignal(false);
+  const [profileSaving, setProfileSaving] = createSignal(false);
+  const [passwordSaving, setPasswordSaving] = createSignal(false);
+  const [exportLoading, setExportLoading] = createSignal(false);
+  const [deleteLoading, setDeleteLoading] = createSignal(false);
+
+  const [success, setSuccess] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
 
-  // Form state
   const [name, setName] = createSignal('');
   const [email, setEmail] = createSignal('');
   const [currentPassword, setCurrentPassword] = createSignal('');
   const [newPassword, setNewPassword] = createSignal('');
   const [confirmPassword, setConfirmPassword] = createSignal('');
-
-  // Notification preferences
-  const [emailNotifications, setEmailNotifications] = createSignal(true);
-  const [careReminders, setCareReminders] = createSignal(true);
-  const [weeklyDigest, setWeeklyDigest] = createSignal(false);
-
-  // Privacy settings
-  const [dataExportLoading, setDataExportLoading] = createSignal(false);
-  const [deleteAccountLoading, setDeleteAccountLoading] = createSignal(false);
+  const [deletePassword, setDeletePassword] = createSignal('');
 
   onMount(() => {
-    // Initialize form with current user data
     if (authStore.user) {
       setName(authStore.user.name || '');
       setEmail(authStore.user.email || '');
     }
   });
 
+  const showSuccess = (message: string) => {
+    setSuccess(message);
+    setTimeout(() => setSuccess(null), 4000);
+  };
+
   const handleProfileSave = async (e: Event) => {
     e.preventDefault();
-    
+    setError(null);
+
     try {
-      setSaving(true);
-      setError(null);
-      setSuccess(false);
-      
-      // TODO: Implement profile update API call
-      // const response = await apiClient.updateProfile({
-      //   name: name(),
-      //   email: email(),
-      // });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      setProfileSaving(true);
+      await apiClient.updateProfile({ name: name().trim(), email: email().trim() });
+      await authStore.initializeAuth();
+      showSuccess('Profile updated successfully.');
     } catch (err) {
-      console.error('Error saving profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save profile');
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
     } finally {
-      setSaving(false);
+      setProfileSaving(false);
     }
   };
 
   const handlePasswordChange = async (e: Event) => {
     e.preventDefault();
-    
+    setError(null);
+
     if (newPassword() !== confirmPassword()) {
       setError('New passwords do not match');
       return;
     }
-    
-    if (newPassword().length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
-    }
-    
+
     try {
-      setSaving(true);
-      setError(null);
-      setSuccess(false);
-      
-      // TODO: Implement password change API call
-      // const response = await apiClient.changePassword({
-      //   current_password: currentPassword(),
-      //   new_password: newPassword(),
-      // });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      setPasswordSaving(true);
+      await apiClient.changePassword({
+        current_password: currentPassword(),
+        new_password: newPassword(),
+      });
+
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      showSuccess('Password changed successfully.');
     } catch (err) {
-      console.error('Error changing password:', err);
       setError(err instanceof Error ? err.message : 'Failed to change password');
     } finally {
-      setSaving(false);
+      setPasswordSaving(false);
     }
   };
 
   const handleDataExport = async () => {
+    setError(null);
+
     try {
-      setDataExportLoading(true);
-      
-      // TODO: Implement data export API call
-      // const response = await apiClient.exportUserData();
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // For now, just show success message
-      alert('Data export functionality will be implemented soon. You will receive an email with your data.');
+      setExportLoading(true);
+      const payload = await apiClient.exportUserData();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `planty-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showSuccess('Data export downloaded.');
     } catch (err) {
-      console.error('Error exporting data:', err);
-      setError('Failed to export data');
+      setError(err instanceof Error ? err.message : 'Failed to export data');
     } finally {
-      setDataExportLoading(false);
+      setExportLoading(false);
     }
   };
 
   const handleDeleteAccount = async () => {
+    setError(null);
+
+    if (!deletePassword()) {
+      setError('Enter your current password to delete your account');
+      return;
+    }
+
     const confirmed = confirm(
-      'Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your plant data.'
+      'Delete your account permanently? This removes all plants, photos, and tracking data.'
     );
-    
     if (!confirmed) return;
-    
-    const doubleConfirm = confirm(
-      'This is your final warning. Deleting your account will permanently remove all your plants, photos, and tracking data. Type YES to confirm.'
-    );
-    
-    if (!doubleConfirm) return;
-    
+
     try {
-      setDeleteAccountLoading(true);
-      
-      // TODO: Implement account deletion API call
-      // const response = await apiClient.deleteAccount();
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      alert('Account deletion functionality will be implemented soon.');
+      setDeleteLoading(true);
+      await apiClient.deleteAccount({ current_password: deletePassword() });
+      await authStore.logout();
+      window.location.href = '/';
     } catch (err) {
-      console.error('Error deleting account:', err);
-      setError('Failed to delete account');
+      setError(err instanceof Error ? err.message : 'Failed to delete account');
     } finally {
-      setDeleteAccountLoading(false);
+      setDeleteLoading(false);
     }
   };
 
   return (
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="mb-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div>
         <h1 class="text-3xl font-bold text-gray-900">Account Settings</h1>
-        <p class="mt-2 text-gray-600">Manage your account preferences and privacy settings</p>
+        <p class="mt-2 text-gray-600">Manage your profile, password, and data privacy options.</p>
       </div>
 
-      <div class="space-y-8">
-        {/* Success Message */}
-        <Show when={success()}>
-          <div class="bg-green-50 border border-green-200 rounded-md p-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-green-800">Settings saved successfully!</p>
-              </div>
+      <Show when={success()}>
+        <div class="bg-green-50 border border-green-200 rounded-md p-4 text-sm text-green-800">{success()}</div>
+      </Show>
+
+      <Show when={error()}>
+        <div class="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800">{error()}</div>
+      </Show>
+
+      <form onSubmit={handleProfileSave} class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-6">Profile Information</h2>
+          <div class="space-y-4">
+            <div>
+              <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <input
+                id="name"
+                type="text"
+                value={name()}
+                onInput={(e) => setName(e.currentTarget.value)}
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                required
+              />
             </div>
-          </div>
-        </Show>
-
-        {/* Error Message */}
-        <Show when={error()}>
-          <div class="bg-red-50 border border-red-200 rounded-md p-4">
-            <div class="flex">
-              <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-                </svg>
-              </div>
-              <div class="ml-3">
-                <p class="text-sm text-red-800">{error()}</p>
-              </div>
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <input
+                id="email"
+                type="email"
+                value={email()}
+                onInput={(e) => setEmail(e.currentTarget.value)}
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
+                required
+              />
             </div>
-          </div>
-        </Show>
-
-        {/* Profile Information */}
-        <form onSubmit={handleProfileSave} class="bg-white shadow rounded-lg">
-          <div class="px-4 py-5 sm:p-6">
-            <h2 class="text-lg font-medium text-gray-900 mb-6">Profile Information</h2>
-            
-            <div class="space-y-6">
-              <div>
-                <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={name()}
-                  onInput={(e) => setName(e.currentTarget.value)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={email()}
-                  onInput={(e) => setEmail(e.currentTarget.value)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div class="text-sm text-gray-500">
-                <p>Role: <span class="font-medium">{authStore.user?.role || 'User'}</span></p>
-                <Show when={authStore.user?.canCreateInvites}>
-                  <p>Invite permissions: <span class="font-medium">Can create invites</span></p>
-                </Show>
-              </div>
-            </div>
-          </div>
-
-          <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 rounded-b-lg">
-            <button
-              type="submit"
-              disabled={saving()}
-              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-            >
-              {saving() ? 'Saving...' : 'Save Profile'}
-            </button>
-          </div>
-        </form>
-
-        {/* Change Password */}
-        <form onSubmit={handlePasswordChange} class="bg-white shadow rounded-lg">
-          <div class="px-4 py-5 sm:p-6">
-            <h2 class="text-lg font-medium text-gray-900 mb-6">Change Password</h2>
-            
-            <div class="space-y-6">
-              <div>
-                <label for="current-password" class="block text-sm font-medium text-gray-700 mb-2">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  id="current-password"
-                  value={currentPassword()}
-                  onInput={(e) => setCurrentPassword(e.currentTarget.value)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label for="new-password" class="block text-sm font-medium text-gray-700 mb-2">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  id="new-password"
-                  value={newPassword()}
-                  onInput={(e) => setNewPassword(e.currentTarget.value)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  id="confirm-password"
-                  value={confirmPassword()}
-                  onInput={(e) => setConfirmPassword(e.currentTarget.value)}
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 rounded-b-lg">
-            <button
-              type="submit"
-              disabled={saving() || !currentPassword() || !newPassword() || !confirmPassword()}
-              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-            >
-              {saving() ? 'Changing...' : 'Change Password'}
-            </button>
-          </div>
-        </form>
-
-        {/* Notification Preferences */}
-        <div class="bg-white shadow rounded-lg">
-          <div class="px-4 py-5 sm:p-6">
-            <h2 class="text-lg font-medium text-gray-900 mb-6">Notification Preferences</h2>
-            
-            <div class="space-y-4">
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="email-notifications"
-                  checked={emailNotifications()}
-                  onChange={(e) => setEmailNotifications(e.currentTarget.checked)}
-                  class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label for="email-notifications" class="ml-2 block text-sm text-gray-900">
-                  Email notifications
-                </label>
-              </div>
-
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="care-reminders"
-                  checked={careReminders()}
-                  onChange={(e) => setCareReminders(e.currentTarget.checked)}
-                  class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label for="care-reminders" class="ml-2 block text-sm text-gray-900">
-                  Plant care reminders
-                </label>
-              </div>
-
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="weekly-digest"
-                  checked={weeklyDigest()}
-                  onChange={(e) => setWeeklyDigest(e.currentTarget.checked)}
-                  class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label for="weekly-digest" class="ml-2 block text-sm text-gray-900">
-                  Weekly progress digest
-                </label>
-              </div>
-            </div>
-
-            <p class="mt-4 text-sm text-gray-500">
-              Note: Notification preferences are currently for display only and will be implemented in a future update.
-            </p>
           </div>
         </div>
+        <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 rounded-b-lg">
+          <button
+            type="submit"
+            disabled={profileSaving()}
+            class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+          >
+            {profileSaving() ? 'Saving...' : 'Save Profile'}
+          </button>
+        </div>
+      </form>
 
-        {/* Privacy & Data */}
-        <div class="bg-white shadow rounded-lg">
-          <div class="px-4 py-5 sm:p-6">
-            <h2 class="text-lg font-medium text-gray-900 mb-6">Privacy & Data</h2>
-            
-            <div class="space-y-6">
-              <div class="flex items-center justify-between">
-                <div>
-                  <h3 class="text-sm font-medium text-gray-900">Export your data</h3>
-                  <p class="text-sm text-gray-500">Download a copy of all your plant data</p>
-                </div>
-                <button
-                  onClick={handleDataExport}
-                  disabled={dataExportLoading()}
-                  class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {dataExportLoading() ? 'Exporting...' : 'Export Data'}
-                </button>
-              </div>
+      <form onSubmit={handlePasswordChange} class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-6">Change Password</h2>
+          <div class="space-y-4">
+            <input
+              type="password"
+              placeholder="Current password"
+              value={currentPassword()}
+              onInput={(e) => setCurrentPassword(e.currentTarget.value)}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+              required
+            />
+            <input
+              type="password"
+              placeholder="New password"
+              value={newPassword()}
+              onInput={(e) => setNewPassword(e.currentTarget.value)}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+              minlength="8"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword()}
+              onInput={(e) => setConfirmPassword(e.currentTarget.value)}
+              class="w-full px-3 py-2 border border-gray-300 rounded-md"
+              minlength="8"
+              required
+            />
+          </div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 rounded-b-lg">
+          <button
+            type="submit"
+            disabled={passwordSaving()}
+            class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+          >
+            {passwordSaving() ? 'Updating...' : 'Change Password'}
+          </button>
+        </div>
+      </form>
 
-              <div class="border-t border-gray-200 pt-6">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h3 class="text-sm font-medium text-red-900">Delete your account</h3>
-                    <p class="text-sm text-red-600">Permanently delete your account and all data</p>
-                  </div>
-                  <button
-                    onClick={handleDeleteAccount}
-                    disabled={deleteAccountLoading()}
-                    class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
-                  >
-                    {deleteAccountLoading() ? 'Deleting...' : 'Delete Account'}
-                  </button>
-                </div>
-              </div>
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6 space-y-4">
+          <h2 class="text-lg font-medium text-gray-900">Data & Privacy</h2>
+
+          <button
+            type="button"
+            onClick={handleDataExport}
+            disabled={exportLoading()}
+            class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+          >
+            {exportLoading() ? 'Exporting...' : 'Export My Data'}
+          </button>
+
+          <div class="border-t pt-4">
+            <p class="text-sm text-gray-600 mb-3">Delete account permanently (requires your current password).</p>
+            <input
+              type="password"
+              placeholder="Current password"
+              value={deletePassword()}
+              onInput={(e) => setDeletePassword(e.currentTarget.value)}
+              class="w-full max-w-md px-3 py-2 border border-gray-300 rounded-md mb-3"
+            />
+            <div>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading()}
+                class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteLoading() ? 'Deleting...' : 'Delete Account'}
+              </button>
             </div>
           </div>
         </div>

@@ -25,11 +25,12 @@ mod models;
 mod utils;
 
 use app_state::AppState;
-use handlers::{admin as admin_handlers, auth as auth_handlers, calendar, google_tasks, invites, plants};
+use handlers::{
+    admin as admin_handlers, auth as auth_handlers, calendar, google_tasks, invites, plants,
+};
 use planty_api::ApiDoc;
 use utils::{
-    google_tasks::GoogleTasksConfig, 
-    token_refresh_scheduler::start_token_refresh_scheduler,
+    google_tasks::GoogleTasksConfig, token_refresh_scheduler::start_token_refresh_scheduler,
 };
 
 #[derive(Parser, Debug)]
@@ -40,12 +41,7 @@ struct Args {
     port: u16,
 
     /// Database URL (use "sqlite::memory:" for in-memory database)
-    #[arg(
-        short,
-        long,
-        env = "DATABASE_URL",
-        default_value = "sqlite:planty.db"
-    )]
+    #[arg(short, long, env = "DATABASE_URL", default_value = "sqlite:planty.db")]
     database_url: String,
 
     /// Frontend directory path
@@ -61,7 +57,7 @@ struct Args {
 async fn main() -> anyhow::Result<()> {
     // Load environment variables FIRST
     dotenvy::dotenv().ok();
-    
+
     let args = Args::parse();
 
     // Initialize tracing with specified log level (now reads RUST_LOG from .env)
@@ -119,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
             .split(',')
             .filter_map(|origin| origin.trim().parse().ok())
             .collect::<Vec<_>>();
-        
+
         CorsLayer::new()
             .allow_origin(allowed_origins)
             .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
@@ -181,8 +177,12 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "10485760".to_string()) // 10MB default
         .parse::<usize>()
         .unwrap_or(10 * 1024 * 1024);
-    
-    tracing::info!("Max file upload size: {} bytes ({:.1} MB)", max_file_size, max_file_size as f64 / 1024.0 / 1024.0);
+
+    tracing::info!(
+        "Max file upload size: {} bytes ({:.1} MB)",
+        max_file_size,
+        max_file_size as f64 / 1024.0 / 1024.0
+    );
 
     let app = app.layer(
         ServiceBuilder::new()
@@ -221,7 +221,7 @@ async fn api_not_found() -> (StatusCode, Json<Value>) {
             "error": "Not Found",
             "message": "The requested API endpoint was not found",
             "status": 404
-        }))
+        })),
     )
 }
 

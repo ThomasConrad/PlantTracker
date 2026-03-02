@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use std::sync::Arc;
 use tokio::sync::Notify;
 
@@ -8,6 +9,7 @@ use crate::database::DatabasePool;
 pub struct AppState {
     pub pool: DatabasePool,
     pub token_refresh_notifier: Option<Arc<Notify>>,
+    pub started_at: DateTime<Utc>,
 }
 
 impl AppState {
@@ -15,6 +17,7 @@ impl AppState {
         Self {
             pool,
             token_refresh_notifier: None,
+            started_at: Utc::now(),
         }
     }
 

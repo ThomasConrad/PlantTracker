@@ -37,15 +37,10 @@ async fn test_invite_validation() {
         invite_code: None,
     };
 
-    let _admin_user = db_users::create_user_internal(
-        &app.db_pool,
-        &admin_request,
-        UserRole::Admin,
-        true,
-        None,
-    )
-    .await
-    .expect("Failed to create admin user");
+    let _admin_user =
+        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create admin user");
 
     // Login as admin
     let login_response = app
@@ -73,12 +68,12 @@ async fn test_invite_validation() {
         .expect("Failed to send create invite request");
 
     assert_eq!(create_response.status(), 201);
-    
+
     let invite_data: Value = create_response
         .json()
         .await
         .expect("Failed to parse invite response");
-    
+
     let invite_code = invite_data["code"].as_str().unwrap();
     assert!(!invite_code.is_empty());
     assert_eq!(invite_data["max_uses"], 3);
@@ -96,12 +91,12 @@ async fn test_invite_validation() {
         .expect("Failed to send validate request");
 
     assert_eq!(validate_response.status(), 200);
-    
+
     let validate_data: Value = validate_response
         .json()
         .await
         .expect("Failed to parse validate response");
-    
+
     assert_eq!(validate_data["valid"], true);
     assert_eq!(validate_data["uses_remaining"], 3);
 }
@@ -121,15 +116,10 @@ async fn test_invite_list() {
         invite_code: None,
     };
 
-    let _admin_user = db_users::create_user_internal(
-        &app.db_pool,
-        &admin_request,
-        UserRole::Admin,
-        true,
-        None,
-    )
-    .await
-    .expect("Failed to create admin user");
+    let _admin_user =
+        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create admin user");
 
     // Login as admin
     let _login_response = app
@@ -163,12 +153,12 @@ async fn test_invite_list() {
         .expect("Failed to send list request");
 
     assert_eq!(list_response.status(), 200);
-    
+
     let list_data: Value = list_response
         .json()
         .await
         .expect("Failed to parse list response");
-    
+
     assert!(list_data["invites"].is_array());
     let invites = list_data["invites"].as_array().unwrap();
     assert_eq!(invites.len(), 1);
@@ -191,15 +181,10 @@ async fn test_registration_with_invite() {
         invite_code: None,
     };
 
-    let _admin_user = db_users::create_user_internal(
-        &app.db_pool,
-        &admin_request,
-        UserRole::Admin,
-        true,
-        None,
-    )
-    .await
-    .expect("Failed to create admin user");
+    let _admin_user =
+        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create admin user");
 
     // Login as admin
     let _login_response = app
@@ -228,7 +213,7 @@ async fn test_registration_with_invite() {
         .json()
         .await
         .expect("Failed to parse invite response");
-    
+
     let invite_code = invite_data["code"].as_str().unwrap();
 
     // Test registration with the invite code
@@ -250,12 +235,12 @@ async fn test_registration_with_invite() {
         println!("Registration failed with: {}", error_text);
         panic!("Registration should succeed with valid invite code");
     }
-    
+
     let auth_data: Value = register_response
         .json()
         .await
         .expect("Failed to parse register response");
-    
+
     assert_eq!(auth_data["user"]["email"], "newuser@test.com");
     assert_eq!(auth_data["user"]["name"], "New User");
 }
@@ -278,13 +263,16 @@ async fn test_registration_without_invite() {
         .expect("Failed to send register request");
 
     assert_eq!(register_response.status(), 401);
-    
+
     let error_data: Value = register_response
         .json()
         .await
         .expect("Failed to parse error response");
-    
-    assert!(error_data["message"].as_str().unwrap().contains("invite code"));
+
+    assert!(error_data["message"]
+        .as_str()
+        .unwrap()
+        .contains("invite code"));
 }
 
 #[tokio::test]
@@ -306,13 +294,16 @@ async fn test_registration_with_invalid_invite() {
         .expect("Failed to send register request");
 
     assert_eq!(register_response.status(), 401);
-    
+
     let error_data: Value = register_response
         .json()
         .await
         .expect("Failed to parse error response");
-    
-    assert!(error_data["message"].as_str().unwrap().contains("Invalid or expired"));
+
+    assert!(error_data["message"]
+        .as_str()
+        .unwrap()
+        .contains("Invalid or expired"));
 }
 
 #[tokio::test]
@@ -330,15 +321,10 @@ async fn test_registration_validation_errors() {
         invite_code: None,
     };
 
-    let _admin_user = db_users::create_user_internal(
-        &app.db_pool,
-        &admin_request,
-        UserRole::Admin,
-        true,
-        None,
-    )
-    .await
-    .expect("Failed to create admin user");
+    let _admin_user =
+        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create admin user");
 
     let _login_response = app
         .client
@@ -365,7 +351,7 @@ async fn test_registration_validation_errors() {
         .json()
         .await
         .expect("Failed to parse invite response");
-    
+
     let invite_code = invite_data["code"].as_str().unwrap();
 
     // Test registration with invalid email
@@ -383,12 +369,12 @@ async fn test_registration_validation_errors() {
         .expect("Failed to send register request");
 
     assert_eq!(register_response.status(), 422); // Unprocessable Entity for validation errors
-    
+
     let error_data: Value = register_response
         .json()
         .await
         .expect("Failed to parse error response");
-    
+
     assert_eq!(error_data["error"], "validation_error");
     assert!(error_data["details"]["email"].is_array());
 
@@ -407,12 +393,12 @@ async fn test_registration_validation_errors() {
         .expect("Failed to send register request");
 
     assert_eq!(register_response.status(), 422);
-    
+
     let error_data: Value = register_response
         .json()
         .await
         .expect("Failed to parse error response");
-    
+
     assert_eq!(error_data["error"], "validation_error");
     assert!(error_data["details"]["password"].is_array());
 
@@ -431,12 +417,12 @@ async fn test_registration_validation_errors() {
         .expect("Failed to send register request");
 
     assert_eq!(register_response.status(), 422);
-    
+
     let error_data: Value = register_response
         .json()
         .await
         .expect("Failed to parse error response");
-    
+
     assert_eq!(error_data["error"], "validation_error");
     assert!(error_data["details"]["name"].is_array());
 }
@@ -456,15 +442,10 @@ async fn test_invite_single_use_enforcement() {
         invite_code: None,
     };
 
-    let _admin_user = db_users::create_user_internal(
-        &app.db_pool,
-        &admin_request,
-        UserRole::Admin,
-        true,
-        None,
-    )
-    .await
-    .expect("Failed to create admin user");
+    let _admin_user =
+        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create admin user");
 
     // Login as admin
     let _login_response = app
@@ -493,7 +474,7 @@ async fn test_invite_single_use_enforcement() {
         .json()
         .await
         .expect("Failed to parse invite response");
-    
+
     let invite_code = invite_data["code"].as_str().unwrap();
 
     // First registration should succeed
@@ -518,7 +499,7 @@ async fn test_invite_single_use_enforcement() {
         .post(app.url("/auth/register"))
         .json(&json!({
             "name": "Second User",
-            "email": "second@test.com", 
+            "email": "second@test.com",
             "password": "password123",
             "invite_code": invite_code
         }))
@@ -527,13 +508,16 @@ async fn test_invite_single_use_enforcement() {
         .expect("Failed to send second register request");
 
     assert_eq!(register_response2.status(), 401);
-    
+
     let error_data: Value = register_response2
         .json()
         .await
         .expect("Failed to parse error response");
-    
-    assert!(error_data["message"].as_str().unwrap().contains("Invalid or expired"));
+
+    assert!(error_data["message"]
+        .as_str()
+        .unwrap()
+        .contains("Invalid or expired"));
 
     // Verify invite usage count increased
     let list_response = app
@@ -547,10 +531,10 @@ async fn test_invite_single_use_enforcement() {
         .json()
         .await
         .expect("Failed to parse list response");
-    
+
     let invites = list_data["invites"].as_array().unwrap();
     let used_invite = invites.iter().find(|inv| inv["code"] == invite_code);
-    
+
     match used_invite {
         Some(invite) => {
             assert_eq!(invite["current_uses"], 1);

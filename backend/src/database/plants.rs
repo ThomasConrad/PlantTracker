@@ -4,7 +4,9 @@ use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use crate::database::DatabasePool;
-use crate::models::{CreatePlantRequest, PlantResponse, UpdatePlantRequest};
+use crate::models::{
+    CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, UpdatePlantRequest,
+};
 use crate::utils::errors::AppError;
 
 #[derive(Debug, FromRow)]
@@ -76,7 +78,7 @@ impl PlantRow {
                 .preview_id
                 .as_ref()
                 .map(|thumb_id| format!("/api/v1/plants/{}/photos/{}", self.id, thumb_id)),
-            custom_metrics: vec![], // TODO: Load custom metrics
+            custom_metrics: vec![],
             created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
                 AppError::Internal {
                     message: "Invalid datetime in database".to_string(),
@@ -90,6 +92,96 @@ impl PlantRow {
             user_id: self.user_id,
         })
     }
+}
+
+fn metric_data_type_to_str(data_type: &MetricDataType) -> &'static str {
+    match data_type {
+        MetricDataType::Number => "number",
+        MetricDataType::Text => "text",
+        MetricDataType::Boolean => "boolean",
+    }
+}
+
+fn parse_metric_data_type(value: &str) -> MetricDataType {
+    match value.to_lowercase().as_str() {
+        "number" => MetricDataType::Number,
+        "text" => MetricDataType::Text,
+        "boolean" => MetricDataType::Boolean,
+        _ => MetricDataType::Text,
+    }
+}
+
+async fn load_custom_metrics_for_plant(
+    pool: &DatabasePool,
+    plant_id: &str,
+) -> Result<Vec<CustomMetric>, AppError> {
+    let rows = sqlx::query(
+        "SELECT id, plant_id, name, unit, data_type FROM custom_metrics WHERE plant_id = ? ORDER BY name ASC",
+    )
+    .bind(plant_id)
+    .fetch_all(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    rows.into_iter()
+        .map(|row| {
+            let id = row.try_get::<String, _>("id").map_err(AppError::Database)?;
+            let plant_id = row
+                .try_get::<String, _>("plant_id")
+                .map_err(AppError::Database)?;
+            let data_type = row
+                .try_get::<String, _>("data_type")
+                .map_err(AppError::Database)?;
+
+            Ok(CustomMetric {
+                id: Uuid::parse_str(&id).map_err(|_| AppError::Internal {
+                    message: "Invalid custom metric id UUID in database".to_string(),
+                })?,
+                plant_id: Uuid::parse_str(&plant_id).map_err(|_| AppError::Internal {
+                    message: "Invalid custom metric plant_id UUID in database".to_string(),
+                })?,
+                name: row
+                    .try_get::<String, _>("name")
+                    .map_err(AppError::Database)?,
+                unit: row
+                    .try_get::<String, _>("unit")
+                    .map_err(AppError::Database)?,
+                data_type: parse_metric_data_type(&data_type),
+            })
+        })
+        .collect()
+}
+
+async fn replace_custom_metrics_for_plant(
+    pool: &DatabasePool,
+    plant_id: &str,
+    metrics: &[(Option<Uuid>, String, String, MetricDataType)],
+) -> Result<(), AppError> {
+    sqlx::query("DELETE FROM custom_metrics WHERE plant_id = ?")
+        .bind(plant_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
+
+    for (existing_id, name, unit, data_type) in metrics {
+        let metric_id = existing_id.unwrap_or_else(Uuid::new_v4).to_string();
+        sqlx::query(
+            "INSERT INTO custom_metrics (id, plant_id, name, unit, data_type, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(metric_id)
+        .bind(plant_id)
+        .bind(name)
+        .bind(unit)
+        .bind(metric_data_type_to_str(data_type))
+        .bind(Utc::now().to_rfc3339())
+        .bind(Utc::now().to_rfc3339())
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
+    }
+
+    Ok(())
 }
 
 /// Creates a new plant in the database for a specific user.
@@ -168,6 +260,14 @@ pub async fn create_plant(
         });
     }
 
+    if let Some(custom_metrics) = &request.custom_metrics {
+        let metrics = custom_metrics
+            .iter()
+            .map(|m| (None, m.name.clone(), m.unit.clone(), m.data_type.clone()))
+            .collect::<Vec<_>>();
+        replace_custom_metrics_for_plant(pool, &plant_id_str, &metrics).await?;
+    }
+
     // Return the created plant
     get_plant_by_id(pool, plant_id).await
 }
@@ -186,14 +286,17 @@ pub async fn get_plant_by_id(
             AppError::Database(e)
         })?;
 
-    plant_row.map_or_else(
+    let mut plant = plant_row.map_or_else(
         || {
             Err(AppError::NotFound {
                 resource: format!("Plant with id {plant_id}"),
             })
         },
         PlantRow::to_response,
-    )
+    )?;
+
+    plant.custom_metrics = load_custom_metrics_for_plant(pool, &plant.id.to_string()).await?;
+    Ok(plant)
 }
 
 pub async fn list_plants_for_user(
@@ -288,6 +391,11 @@ pub async fn list_plants_for_user_with_sort(
         .map(PlantRow::to_response)
         .collect::<Result<Vec<_>, _>>()?;
 
+    let mut plants = plants;
+    for plant in &mut plants {
+        plant.custom_metrics = load_custom_metrics_for_plant(pool, &plant.id.to_string()).await?;
+    }
+
     Ok((plants, total))
 }
 
@@ -328,82 +436,136 @@ pub async fn update_plant(
 
     // Handle watering schedule fields with explicit null handling
     let watering_schedule_provided = request.watering_schedule.is_some();
-    
+
     // Watering interval days
     if let Some(watering_interval) = request.watering_interval_days() {
         query_builder = query_builder.bind(true).bind(watering_interval).bind(false);
     } else if watering_schedule_provided {
         // Schedule provided but interval is None = explicitly disabled
-        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<i32>>)
+            .bind(true);
     } else {
         // Schedule not provided = no change
-        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<i32>>)
+            .bind(false);
     }
 
     // Fertilizing interval days
     let fertilizing_schedule_provided = request.fertilizing_schedule.is_some();
     if let Some(fertilizing_interval) = request.fertilizing_interval_days() {
-        query_builder = query_builder.bind(true).bind(fertilizing_interval).bind(false);
+        query_builder = query_builder
+            .bind(true)
+            .bind(fertilizing_interval)
+            .bind(false);
     } else if fertilizing_schedule_provided {
         // Schedule provided but interval is None = explicitly disabled
-        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<i32>>)
+            .bind(true);
     } else {
         // Schedule not provided = no change
-        query_builder = query_builder.bind(false).bind(None::<Option<i32>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<i32>>)
+            .bind(false);
     }
 
     // Watering amount
     if let Some(watering_amount) = request.watering_amount() {
         query_builder = query_builder.bind(true).bind(watering_amount).bind(false);
     } else if watering_schedule_provided {
-        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<f64>>)
+            .bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<f64>>)
+            .bind(false);
     }
 
     // Watering unit
     if let Some(watering_unit) = request.watering_unit() {
         query_builder = query_builder.bind(true).bind(watering_unit).bind(false);
     } else if watering_schedule_provided {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(false);
     }
 
     // Watering notes
     if let Some(watering_notes) = request.watering_notes() {
         query_builder = query_builder.bind(true).bind(watering_notes).bind(false);
     } else if watering_schedule_provided {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(false);
     }
 
     // Fertilizing amount
     if let Some(fertilizing_amount) = request.fertilizing_amount() {
-        query_builder = query_builder.bind(true).bind(fertilizing_amount).bind(false);
+        query_builder = query_builder
+            .bind(true)
+            .bind(fertilizing_amount)
+            .bind(false);
     } else if fertilizing_schedule_provided {
-        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<f64>>)
+            .bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<f64>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<f64>>)
+            .bind(false);
     }
 
     // Fertilizing unit
     if let Some(fertilizing_unit) = request.fertilizing_unit() {
         query_builder = query_builder.bind(true).bind(fertilizing_unit).bind(false);
     } else if fertilizing_schedule_provided {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(false);
     }
 
     // Fertilizing notes
     if let Some(fertilizing_notes) = request.fertilizing_notes() {
         query_builder = query_builder.bind(true).bind(fertilizing_notes).bind(false);
     } else if fertilizing_schedule_provided {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(true);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(true);
     } else {
-        query_builder = query_builder.bind(false).bind(None::<Option<String>>).bind(false);
+        query_builder = query_builder
+            .bind(false)
+            .bind(None::<Option<String>>)
+            .bind(false);
     }
 
     query_builder = query_builder
@@ -420,6 +582,14 @@ pub async fn update_plant(
         return Err(AppError::NotFound {
             resource: format!("Plant with id {plant_id}"),
         });
+    }
+
+    if let Some(custom_metrics) = &request.custom_metrics {
+        let metrics = custom_metrics
+            .iter()
+            .map(|m| (m.id, m.name.clone(), m.unit.clone(), m.data_type.clone()))
+            .collect::<Vec<_>>();
+        replace_custom_metrics_for_plant(pool, &plant_id.to_string(), &metrics).await?;
     }
 
     // Return the updated plant

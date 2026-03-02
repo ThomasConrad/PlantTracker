@@ -14,7 +14,7 @@ pub async fn save_oauth_token(
     scope: &str,
 ) -> Result<GoogleOAuthToken> {
     let now = Utc::now();
-    
+
     sqlx::query!(
         r#"
         INSERT INTO google_oauth_tokens (
@@ -43,7 +43,8 @@ pub async fn save_oauth_token(
     })?;
 
     // Fetch the inserted/updated token
-    let token = get_oauth_token(pool, user_id).await?
+    let token = get_oauth_token(pool, user_id)
+        .await?
         .ok_or_else(|| AppError::Internal {
             message: "Failed to retrieve saved token".to_string(),
         })?;
@@ -82,11 +83,15 @@ pub async fn get_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<Option<
             user_id: row.user_id,
             access_token: row.access_token,
             refresh_token: row.refresh_token,
-            expires_at: row.expires_at.map(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(Utc::now)),
+            expires_at: row.expires_at.map(|dt| {
+                DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(Utc::now)
+            }),
             scope: row.scope,
             token_type: row.token_type,
-            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
-            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
+            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0)
+                .unwrap_or_else(Utc::now),
+            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0)
+                .unwrap_or_else(Utc::now),
         })
     } else {
         None
@@ -103,7 +108,7 @@ pub async fn update_access_token(
     expires_at: Option<DateTime<Utc>>,
 ) -> Result<()> {
     let now = Utc::now();
-    
+
     sqlx::query!(
         r#"
         UPDATE google_oauth_tokens 
@@ -128,16 +133,13 @@ pub async fn update_access_token(
 
 /// Delete Google OAuth token for a user (disconnect)
 pub async fn delete_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<()> {
-    let result = sqlx::query!(
-        "DELETE FROM google_oauth_tokens WHERE user_id = ?",
-        user_id
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to delete OAuth token for user {}: {}", user_id, e);
-        AppError::Database(e)
-    })?;
+    let result = sqlx::query!("DELETE FROM google_oauth_tokens WHERE user_id = ?", user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to delete OAuth token for user {}: {}", user_id, e);
+            AppError::Database(e)
+        })?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound {
@@ -153,7 +155,7 @@ pub async fn delete_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<()> 
 #[allow(dead_code)]
 pub async fn has_valid_token(pool: &SqlitePool, user_id: &str) -> Result<bool> {
     let token = get_oauth_token(pool, user_id).await?;
-    
+
     match token {
         Some(token) => {
             // Check if token is expired
@@ -173,15 +175,13 @@ pub async fn has_valid_token(pool: &SqlitePool, user_id: &str) -> Result<bool> {
 /// Get all users who have Google Tasks integration enabled
 #[allow(dead_code)]
 pub async fn get_users_with_google_tasks(pool: &SqlitePool) -> Result<Vec<String>> {
-    let user_ids = sqlx::query_scalar!(
-        "SELECT user_id FROM google_oauth_tokens"
-    )
-    .fetch_all(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to get users with Google Tasks: {}", e);
-        AppError::Database(e)
-    })?;
+    let user_ids = sqlx::query_scalar!("SELECT user_id FROM google_oauth_tokens")
+        .fetch_all(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get users with Google Tasks: {}", e);
+            AppError::Database(e)
+        })?;
 
     Ok(user_ids)
 }
@@ -189,7 +189,7 @@ pub async fn get_users_with_google_tasks(pool: &SqlitePool) -> Result<Vec<String
 /// Get all tokens that need refreshing (expire within the next 10 minutes)
 pub async fn get_tokens_needing_refresh(pool: &SqlitePool) -> Result<Vec<GoogleOAuthToken>> {
     let cutoff_time = Utc::now() + chrono::Duration::minutes(10);
-    
+
     let rows = sqlx::query!(
         r#"
         SELECT 
@@ -221,11 +221,15 @@ pub async fn get_tokens_needing_refresh(pool: &SqlitePool) -> Result<Vec<GoogleO
             user_id: row.user_id,
             access_token: row.access_token,
             refresh_token: row.refresh_token,
-            expires_at: row.expires_at.map(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(Utc::now)),
+            expires_at: row.expires_at.map(|dt| {
+                DateTime::from_timestamp(dt.and_utc().timestamp(), 0).unwrap_or_else(Utc::now)
+            }),
             scope: row.scope,
             token_type: row.token_type,
-            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
-            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0).unwrap_or_else(Utc::now),
+            created_at: DateTime::from_timestamp(row.created_at.and_utc().timestamp(), 0)
+                .unwrap_or_else(Utc::now),
+            updated_at: DateTime::from_timestamp(row.updated_at.and_utc().timestamp(), 0)
+                .unwrap_or_else(Utc::now),
         })
         .collect();
 
@@ -235,7 +239,7 @@ pub async fn get_tokens_needing_refresh(pool: &SqlitePool) -> Result<Vec<GoogleO
 /// Get the next token expiration time
 pub async fn get_next_token_expiration(pool: &SqlitePool) -> Result<Option<DateTime<Utc>>> {
     let now = Utc::now();
-    
+
     let row = sqlx::query!(
         r#"
         SELECT MIN(expires_at) as next_expiration
@@ -253,7 +257,8 @@ pub async fn get_next_token_expiration(pool: &SqlitePool) -> Result<Option<DateT
         AppError::Database(e)
     })?;
 
-    let next_expiration = row.next_expiration
+    let next_expiration = row
+        .next_expiration
         .and_then(|dt| DateTime::from_timestamp(dt.and_utc().timestamp(), 0));
 
     Ok(next_expiration)

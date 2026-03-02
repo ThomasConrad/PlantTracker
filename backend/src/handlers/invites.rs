@@ -51,12 +51,8 @@ async fn create_invite(
 
     tracing::info!("Creating invite code for user: {}", user.id);
 
-    let invite = db_invites::create_invite_code(
-        &auth_session.backend.db,
-        &payload,
-        Some(&user.id),
-    )
-    .await?;
+    let invite =
+        db_invites::create_invite_code(&auth_session.backend.db, &payload, Some(&user.id)).await?;
 
     tracing::info!("Invite code created: {}", invite.code);
     Ok((axum::http::StatusCode::CREATED, Json(invite.into())))
@@ -160,9 +156,7 @@ async fn join_waitlist(
     ),
     tag = "invites"
 )]
-async fn list_waitlist(
-    auth_session: AuthSession,
-) -> Result<Json<Vec<WaitlistResponse>>> {
+async fn list_waitlist(auth_session: AuthSession) -> Result<Json<Vec<WaitlistResponse>>> {
     let _user = auth_session.user.ok_or(AppError::Authentication {
         message: "Authentication required".to_string(),
     })?;

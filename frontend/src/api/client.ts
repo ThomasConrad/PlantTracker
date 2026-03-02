@@ -14,6 +14,19 @@ type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
 type PhotosResponse = components['schemas']['PhotosResponse'];
 type PlantsResponse = components['schemas']['PlantsResponse'];
+type WaitlistSignupRequest = components['schemas']['WaitlistSignupRequest'];
+type WaitlistResponse = components['schemas']['WaitlistResponse'];
+interface UpdateProfileRequest {
+  name: string;
+  email: string;
+}
+interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+interface DeleteAccountRequest {
+  current_password: string;
+}
 
 interface UpdateTrackingEntryRequest {
   timestamp?: string;
@@ -111,8 +124,40 @@ class ApiClient {
     });
   }
 
+  async joinWaitlist(request: WaitlistSignupRequest): Promise<WaitlistResponse> {
+    return this.request<WaitlistResponse>('/invites/waitlist', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
   async getCurrentUser(): Promise<User> {
     return this.request<User>('/auth/me');
+  }
+
+  async updateProfile(request: UpdateProfileRequest): Promise<User> {
+    return this.request<User>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async changePassword(request: ChangePasswordRequest): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async exportUserData(): Promise<unknown> {
+    return this.request<unknown>('/auth/export');
+  }
+
+  async deleteAccount(request: DeleteAccountRequest): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/auth/account', {
+      method: 'DELETE',
+      body: JSON.stringify(request),
+    });
   }
 
   async logout(): Promise<void> {

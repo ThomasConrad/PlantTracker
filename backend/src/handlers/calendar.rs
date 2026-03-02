@@ -6,6 +6,7 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
+use sqlx::Row;
 
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
@@ -20,7 +21,7 @@ fn get_base_url_from_headers(headers: &HeaderMap, _uri: &Uri) -> String {
         .get("host")
         .and_then(|h| h.to_str().ok())
         .unwrap_or("localhost:3000");
-    
+
     // Check for forwarded protocol headers (common in reverse proxies)
     let scheme = headers
         .get("x-forwarded-proto")
@@ -38,7 +39,7 @@ fn get_base_url_from_headers(headers: &HeaderMap, _uri: &Uri) -> String {
                 "https"
             }
         });
-    
+
     format!("{}://{}", scheme, host)
 }
 
@@ -56,6 +57,88 @@ pub fn routes() -> Router<AppState> {
 #[derive(Deserialize)]
 pub struct CalendarQuery {
     token: Option<String>,
+}
+
+async fn get_or_create_calendar_token(pool: &sqlx::SqlitePool, user_id: &str) -> Result<String> {
+    let existing_token = sqlx::query("SELECT calendar_token FROM users WHERE id = ?")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(AppError::Database)?
+        .and_then(|row| {
+            row.try_get::<Option<String>, _>("calendar_token")
+                .ok()
+                .flatten()
+        });
+
+    if let Some(token) = existing_token {
+        return Ok(token);
+    }
+
+    let token = generate_calendar_token();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let updated = sqlx::query(
+        "UPDATE users SET calendar_token = ?, calendar_token_updated_at = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(&token)
+    .bind(&now)
+    .bind(&now)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("User with id {}", user_id),
+        });
+    }
+
+    Ok(token)
+}
+
+async fn rotate_calendar_token(pool: &sqlx::SqlitePool, user_id: &str) -> Result<String> {
+    let token = generate_calendar_token();
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let updated = sqlx::query(
+        "UPDATE users SET calendar_token = ?, calendar_token_updated_at = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(&token)
+    .bind(&now)
+    .bind(&now)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("User with id {}", user_id),
+        });
+    }
+
+    Ok(token)
+}
+
+async fn verify_calendar_token(
+    pool: &sqlx::SqlitePool,
+    user_id: &str,
+    provided_token: &str,
+) -> Result<bool> {
+    let stored_token = sqlx::query("SELECT calendar_token FROM users WHERE id = ?")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(AppError::Database)?
+        .and_then(|row| {
+            row.try_get::<Option<String>, _>("calendar_token")
+                .ok()
+                .flatten()
+        });
+
+    Ok(stored_token.is_some_and(|token| token == provided_token))
 }
 
 /// Serve an iCalendar feed for a user's plants
@@ -82,34 +165,17 @@ pub async fn get_calendar_feed(
     headers: HeaderMap,
 ) -> Result<Response> {
     // Extract user_id by removing .ics extension if present
-    let user_id = user_id_with_ext.strip_suffix(".ics").unwrap_or(&user_id_with_ext);
+    let user_id = user_id_with_ext
+        .strip_suffix(".ics")
+        .unwrap_or(&user_id_with_ext);
     tracing::info!("Calendar feed request for user: {}", user_id);
 
-    // For now, we'll use a simple token validation
-    // In a production system, you'd want to store tokens in the database
     let provided_token = params.token.ok_or(AppError::Authentication {
         message: "Calendar token required".to_string(),
     })?;
 
-    // Generate expected token for this user (this is a simple implementation)
-    let expected_token = generate_calendar_token(user_id);
-
-    tracing::info!(
-        "Calendar token validation - provided: {}, expected: {}",
-        provided_token,
-        expected_token
-    );
-
-    // For development/testing: temporarily accept any reasonable-looking token
-    // TODO: Implement proper token validation for production
-    let is_valid_hex_token =
-        provided_token.len() >= 8 && provided_token.chars().all(|c| c.is_ascii_hexdigit());
-
-    if !is_valid_hex_token {
-        tracing::warn!(
-            "Calendar token validation failed - invalid format: {}",
-            provided_token
-        );
+    if !verify_calendar_token(&app_state.pool, user_id, &provided_token).await? {
+        tracing::warn!("Calendar token validation failed for user: {}", user_id);
         return Err(AppError::Authentication {
             message: "Invalid calendar token".to_string(),
         });
@@ -176,6 +242,7 @@ pub async fn get_calendar_feed(
     )
 )]
 pub async fn get_calendar_subscription_info(
+    State(app_state): State<AppState>,
     auth_session: AuthSession,
     uri: Uri,
     headers: HeaderMap,
@@ -186,12 +253,12 @@ pub async fn get_calendar_subscription_info(
 
     tracing::info!("Calendar subscription info request for user: {}", user.id);
 
-    // Generate a calendar token for this user
-    let calendar_token = generate_calendar_token(&user.id);
+    // Calendar token is persisted and reused until explicitly rotated.
+    let calendar_token = get_or_create_calendar_token(&app_state.pool, &user.id).await?;
 
     // Get base URL from request headers or environment
-    let base_url = std::env::var("BASE_URL")
-        .unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
+    let base_url =
+        std::env::var("BASE_URL").unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
 
     // Determine API prefix from current request URI
     let api_path = if uri.path().starts_with("/api/v1/") {
@@ -206,6 +273,11 @@ pub async fn get_calendar_subscription_info(
 
     let response = serde_json::json!({
         "feedUrl": feed_url,
+        "tokenLifecycle": {
+            "persistent": true,
+            "rotation": "Token remains stable until /calendar/regenerate-token is called.",
+            "regenerationEffect": "Regenerating invalidates the previous token immediately."
+        },
         "instructions": {
             "general": "Copy the feed URL and add it as a calendar subscription in your calendar application",
             "iOS": "Settings > Mail > Accounts > Add Account > Other > Add Subscribed Calendar",
@@ -238,6 +310,7 @@ pub async fn get_calendar_subscription_info(
     )
 )]
 pub async fn regenerate_calendar_token(
+    State(app_state): State<AppState>,
     auth_session: AuthSession,
     uri: Uri,
     headers: HeaderMap,
@@ -248,12 +321,12 @@ pub async fn regenerate_calendar_token(
 
     tracing::info!("Calendar token regeneration request for user: {}", user.id);
 
-    // Generate a new calendar token
-    let calendar_token = generate_calendar_token(&user.id);
+    // Rotate token so old subscriptions are invalidated immediately.
+    let calendar_token = rotate_calendar_token(&app_state.pool, &user.id).await?;
 
     // Get base URL from request headers or environment
-    let base_url = std::env::var("BASE_URL")
-        .unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
+    let base_url =
+        std::env::var("BASE_URL").unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
 
     // Determine API prefix from current request URI
     let api_path = if uri.path().starts_with("/api/v1/") {
@@ -268,7 +341,12 @@ pub async fn regenerate_calendar_token(
 
     let response = serde_json::json!({
         "feedUrl": feed_url,
-        "message": "Calendar token regenerated successfully. Please update your calendar subscription with the new URL."
+        "message": "Calendar token regenerated successfully. The previous token is no longer valid, so update your calendar subscription with this new URL.",
+        "tokenLifecycle": {
+            "persistent": true,
+            "rotation": "Token remains stable until the next regeneration.",
+            "regenerationEffect": "Regeneration immediately revokes the previous token."
+        }
     });
 
     Ok(axum::Json(response))

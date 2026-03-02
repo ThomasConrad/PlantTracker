@@ -1,5 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use icalendar::{Calendar, Component, Event, EventLike};
+use rand::RngCore;
 
 use crate::models::plant::PlantResponse;
 use crate::utils::errors::AppError;
@@ -42,18 +43,25 @@ fn generate_watering_events(
 ) -> Result<(), AppError> {
     // Skip if watering is disabled
     if plant.watering_schedule.interval_days.is_none() {
-        tracing::info!("Skipping watering events for {} - no watering interval set", plant.name);
+        tracing::info!(
+            "Skipping watering events for {} - no watering interval set",
+            plant.name
+        );
         return Ok(());
     }
 
     let interval_days = plant.watering_schedule.interval_days.unwrap();
-    
+
     // Safety check to prevent infinite loops
     if interval_days <= 0 {
-        tracing::warn!("Invalid watering interval for plant {}: {} days", plant.name, interval_days);
+        tracing::warn!(
+            "Invalid watering interval for plant {}: {} days",
+            plant.name,
+            interval_days
+        );
         return Ok(());
     }
-    
+
     let last_watered = plant
         .last_watered
         .unwrap_or_else(|| start_date - Duration::days(interval_days as i64));
@@ -67,7 +75,6 @@ fn generate_watering_events(
     while next_watering <= start_threshold {
         next_watering += interval_duration;
     }
-
 
     let mut event_count = 0;
     while next_watering <= end_date && event_count < 100 {
@@ -110,18 +117,25 @@ fn generate_fertilizing_events(
 ) -> Result<(), AppError> {
     // Skip if fertilizing is disabled
     if plant.fertilizing_schedule.interval_days.is_none() {
-        tracing::info!("Skipping fertilizing events for {} - no fertilizing interval set", plant.name);
+        tracing::info!(
+            "Skipping fertilizing events for {} - no fertilizing interval set",
+            plant.name
+        );
         return Ok(());
     }
 
     let interval_days = plant.fertilizing_schedule.interval_days.unwrap();
-    
+
     // Safety check to prevent infinite loops
     if interval_days <= 0 {
-        tracing::warn!("Invalid fertilizing interval for plant {}: {} days", plant.name, interval_days);
+        tracing::warn!(
+            "Invalid fertilizing interval for plant {}: {} days",
+            plant.name,
+            interval_days
+        );
         return Ok(());
     }
-    
+
     let last_fertilized = plant
         .last_fertilized
         .unwrap_or_else(|| start_date - Duration::days(interval_days as i64));
@@ -177,18 +191,10 @@ pub fn generate_calendar_feed_url(base_url: &str, user_id: &str, calendar_token:
 }
 
 /// Generate a secure calendar token for a user
-pub fn generate_calendar_token(user_id: &str) -> String {
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
-
-    let mut hasher = DefaultHasher::new();
-    user_id.hash(&mut hasher);
-    // Use current timestamp with nanoseconds for uniqueness
-    let now = Utc::now();
-    now.timestamp().hash(&mut hasher);
-    now.timestamp_nanos_opt().unwrap_or(0).hash(&mut hasher);
-
-    format!("{:x}", hasher.finish())
+pub fn generate_calendar_token() -> String {
+    let mut bytes = [0_u8; 32];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 #[cfg(test)]
@@ -196,8 +202,6 @@ mod tests {
     use super::*;
     use crate::models::plant::PlantResponse;
     use chrono::{Duration, Utc};
-    use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
     use uuid::Uuid;
 
     fn create_test_plant() -> PlantResponse {
@@ -386,11 +390,10 @@ mod tests {
 
     #[test]
     fn test_generate_calendar_token() {
-        let token1 = generate_calendar_token("user1");
-        let token2 = generate_calendar_token("user2");
-        let _token3 = generate_calendar_token("user1"); // Same user, different time
+        let token1 = generate_calendar_token();
+        let token2 = generate_calendar_token();
 
-        // Tokens should be different for different users
+        // Tokens should be different on each invocation
         assert_ne!(token1, token2);
 
         // Tokens should be hexadecimal strings
@@ -400,26 +403,6 @@ mod tests {
         // Tokens should be reasonably long (security)
         assert!(token1.len() >= 8);
         assert!(token2.len() >= 8);
-    }
-
-    #[test]
-    fn test_calendar_token_deterministic_for_same_timestamp() {
-        let user_id = "test-user";
-        let timestamp = 1640995200i64; // Fixed timestamp
-
-        // Generate token manually with same timestamp
-        let mut hasher1 = DefaultHasher::new();
-        user_id.hash(&mut hasher1);
-        timestamp.hash(&mut hasher1);
-        let token1 = format!("{:x}", hasher1.finish());
-
-        let mut hasher2 = DefaultHasher::new();
-        user_id.hash(&mut hasher2);
-        timestamp.hash(&mut hasher2);
-        let token2 = format!("{:x}", hasher2.finish());
-
-        // Should be identical for same inputs
-        assert_eq!(token1, token2);
     }
 
     #[test]

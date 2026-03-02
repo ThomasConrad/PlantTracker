@@ -13,7 +13,7 @@ async fn test_registration_validation() {
         password: "password123".to_string(),
         invite_code: Some("TEST123".to_string()),
     };
-    
+
     assert!(valid_request.validate().is_ok());
 
     // Invalid email
@@ -23,7 +23,7 @@ async fn test_registration_validation() {
         password: "password123".to_string(),
         invite_code: Some("TEST123".to_string()),
     };
-    
+
     let validation_result = invalid_email_request.validate();
     assert!(validation_result.is_err());
     let errors = validation_result.unwrap_err();
@@ -36,7 +36,7 @@ async fn test_registration_validation() {
         password: "short".to_string(),
         invite_code: Some("TEST123".to_string()),
     };
-    
+
     let validation_result = short_password_request.validate();
     assert!(validation_result.is_err());
     let errors = validation_result.unwrap_err();
@@ -49,7 +49,7 @@ async fn test_registration_validation() {
         password: "password123".to_string(),
         invite_code: Some("TEST123".to_string()),
     };
-    
+
     let validation_result = short_name_request.validate();
     assert!(validation_result.is_err());
     let errors = validation_result.unwrap_err();
@@ -94,7 +94,7 @@ async fn test_json_serialization() {
     // Test frontend format
     let frontend_json = json!({
         "name": "Test User",
-        "email": "test@example.com", 
+        "email": "test@example.com",
         "password": "password123",
         "invite_code": "TEST123"
     });

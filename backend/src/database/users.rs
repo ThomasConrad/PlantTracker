@@ -1,8 +1,11 @@
 use anyhow::Result;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::{rand_core::OsRng, SaltString};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
+use serde_json::{json, Value};
+use sqlx::Row;
 use uuid::Uuid;
+use validator::{ValidationError, ValidationErrors};
 
 // Argon2id configuration following OWASP recommendations:
 // - 19 MiB of memory (19456 KB)
@@ -12,8 +15,27 @@ fn get_argon2_config() -> Argon2<'static> {
     Argon2::new(
         argon2::Algorithm::Argon2id,
         argon2::Version::V0x13,
-        argon2::Params::new(19456, 2, 1, None).unwrap()
+        argon2::Params::new(19456, 2, 1, None).unwrap(),
     )
+}
+
+fn hash_password(password: &str) -> Result<String, AppError> {
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = get_argon2_config();
+    argon2
+        .hash_password(password.as_bytes(), &salt)
+        .map_err(|e| AppError::Internal {
+            message: format!("Failed to hash password: {e}"),
+        })
+        .map(|h| h.to_string())
+}
+
+fn duplicate_email_validation_error() -> ValidationErrors {
+    let mut errors = ValidationErrors::new();
+    let mut email_error = ValidationError::new("email_already_exists");
+    email_error.message = Some("An account with this email already exists".into());
+    errors.add("email", email_error);
+    errors
 }
 
 // For tests, use faster but still secure parameters
@@ -22,12 +44,12 @@ fn get_argon2_test_config() -> Argon2<'static> {
     Argon2::new(
         argon2::Algorithm::Argon2id,
         argon2::Version::V0x13,
-        argon2::Params::new(4096, 1, 1, None).unwrap() // Faster for tests
+        argon2::Params::new(4096, 1, 1, None).unwrap(), // Faster for tests
     )
 }
 
 use crate::database::DatabasePool;
-use crate::models::{CreateUserRequest, User, UserRow, UserRole};
+use crate::models::{CreateUserRequest, User, UserRole, UserRow};
 use crate::utils::errors::AppError;
 
 pub async fn create_user(
@@ -36,7 +58,7 @@ pub async fn create_user(
 ) -> Result<User, AppError> {
     // Get default invite limit from settings
     let default_limit = get_default_invite_limit(pool).await?;
-    
+
     create_user_internal(pool, request, UserRole::User, false, Some(default_limit)).await
 }
 
@@ -49,9 +71,7 @@ pub async fn create_user_internal(
 ) -> Result<User, AppError> {
     // Check if user with this email already exists
     if get_user_by_email(pool, &request.email).await.is_ok() {
-        return Err(AppError::Validation(
-            validator::ValidationErrors::new(), // TODO: Add proper validation error
-        ));
+        return Err(AppError::Validation(duplicate_email_validation_error()));
     }
 
     // Check total user limit
@@ -61,7 +81,7 @@ pub async fn create_user_internal(
         .map_err(AppError::Database)?;
 
     let max_total_users = get_max_total_users(pool).await?;
-    
+
     if total_users >= max_total_users && role != UserRole::Admin {
         return Err(AppError::Internal {
             message: "Maximum number of users reached".to_string(),
@@ -69,15 +89,9 @@ pub async fn create_user_internal(
     }
 
     let user_id = Uuid::new_v4().to_string();
-    
+
     // Generate salt and hash password with Argon2id
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = get_argon2_config();
-    let password_hash = argon2.hash_password(request.password.as_bytes(), &salt)
-        .map_err(|e| AppError::Internal {
-            message: format!("Failed to hash password: {e}"),
-        })?
-        .to_string();
+    let password_hash = hash_password(&request.password)?;
 
     let now = Utc::now().to_rfc3339();
     let role_str = role.to_string();
@@ -122,18 +136,15 @@ async fn get_default_invite_limit(pool: &DatabasePool) -> Result<i32, AppError> 
     .await
     .map_err(AppError::Database)?;
 
-    Ok(limit
-        .and_then(|v| v.parse::<i32>().ok())
-        .unwrap_or(5))
+    Ok(limit.and_then(|v| v.parse::<i32>().ok()).unwrap_or(5))
 }
 
 async fn get_max_total_users(pool: &DatabasePool) -> Result<i32, AppError> {
-    let max_users = sqlx::query_scalar!(
-        "SELECT value FROM admin_settings WHERE key = 'max_total_users'"
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(AppError::Database)?;
+    let max_users =
+        sqlx::query_scalar!("SELECT value FROM admin_settings WHERE key = 'max_total_users'")
+            .fetch_optional(pool)
+            .await
+            .map_err(AppError::Database)?;
 
     Ok(max_users
         .and_then(|v| v.parse::<i32>().ok())
@@ -195,9 +206,11 @@ pub async fn verify_password(
     let parsed_hash = PasswordHash::new(&user.password_hash).map_err(|e| AppError::Internal {
         message: format!("Failed to parse password hash: {e}"),
     })?;
-    
+
     let argon2 = get_argon2_config();
-    let is_valid = argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok();
+    let is_valid = argon2
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok();
 
     if is_valid {
         Ok(user)
@@ -220,6 +233,204 @@ pub async fn update_user_login_time(pool: &DatabasePool, user_id: &str) -> Resul
         })?;
 
     if result.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("User with id {user_id}"),
+        });
+    }
+
+    Ok(())
+}
+
+pub async fn update_user_profile(
+    pool: &DatabasePool,
+    user_id: &str,
+    name: &str,
+    email: &str,
+) -> Result<User, AppError> {
+    let existing =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE email = ? AND id != ?")
+            .bind(email)
+            .bind(user_id)
+            .fetch_one(pool)
+            .await
+            .map_err(AppError::Database)?;
+
+    if existing > 0 {
+        return Err(AppError::Validation(duplicate_email_validation_error()));
+    }
+
+    let now = Utc::now().to_rfc3339();
+    let updated = sqlx::query("UPDATE users SET name = ?, email = ?, updated_at = ? WHERE id = ?")
+        .bind(name)
+        .bind(email)
+        .bind(now)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("User with id {user_id}"),
+        });
+    }
+
+    get_user_by_id(pool, user_id).await
+}
+
+pub async fn change_user_password(
+    pool: &DatabasePool,
+    user_id: &str,
+    current_password: &str,
+    new_password: &str,
+) -> Result<(), AppError> {
+    let user = get_user_by_id(pool, user_id).await?;
+    verify_password(pool, &user.email, current_password).await?;
+
+    let password_hash = hash_password(new_password)?;
+    let now = Utc::now().to_rfc3339();
+
+    let updated = sqlx::query("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?")
+        .bind(password_hash)
+        .bind(now)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("User with id {user_id}"),
+        });
+    }
+
+    Ok(())
+}
+
+pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Value, AppError> {
+    let user = sqlx::query(
+        "SELECT id, email, name, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(AppError::Database)?
+    .ok_or_else(|| AppError::NotFound {
+        resource: format!("User with id {user_id}"),
+    })?;
+
+    let plants = sqlx::query(
+        "SELECT id, name, genus, watering_interval_days, fertilizing_interval_days, created_at, updated_at FROM plants WHERE user_id = ? ORDER BY created_at DESC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let tracking_entries = sqlx::query(
+        "SELECT te.id, te.plant_id, te.entry_type, te.timestamp, te.value, te.notes, te.metric_id, te.created_at, te.updated_at
+         FROM tracking_entries te
+         JOIN plants p ON p.id = te.plant_id
+         WHERE p.user_id = ?
+         ORDER BY te.timestamp DESC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let photos = sqlx::query(
+        "SELECT ph.id, ph.plant_id, ph.filename, ph.original_filename, ph.size, ph.content_type, ph.width, ph.height, ph.created_at
+         FROM photos ph
+         JOIN plants p ON p.id = ph.plant_id
+         WHERE p.user_id = ?
+         ORDER BY ph.created_at DESC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let invites = sqlx::query(
+        "SELECT id, code, max_uses, current_uses, is_active, created_at, expires_at
+         FROM invite_codes WHERE created_by = ? ORDER BY created_at DESC",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    Ok(json!({
+        "exported_at": Utc::now().to_rfc3339(),
+        "user": {
+            "id": user.try_get::<String, _>("id").unwrap_or_default(),
+            "email": user.try_get::<String, _>("email").unwrap_or_default(),
+            "name": user.try_get::<String, _>("name").unwrap_or_default(),
+            "role": user.try_get::<String, _>("role").unwrap_or_else(|_| "user".to_string()),
+            "can_create_invites": user.try_get::<bool, _>("can_create_invites").unwrap_or(false),
+            "max_invites": user.try_get::<Option<i32>, _>("max_invites").ok().flatten(),
+            "invites_created": user.try_get::<i32, _>("invites_created").unwrap_or(0),
+            "created_at": user.try_get::<String, _>("created_at").unwrap_or_default(),
+            "updated_at": user.try_get::<String, _>("updated_at").unwrap_or_default(),
+        },
+        "plants": plants.into_iter().map(|row| json!({
+            "id": row.try_get::<String, _>("id").unwrap_or_default(),
+            "name": row.try_get::<String, _>("name").unwrap_or_default(),
+            "genus": row.try_get::<String, _>("genus").unwrap_or_default(),
+            "watering_interval_days": row.try_get::<Option<i32>, _>("watering_interval_days").ok().flatten(),
+            "fertilizing_interval_days": row.try_get::<Option<i32>, _>("fertilizing_interval_days").ok().flatten(),
+            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
+            "updated_at": row.try_get::<String, _>("updated_at").unwrap_or_default(),
+        })).collect::<Vec<_>>(),
+        "tracking_entries": tracking_entries.into_iter().map(|row| json!({
+            "id": row.try_get::<String, _>("id").unwrap_or_default(),
+            "plant_id": row.try_get::<String, _>("plant_id").unwrap_or_default(),
+            "entry_type": row.try_get::<String, _>("entry_type").unwrap_or_default(),
+            "timestamp": row.try_get::<String, _>("timestamp").unwrap_or_default(),
+            "value": row.try_get::<Option<String>, _>("value").ok().flatten(),
+            "notes": row.try_get::<Option<String>, _>("notes").ok().flatten(),
+            "metric_id": row.try_get::<Option<String>, _>("metric_id").ok().flatten(),
+            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
+            "updated_at": row.try_get::<String, _>("updated_at").unwrap_or_default(),
+        })).collect::<Vec<_>>(),
+        "photos": photos.into_iter().map(|row| json!({
+            "id": row.try_get::<String, _>("id").unwrap_or_default(),
+            "plant_id": row.try_get::<String, _>("plant_id").unwrap_or_default(),
+            "filename": row.try_get::<String, _>("filename").unwrap_or_default(),
+            "original_filename": row.try_get::<String, _>("original_filename").unwrap_or_default(),
+            "size": row.try_get::<i64, _>("size").unwrap_or(0),
+            "content_type": row.try_get::<String, _>("content_type").unwrap_or_default(),
+            "width": row.try_get::<Option<i32>, _>("width").ok().flatten(),
+            "height": row.try_get::<Option<i32>, _>("height").ok().flatten(),
+            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
+        })).collect::<Vec<_>>(),
+        "invites": invites.into_iter().map(|row| json!({
+            "id": row.try_get::<String, _>("id").unwrap_or_default(),
+            "code": row.try_get::<String, _>("code").unwrap_or_default(),
+            "max_uses": row.try_get::<i32, _>("max_uses").unwrap_or(1),
+            "current_uses": row.try_get::<i32, _>("current_uses").unwrap_or(0),
+            "is_active": row.try_get::<bool, _>("is_active").unwrap_or(false),
+            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
+            "expires_at": row.try_get::<Option<String>, _>("expires_at").ok().flatten(),
+        })).collect::<Vec<_>>(),
+    }))
+}
+
+pub async fn delete_user_account(
+    pool: &DatabasePool,
+    user_id: &str,
+    current_password: &str,
+) -> Result<(), AppError> {
+    let user = get_user_by_id(pool, user_id).await?;
+    verify_password(pool, &user.email, current_password).await?;
+
+    let deleted = sqlx::query("DELETE FROM users WHERE id = ?")
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
+
+    if deleted.rows_affected() != 1 {
         return Err(AppError::NotFound {
             resource: format!("User with id {user_id}"),
         });
@@ -265,9 +476,15 @@ mod tests {
 
         let salt1 = SaltString::generate(&mut OsRng);
         let salt2 = SaltString::generate(&mut OsRng);
-        
-        let hash1 = argon2.hash_password(password.as_bytes(), &salt1).unwrap().to_string();
-        let hash2 = argon2.hash_password(password.as_bytes(), &salt2).unwrap().to_string();
+
+        let hash1 = argon2
+            .hash_password(password.as_bytes(), &salt1)
+            .unwrap()
+            .to_string();
+        let hash2 = argon2
+            .hash_password(password.as_bytes(), &salt2)
+            .unwrap()
+            .to_string();
 
         // Even with the same password, hashes should be different due to salt
         assert_ne!(hash1, hash2);
@@ -275,8 +492,12 @@ mod tests {
         // But both should verify correctly
         let parsed_hash1 = PasswordHash::new(&hash1).unwrap();
         let parsed_hash2 = PasswordHash::new(&hash2).unwrap();
-        assert!(argon2.verify_password(password.as_bytes(), &parsed_hash1).is_ok());
-        assert!(argon2.verify_password(password.as_bytes(), &parsed_hash2).is_ok());
+        assert!(argon2
+            .verify_password(password.as_bytes(), &parsed_hash1)
+            .is_ok());
+        assert!(argon2
+            .verify_password(password.as_bytes(), &parsed_hash2)
+            .is_ok());
     }
 
     #[test]
@@ -291,8 +512,12 @@ mod tests {
 
         let password_hash = hash_result.unwrap().to_string();
         let parsed_hash = PasswordHash::new(&password_hash).unwrap();
-        assert!(argon2.verify_password(empty_password.as_bytes(), &parsed_hash).is_ok());
-        assert!(argon2.verify_password("not_empty".as_bytes(), &parsed_hash).is_err());
+        assert!(argon2
+            .verify_password(empty_password.as_bytes(), &parsed_hash)
+            .is_ok());
+        assert!(argon2
+            .verify_password("not_empty".as_bytes(), &parsed_hash)
+            .is_err());
     }
 
     #[test]
@@ -306,11 +531,15 @@ mod tests {
 
         let password_hash = hash_result.unwrap().to_string();
         let parsed_hash = PasswordHash::new(&password_hash).unwrap();
-        assert!(argon2.verify_password(long_password.as_bytes(), &parsed_hash).is_ok());
+        assert!(argon2
+            .verify_password(long_password.as_bytes(), &parsed_hash)
+            .is_ok());
 
         // Different password should not verify
         let different_password = "b".repeat(100);
-        assert!(argon2.verify_password(different_password.as_bytes(), &parsed_hash).is_err());
+        assert!(argon2
+            .verify_password(different_password.as_bytes(), &parsed_hash)
+            .is_err());
     }
 
     #[test]
@@ -324,11 +553,15 @@ mod tests {
 
         let password_hash = hash_result.unwrap().to_string();
         let parsed_hash = PasswordHash::new(&password_hash).unwrap();
-        assert!(argon2.verify_password(special_password.as_bytes(), &parsed_hash).is_ok());
+        assert!(argon2
+            .verify_password(special_password.as_bytes(), &parsed_hash)
+            .is_ok());
 
         // Should not verify with different special characters
         let different_special = "p@ssw0rd!#$%^&*()_+-=[]{}|;:'\",.<>?/~";
-        assert!(argon2.verify_password(different_special.as_bytes(), &parsed_hash).is_err());
+        assert!(argon2
+            .verify_password(different_special.as_bytes(), &parsed_hash)
+            .is_err());
     }
 
     #[test]
@@ -342,11 +575,15 @@ mod tests {
 
         let password_hash = hash_result.unwrap().to_string();
         let parsed_hash = PasswordHash::new(&password_hash).unwrap();
-        assert!(argon2.verify_password(unicode_password.as_bytes(), &parsed_hash).is_ok());
+        assert!(argon2
+            .verify_password(unicode_password.as_bytes(), &parsed_hash)
+            .is_ok());
 
         // Different unicode should not verify
         let different_unicode = "pásswörd123🔓"; // Different emoji
-        assert!(argon2.verify_password(different_unicode.as_bytes(), &parsed_hash).is_err());
+        assert!(argon2
+            .verify_password(different_unicode.as_bytes(), &parsed_hash)
+            .is_err());
     }
 
     #[test]
@@ -360,12 +597,20 @@ mod tests {
 
         let password_hash = hash_result.unwrap().to_string();
         let parsed_hash = PasswordHash::new(&password_hash).unwrap();
-        assert!(argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok());
+        assert!(argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok());
 
         // Different case should not verify
-        assert!(argon2.verify_password("testpassword123".as_bytes(), &parsed_hash).is_err());
-        assert!(argon2.verify_password("TESTPASSWORD123".as_bytes(), &parsed_hash).is_err());
-        assert!(argon2.verify_password("TestPASSWORD123".as_bytes(), &parsed_hash).is_err());
+        assert!(argon2
+            .verify_password("testpassword123".as_bytes(), &parsed_hash)
+            .is_err());
+        assert!(argon2
+            .verify_password("TESTPASSWORD123".as_bytes(), &parsed_hash)
+            .is_err());
+        assert!(argon2
+            .verify_password("TestPASSWORD123".as_bytes(), &parsed_hash)
+            .is_err());
     }
 
     #[test]
@@ -377,7 +622,7 @@ mod tests {
         // Should handle invalid hash gracefully
         let parse_result = PasswordHash::new(invalid_hash);
         assert!(parse_result.is_err());
-        
+
         // If we somehow get a parsed but invalid hash, verification should fail
         if let Ok(parsed_hash) = parse_result {
             let verify_result = argon2.verify_password(password.as_bytes(), &parsed_hash);

@@ -2,9 +2,9 @@ use serde_json::json;
 
 #[tokio::test]
 async fn test_invite_registration_flow() {
-    use planty_api::database::{create_pool_with_url, run_migrations};
     use planty_api::database::invites as db_invites;
     use planty_api::database::users as db_users;
+    use planty_api::database::{create_pool_with_url, run_migrations};
     use planty_api::models::{CreateInviteRequest, CreateUserRequest, UserRole};
 
     // Create in-memory database
@@ -25,15 +25,10 @@ async fn test_invite_registration_flow() {
         invite_code: None,
     };
 
-    let admin_user = db_users::create_user_internal(
-        &pool,
-        &admin_request,
-        UserRole::Admin,
-        true,
-        None,
-    )
-    .await
-    .expect("Failed to create admin user");
+    let admin_user =
+        db_users::create_user_internal(&pool, &admin_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create admin user");
 
     // Create an invite code
     let invite_request = CreateInviteRequest {
@@ -113,8 +108,8 @@ async fn test_frontend_json_format() {
         "invite_code": "TEST123"
     });
 
-    let parsed: CreateUserRequest = serde_json::from_value(frontend_json)
-        .expect("Failed to parse frontend JSON");
+    let parsed: CreateUserRequest =
+        serde_json::from_value(frontend_json).expect("Failed to parse frontend JSON");
 
     assert_eq!(parsed.name, "Test User");
     assert_eq!(parsed.email, "test@example.com");
@@ -131,8 +126,8 @@ async fn test_frontend_json_format() {
         "password": "password123"
     });
 
-    let parsed_no_invite: CreateUserRequest = serde_json::from_value(json_no_invite)
-        .expect("Failed to parse JSON without invite");
+    let parsed_no_invite: CreateUserRequest =
+        serde_json::from_value(json_no_invite).expect("Failed to parse JSON without invite");
 
     assert_eq!(parsed_no_invite.invite_code, None);
     assert!(parsed_no_invite.validate().is_ok());
@@ -151,7 +146,7 @@ async fn test_frontend_json_format() {
     assert!(invalid_email.validate().is_err());
 
     let short_password_json = json!({
-        "name": "Test User", 
+        "name": "Test User",
         "email": "test@example.com",
         "password": "short",
         "invite_code": "TEST123"

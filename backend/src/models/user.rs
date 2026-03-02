@@ -74,11 +74,12 @@ impl UserRow {
             email: self.email,
             name: self.name,
             password_hash: self.password_hash,
-            role: self.role.parse().map_err(|e| {
-                crate::utils::errors::AppError::Internal {
+            role: self
+                .role
+                .parse()
+                .map_err(|e| crate::utils::errors::AppError::Internal {
                     message: format!("Invalid user role in database: {}", e),
-                }
-            })?,
+                })?,
             can_create_invites: self.can_create_invites,
             max_invites: self.max_invites,
             invites_created: self.invites_created,
@@ -125,6 +126,28 @@ pub struct LoginRequest {
     #[validate(email)]
     pub email: String,
     pub password: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
+pub struct UpdateProfileRequest {
+    #[validate(email)]
+    pub email: String,
+    #[validate(length(min = 2))]
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
+pub struct ChangePasswordRequest {
+    #[validate(length(min = 8))]
+    pub current_password: String,
+    #[validate(length(min = 8))]
+    pub new_password: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
+pub struct DeleteAccountRequest {
+    #[validate(length(min = 8))]
+    pub current_password: String,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -179,7 +202,7 @@ impl User {
 impl From<User> for UserResponse {
     fn from(user: User) -> Self {
         let invites_remaining = user.max_invites.map(|max| max - user.invites_created);
-        
+
         Self {
             id: user.id,
             email: user.email,

@@ -50,7 +50,7 @@ pub async fn get_tracking_entries_for_plant_paginated(
         "SELECT COUNT(*) as count FROM tracking_entries WHERE plant_id = ?{}",
         count_filter_clause
     );
-    
+
     let total = if let Some(entry_type) = entry_type_filter {
         sqlx::query(&count_query)
             .bind(plant_id.to_string())
@@ -316,7 +316,10 @@ pub async fn create_tracking_entry(
         value: request.value.clone(),
         notes: request.notes.clone(),
         metric_id: request.metric_id,
-        photo_ids: request.photo_ids.as_ref().map(|v| serde_json::to_value(v).unwrap_or_default()),
+        photo_ids: request
+            .photo_ids
+            .as_ref()
+            .map(|v| serde_json::to_value(v).unwrap_or_default()),
         created_at: now,
         updated_at: now,
     })
@@ -429,7 +432,7 @@ pub async fn update_tracking_entry(
     }
 
     let now = Utc::now();
-    
+
     // Build dynamic update query based on provided fields
     let mut update_parts = vec!["updated_at = ?"];
     let mut values: Vec<String> = vec![now.to_rfc3339()];
@@ -463,7 +466,9 @@ pub async fn update_tracking_entry(
     for value in values {
         query_builder = query_builder.bind(value);
     }
-    query_builder = query_builder.bind(entry_id.to_string()).bind(plant_id.to_string());
+    query_builder = query_builder
+        .bind(entry_id.to_string())
+        .bind(plant_id.to_string());
 
     let result = query_builder.execute(pool).await?;
 
@@ -551,14 +556,17 @@ mod tests {
 
         // Create user
         sqlx::query(
-            "INSERT INTO users (id, email, name, password_hash, salt, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&user_id)
         .bind("test@example.com")
         .bind("Test User")
         .bind("fake_hash")
-        .bind("fake_salt")
+        .bind("user")
+        .bind(false)
+        .bind(Some(5))
+        .bind(0)
         .bind(&now)
         .bind(&now)
         .execute(pool)
@@ -675,8 +683,11 @@ mod tests {
         let entry = result.unwrap();
         assert_eq!(entry.plant_id, plant_id);
         assert!(matches!(entry.entry_type, EntryType::Note));
-        assert_eq!(entry.notes, Some("Growth observation with photos".to_string()));
-        
+        assert_eq!(
+            entry.notes,
+            Some("Growth observation with photos".to_string())
+        );
+
         // Verify photo_ids are stored correctly
         if let Some(stored_photo_ids) = entry.photo_ids {
             let parsed_ids: Vec<Uuid> = serde_json::from_value(stored_photo_ids).unwrap();
@@ -724,7 +735,7 @@ mod tests {
         let non_existent_id = Uuid::new_v4();
         let result = get_tracking_entry(&pool, &plant_id, &non_existent_id, &user_id).await;
         assert!(result.is_err());
-        
+
         if let Err(AppError::NotFound { resource }) = result {
             assert!(resource.contains(&non_existent_id.to_string()));
         } else {
@@ -761,13 +772,23 @@ mod tests {
             photo_ids: Some(photo_ids.clone()),
         };
 
-        let result = update_tracking_entry(&pool, &plant_id, &created_entry.id, &user_id, &update_request).await;
+        let result = update_tracking_entry(
+            &pool,
+            &plant_id,
+            &created_entry.id,
+            &user_id,
+            &update_request,
+        )
+        .await;
         assert!(result.is_ok());
 
         let updated_entry = result.unwrap();
         assert_eq!(updated_entry.id, created_entry.id);
-        assert_eq!(updated_entry.notes, Some("Updated note with more details".to_string()));
-        
+        assert_eq!(
+            updated_entry.notes,
+            Some("Updated note with more details".to_string())
+        );
+
         // Verify photo_ids are updated
         if let Some(stored_photo_ids) = updated_entry.photo_ids {
             let parsed_ids: Vec<Uuid> = serde_json::from_value(stored_photo_ids).unwrap();
@@ -790,9 +811,16 @@ mod tests {
             photo_ids: None,
         };
 
-        let result = update_tracking_entry(&pool, &plant_id, &non_existent_id, &user_id, &update_request).await;
+        let result = update_tracking_entry(
+            &pool,
+            &plant_id,
+            &non_existent_id,
+            &user_id,
+            &update_request,
+        )
+        .await;
         assert!(result.is_err());
-        
+
         if let Err(AppError::NotFound { resource }) = result {
             assert!(resource.contains(&non_existent_id.to_string()));
         } else {
@@ -843,9 +871,12 @@ mod tests {
         assert!(matches!(entry.entry_type, EntryType::CustomMetric));
         assert_eq!(entry.metric_id, Some(metric_id));
         assert!(entry.value.is_some());
-        
+
         if let Some(value) = entry.value {
-            assert_eq!(value, serde_json::Value::Number(serde_json::Number::from(25)));
+            assert_eq!(
+                value,
+                serde_json::Value::Number(serde_json::Number::from(25))
+            );
         }
     }
 
@@ -873,7 +904,7 @@ mod tests {
         let entry = result.unwrap();
         assert_eq!(entry.plant_id, plant_id);
         assert!(matches!(entry.entry_type, EntryType::Photo));
-        
+
         // Verify photo_ids are stored correctly
         if let Some(stored_photo_ids) = entry.photo_ids {
             let parsed_ids: Vec<Uuid> = serde_json::from_value(stored_photo_ids).unwrap();
@@ -894,14 +925,17 @@ mod tests {
         let now = Utc::now().to_rfc3339();
 
         sqlx::query(
-            "INSERT INTO users (id, email, name, password_hash, salt, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&user2_id)
         .bind("test2@example.com")
         .bind("Test User 2")
         .bind("fake_hash")
-        .bind("fake_salt")
+        .bind("user")
+        .bind(false)
+        .bind(Some(5))
+        .bind(0)
         .bind(&now)
         .bind(&now)
         .execute(&pool)
@@ -941,7 +975,7 @@ mod tests {
         // User 2 should not be able to access user 1's entry
         let result = get_tracking_entry(&pool, &plant1_id, &entry1.id, &user2_id).await;
         assert!(result.is_err());
-        
+
         // User 2 should not see user 1's entries when listing
         let entries_result = get_tracking_entries_for_plant(&pool, &plant1_id, &user2_id).await;
         assert!(entries_result.is_err());

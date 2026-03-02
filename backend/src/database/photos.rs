@@ -289,14 +289,17 @@ mod tests {
 
         // Create user
         sqlx::query(
-            "INSERT INTO users (id, email, name, password_hash, salt, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO users (id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&user_id)
         .bind("test@example.com")
         .bind("Test User")
         .bind("fake_hash")
-        .bind("fake_salt")
+        .bind("user")
+        .bind(false)
+        .bind(Some(5))
+        .bind(0)
         .bind(&now)
         .bind(&now)
         .execute(pool)
@@ -376,8 +379,8 @@ mod tests {
         let photo = result.unwrap();
         assert_eq!(photo.plant_id, plant_id);
         assert_eq!(photo.original_filename, "test.jpg");
-        assert_eq!(photo.content_type, "image/avif"); // Should be converted to AVIF
-        assert!(photo.size > 0); // Size will be different after AVIF conversion
+        assert_eq!(photo.content_type, "image/webp"); // Should be converted to WebP
+        assert!(photo.size > 0); // Size will be different after WebP conversion
         assert!(photo.width.is_some());
         assert!(photo.height.is_some());
         assert!(photo.filename.contains(&plant_id.to_string()));
@@ -484,9 +487,9 @@ mod tests {
         assert!(result.is_ok());
 
         let (data, content_type) = result.unwrap();
-        // Data will be different after AVIF conversion
+        // Data will be different after WebP conversion
         assert!(!data.is_empty());
-        assert_eq!(content_type, "image/avif");
+        assert_eq!(content_type, "image/webp");
     }
 
     #[tokio::test]

@@ -1,10 +1,11 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::Json,
     routing::{get, post},
     Router,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
@@ -23,11 +24,17 @@ pub fn routes() -> Router<AppState> {
         .route("/list", get(list_invites))
         .route("/waitlist", post(join_waitlist))
         .route("/waitlist/list", get(list_waitlist))
+        .route("/waitlist/:waitlist_id/invite", post(invite_waitlist_entry))
 }
 
 #[derive(Deserialize)]
 struct ListInvitesQuery {
     created_by: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, ToSchema)]
+struct InviteWaitlistRequest {
+    max_uses: Option<i32>,
 }
 
 #[utoipa::path(
@@ -167,4 +174,49 @@ async fn list_waitlist(auth_session: AuthSession) -> Result<Json<Vec<WaitlistRes
 
     let responses: Vec<WaitlistResponse> = entries.into_iter().map(Into::into).collect();
     Ok(Json(responses))
+}
+
+#[utoipa::path(
+    post,
+    path = "/invites/waitlist/{waitlist_id}/invite",
+    params(
+        ("waitlist_id" = String, Path, description = "Waitlist entry ID")
+    ),
+    request_body = InviteWaitlistRequest,
+    responses(
+        (status = 200, description = "Invite created and waitlist entry updated"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - Admin access required"),
+        (status = 404, description = "Waitlist entry not found")
+    ),
+    tag = "invites"
+)]
+async fn invite_waitlist_entry(
+    auth_session: AuthSession,
+    Path(waitlist_id): Path<String>,
+    Json(payload): Json<InviteWaitlistRequest>,
+) -> Result<Json<serde_json::Value>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
+    if !user.is_admin() {
+        return Err(AppError::Authorization {
+            message: "Admin access required".to_string(),
+        });
+    }
+
+    let max_uses = payload.max_uses.unwrap_or(1).max(1);
+    let (entry, invite) = db_invites::invite_waitlist_entry(
+        &auth_session.backend.db,
+        &waitlist_id,
+        &user.id,
+        max_uses,
+    )
+    .await?;
+
+    Ok(Json(serde_json::json!({
+        "invite_code": invite.code,
+        "waitlist_entry": WaitlistResponse::from(entry)
+    })))
 }

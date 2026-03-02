@@ -1,5 +1,6 @@
 import { Component, createSignal, onMount, Show, For } from 'solid-js';
 import { A } from '@solidjs/router';
+import { authStore } from '@/stores/auth';
 
 interface User {
   id: string;
@@ -38,6 +39,9 @@ export const AdminUsersPage: Component = () => {
   const [editingMaxInvites, setEditingMaxInvites] = createSignal('5');
   const [savingUser, setSavingUser] = createSignal(false);
   const [deletingUserId, setDeletingUserId] = createSignal<string | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = createSignal<string[]>([]);
+  const [bulkRole, setBulkRole] = createSignal<Role>('user');
+  const [bulkWorking, setBulkWorking] = createSignal(false);
 
   const loadUsers = async (page = 1, role = '') => {
     try {
@@ -60,11 +64,67 @@ export const AdminUsersPage: Component = () => {
       const userData = await response.json();
       setData(userData);
       setCurrentPage(page);
+      setSelectedUserIds([]);
     } catch (err) {
       console.error('Error loading users:', err);
       setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const isCurrentUser = (userId: string) => authStore.user?.id === userId;
+
+  const toggleUserSelection = (userId: string, checked: boolean) => {
+    setSelectedUserIds((prev) => {
+      if (checked) {
+        if (prev.includes(userId)) return prev;
+        return [...prev, userId];
+      }
+      return prev.filter((id) => id !== userId);
+    });
+  };
+
+  const toggleSelectAllVisible = (checked: boolean) => {
+    const visibleIds = (data()?.users || [])
+      .map((u) => u.id)
+      .filter((id) => !isCurrentUser(id));
+    setSelectedUserIds(checked ? visibleIds : []);
+  };
+
+  const handleBulkAction = async (action: unknown, label: string) => {
+    const ids = selectedUserIds();
+    if (ids.length === 0) return;
+
+    if (label === 'Delete' && !confirm(`Delete ${ids.length} selected users? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setBulkWorking(true);
+      setError(null);
+
+      const response = await fetch('/api/v1/admin/users/bulk', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_ids: ids,
+          action,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || `Failed bulk action: ${label}`);
+      }
+
+      await loadUsers(currentPage(), roleFilter());
+    } catch (err) {
+      console.error(`Bulk action failed (${label}):`, err);
+      setError(err instanceof Error ? err.message : `Failed bulk action: ${label}`);
+    } finally {
+      setBulkWorking(false);
     }
   };
 
@@ -245,10 +305,73 @@ export const AdminUsersPage: Component = () => {
               </div>
             </div>
 
+            <div class="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md flex flex-wrap items-center gap-2">
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={
+                    (data()?.users || []).filter((u) => !isCurrentUser(u.id)).length > 0 &&
+                    selectedUserIds().length === (data()?.users || []).filter((u) => !isCurrentUser(u.id)).length
+                  }
+                  onChange={(e) => toggleSelectAllVisible(e.currentTarget.checked)}
+                />
+                Select visible
+              </label>
+
+              <span class="text-sm text-gray-600 ml-2">{selectedUserIds().length} selected</span>
+
+              <div class="flex-1"></div>
+
+              <button
+                class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                disabled={selectedUserIds().length === 0 || bulkWorking()}
+                onClick={() => handleBulkAction('enable_invites', 'Enable invites')}
+              >
+                Enable Invites
+              </button>
+
+              <button
+                class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                disabled={selectedUserIds().length === 0 || bulkWorking()}
+                onClick={() => handleBulkAction('disable_invites', 'Disable invites')}
+              >
+                Disable Invites
+              </button>
+
+              <select
+                value={bulkRole()}
+                onChange={(e) => setBulkRole(e.currentTarget.value as Role)}
+                class="border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+              >
+                <option value="user">User</option>
+                <option value="moderator">Moderator</option>
+                <option value="admin">Admin</option>
+              </select>
+
+              <button
+                class="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                disabled={selectedUserIds().length === 0 || bulkWorking()}
+                onClick={() => handleBulkAction({ set_role: bulkRole() }, 'Set role')}
+              >
+                Set Role
+              </button>
+
+              <button
+                class="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                disabled={selectedUserIds().length === 0 || bulkWorking()}
+                onClick={() => handleBulkAction('delete', 'Delete')}
+              >
+                Delete
+              </button>
+            </div>
+
             <div class="overflow-x-auto">
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
+                    <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sel
+                    </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       User
                     </th>
@@ -270,10 +393,21 @@ export const AdminUsersPage: Component = () => {
                   <For each={data()?.users || []}>
                     {(user) => (
                       <tr class="hover:bg-gray-50">
+                        <td class="px-3 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            disabled={isCurrentUser(user.id)}
+                            checked={selectedUserIds().includes(user.id)}
+                            onChange={(e) => toggleUserSelection(user.id, e.currentTarget.checked)}
+                          />
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div class="text-sm font-medium text-gray-900">{user.name}</div>
                             <div class="text-sm text-gray-500">{user.email}</div>
+                            <Show when={isCurrentUser(user.id)}>
+                              <div class="text-xs text-blue-600">Current user</div>
+                            </Show>
                           </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">

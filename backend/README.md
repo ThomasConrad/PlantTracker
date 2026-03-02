@@ -1,104 +1,55 @@
 # Planty API
 
-Backend API for the Planty application, built with Rust and Axum.
+Rust + Axum backend for Planty MVP.
 
 ## Setup
 
 ### Prerequisites
-- Rust (latest stable)
+- Rust stable
 - SQLite 3
-- `sqlx-cli` for database migrations
+- `sqlx-cli` (optional for manual migration commands)
 
-Install sqlx-cli:
+### Environment
+
 ```bash
-cargo install sqlx-cli
+cp .env.example .env
 ```
 
-### Database Setup
+Set at least:
+- `DATABASE_URL`
+- `PORT`
+- `FRONTEND_DIR`
+- `RUST_LOG`
 
-1. **Environment Configuration**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your database configuration
-   ```
-
-2. **Create and Initialize Database**
-   ```bash
-   # Create the database
-   sqlx database create
-   
-   # Run migrations
-   sqlx migrate run
-   
-   # Generate query metadata for IDE support
-   cargo sqlx prepare
-   ```
-
-3. **IDE Setup**
-   For VS Code with rust-analyzer, the `.vscode/settings.json` file is already configured to:
-   - Set the `DATABASE_URL` environment variable
-   - Enable SQLite features
-   - Configure SQLx extension support
-
-### Development
+## Run
 
 ```bash
-# Run the application
 cargo run
+```
 
-# Run with logging
-RUST_LOG=debug cargo run
+## Test
 
-# Check code without running
-cargo check
-
-# Run tests
+```bash
 cargo test
 ```
 
-### Database Operations
+## Migrations
+
+Migrations are applied automatically on startup via `sqlx::migrate!`.
+Manual migration command:
 
 ```bash
-# Create a new migration
-sqlx migrate add <migration_name>
-
-# Run migrations
 sqlx migrate run
-
-# Revert last migration
-sqlx migrate revert
-
-# Generate fresh query metadata
-cargo sqlx prepare
 ```
 
-### API Endpoints
+## Key API Areas
+- Auth: login/register/logout/me + profile/password/export/delete account
+- Invites/waitlist
+- Plants/tracking/photos
+- Calendar feed and token rotation
+- Google Tasks integration
+- Admin dashboard and user controls
 
-- `GET /api/v1/health` - Health check
-- `POST /api/v1/plants` - Create a new plant
-- `GET /api/v1/plants` - List plants (with pagination and search)
-- `GET /api/v1/plants/:id` - Get a specific plant
-- `PUT /api/v1/plants/:id` - Update a plant
-- `DELETE /api/v1/plants/:id` - Delete a plant
-
-See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for complete database documentation.
-
-### Environment Variables
-
-- `DATABASE_URL` - Database connection string
-- `PORT` - Server port (default: 3000)
-- `FRONTEND_DIR` - Path to frontend build directory
-- `RUST_LOG` - Logging level
-
-### Features
-
-- ✅ SQLite database with SQLx
-- ✅ Comprehensive error handling
-- ✅ Request validation
-- ✅ CORS support
-- ✅ Structured logging
-- ✅ Database migrations
-- ✅ Plant CRUD operations
-- 🚧 User authentication (coming soon)
-- 🚧 Photo uploads (coming soon)
-- 🚧 Tracking entries (coming soon)
+## Notes
+- Uses SQLite by default.
+- Session auth is cookie-based with DB-backed sessions.

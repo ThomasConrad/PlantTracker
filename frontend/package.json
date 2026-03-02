@@ -1,12 +1,13 @@
 {
   "name": "planty",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "test": "npm run typecheck",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "generate-types": "openapi-typescript src/api/openapi.json -o src/types/api-generated.ts"

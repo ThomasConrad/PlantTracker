@@ -80,9 +80,9 @@ async fn test_upload_photo() {
     assert!(body["id"].is_string());
     assert_eq!(body["plantId"], plant_id);
     assert_eq!(body["originalFilename"], "test-image.jpg");
-    // Size will be different after AVIF conversion
+    // Size will be different after WebP conversion
     assert!(body["size"].as_i64().unwrap() > 0);
-    assert_eq!(body["contentType"], "image/avif"); // Converted to AVIF
+    assert_eq!(body["contentType"], "image/webp"); // Converted to WebP
     assert!(body["filename"].as_str().unwrap().contains(plant_id));
     assert!(body["createdAt"].is_string());
 }
@@ -435,16 +435,16 @@ async fn test_serve_photo() {
     assert_eq!(serve_response.status(), 200);
     assert_eq!(
         serve_response.headers().get("content-type").unwrap(),
-        "image/avif" // Should be AVIF after processing
+        "image/webp" // Should be WebP after processing
     );
 
-    // Data will be different after AVIF conversion
+    // Data will be different after WebP conversion
     let served_data = serve_response
         .bytes()
         .await
         .expect("Failed to get photo data");
     assert!(!served_data.is_empty());
-    // Don't check exact data match since it's been processed to AVIF
+    // Don't check exact data match since it's been processed to WebP
 }
 
 #[tokio::test]

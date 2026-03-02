@@ -126,7 +126,8 @@ async fn create_entry(
         user.id
     );
 
-    let entry = db_tracking::create_tracking_entry(&app_state.pool, &plant_id, &user.id, &payload).await?;
+    let entry =
+        db_tracking::create_tracking_entry(&app_state.pool, &plant_id, &user.id, &payload).await?;
 
     tracing::info!(
         "Created tracking entry with id: {} for plant: {}",
@@ -152,7 +153,8 @@ async fn get_entry(
         user.id
     );
 
-    let entry = db_tracking::get_tracking_entry(&app_state.pool, &plant_id, &entry_id, &user.id).await?;
+    let entry =
+        db_tracking::get_tracking_entry(&app_state.pool, &plant_id, &entry_id, &user.id).await?;
 
     tracing::debug!(
         "Retrieved tracking entry: {} for plant: {}",
@@ -181,8 +183,14 @@ async fn update_entry(
         user.id
     );
 
-    let entry =
-        db_tracking::update_tracking_entry(&app_state.pool, &plant_id, &entry_id, &user.id, &payload).await?;
+    let entry = db_tracking::update_tracking_entry(
+        &app_state.pool,
+        &plant_id,
+        &entry_id,
+        &user.id,
+        &payload,
+    )
+    .await?;
 
     tracing::info!(
         "Updated tracking entry: {} for plant: {}",

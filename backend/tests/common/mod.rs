@@ -6,7 +6,7 @@ use tokio::net::TcpListener;
 
 use planty_api::app_state::AppState;
 use planty_api::auth;
-use planty_api::handlers::{auth as auth_handlers, google_tasks, plants, invites};
+use planty_api::handlers::{auth as auth_handlers, google_tasks, invites, plants};
 
 pub struct TestApp {
     pub address: String,
@@ -83,6 +83,7 @@ impl TestApp {
 }
 
 // Test helpers
+#[allow(dead_code)]
 pub async fn create_test_user(
     app: &TestApp,
     email: &str,
@@ -92,7 +93,6 @@ pub async fn create_test_user(
     // First create an admin user directly in the database to create invites
     use planty_api::database::users as db_users;
     use planty_api::models::{CreateUserRequest, UserRole};
-    use planty_api::database::invites as db_invites;
 
     // Create admin if it doesn't exist
     let admin_email = "test-admin@example.com";
@@ -132,7 +132,7 @@ pub async fn create_test_user(
         .send()
         .await
         .expect("Failed to login as admin");
-    
+
     assert_eq!(login_response.status(), 200);
 
     // Create invite
@@ -145,7 +145,7 @@ pub async fn create_test_user(
         .send()
         .await
         .expect("Failed to create invite");
-    
+
     assert_eq!(invite_response.status(), 201);
     let invite_data: serde_json::Value = invite_response.json().await.unwrap();
     let invite_code = invite_data["code"].as_str().unwrap();
@@ -171,6 +171,7 @@ pub async fn create_test_user(
         .expect("Failed to parse register response")
 }
 
+#[allow(dead_code)]
 pub async fn login_user(app: &TestApp, email: &str, password: &str) -> serde_json::Value {
     let response = app
         .client
@@ -190,6 +191,7 @@ pub async fn login_user(app: &TestApp, email: &str, password: &str) -> serde_jso
         .expect("Failed to parse login response")
 }
 
+#[allow(dead_code)]
 pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_json::Value {
     let response = app
         .client
@@ -217,6 +219,7 @@ pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_
 }
 
 /// Create valid test image data for testing
+#[allow(dead_code)]
 pub fn create_test_image_data(width: u32, height: u32) -> Vec<u8> {
     use image::{DynamicImage, ImageOutputFormat};
     use std::io::Cursor;

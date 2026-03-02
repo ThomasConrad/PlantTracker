@@ -2,6 +2,7 @@ import { Component, createSignal } from 'solid-js';
 import { A } from '@solidjs/router';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { apiClient } from '@/api/client';
 
 export const HomePage: Component = () => {
   const [email, setEmail] = createSignal('');
@@ -9,18 +10,24 @@ export const HomePage: Component = () => {
   const [message, setMessage] = createSignal('');
   const [loading, setLoading] = createSignal(false);
   const [submitted, setSubmitted] = createSignal(false);
+  const [submitError, setSubmitError] = createSignal<string | null>(null);
 
   const handleWaitlistSubmit = async (e: Event) => {
     e.preventDefault();
     if (!email().trim()) return;
 
     setLoading(true);
+    setSubmitError(null);
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // await apiClient.joinWaitlist({ email: email(), name: name(), message: message() });
+      await apiClient.joinWaitlist({
+        email: email().trim(),
+        name: name().trim() || undefined,
+        message: message().trim() || undefined,
+      });
       setSubmitted(true);
     } catch (error) {
       console.error('Waitlist signup failed:', error);
+      setSubmitError(error instanceof Error ? error.message : 'Unable to join waitlist right now');
     } finally {
       setLoading(false);
     }
@@ -247,6 +254,9 @@ export const HomePage: Component = () => {
                 >
                   Join the Waitlist
                 </Button>
+                {submitError() ? (
+                  <p class="text-sm text-red-100">{submitError()}</p>
+                ) : null}
               </div>
             </form>
           )}

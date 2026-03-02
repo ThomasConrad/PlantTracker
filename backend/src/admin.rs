@@ -4,11 +4,9 @@ use tracing::info;
 
 pub async fn ensure_admin_invite(pool: &SqlitePool) -> Result<String> {
     // Check if any admin users exist
-    let admin_count = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM users WHERE role = 'admin'"
-    )
-    .fetch_one(pool)
-    .await?;
+    let admin_count = sqlx::query_scalar!("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+        .fetch_one(pool)
+        .await?;
 
     if admin_count > 0 {
         info!("Admin user already exists, skipping admin invite creation");
@@ -29,7 +27,7 @@ pub async fn ensure_admin_invite(pool: &SqlitePool) -> Result<String> {
 
     // Create a special admin invite code
     let admin_invite_code = generate_admin_invite_code();
-    
+
     // Insert the admin invite directly with custom code
     let invite_id = uuid::Uuid::new_v4().to_string();
     let admin_invite_id = format!("admin-{}", invite_id);
@@ -71,7 +69,7 @@ fn generate_secure_code(length: usize) -> String {
     use rand::Rng;
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let mut rng = rand::thread_rng();
-    
+
     (0..length)
         .map(|_| {
             let idx = rng.gen_range(0..CHARSET.len());
@@ -95,23 +93,19 @@ pub async fn get_system_stats(pool: &SqlitePool) -> Result<SystemStats> {
     .fetch_one(pool)
     .await?;
 
-    let used_invites = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM invite_codes WHERE current_uses > 0"
-    )
-    .fetch_one(pool)
-    .await?;
+    let used_invites =
+        sqlx::query_scalar!("SELECT COUNT(*) FROM invite_codes WHERE current_uses > 0")
+            .fetch_one(pool)
+            .await?;
 
-    let admin_count = sqlx::query_scalar!(
-        "SELECT COUNT(*) FROM users WHERE role = 'admin'"
-    )
-    .fetch_one(pool)
-    .await?;
+    let admin_count = sqlx::query_scalar!("SELECT COUNT(*) FROM users WHERE role = 'admin'")
+        .fetch_one(pool)
+        .await?;
 
-    let max_users_setting = sqlx::query_scalar!(
-        "SELECT value FROM admin_settings WHERE key = 'max_total_users'"
-    )
-    .fetch_optional(pool)
-    .await?;
+    let max_users_setting =
+        sqlx::query_scalar!("SELECT value FROM admin_settings WHERE key = 'max_total_users'")
+            .fetch_optional(pool)
+            .await?;
 
     let max_total_users = max_users_setting
         .and_then(|v| v.parse::<i32>().ok())

@@ -8,8 +8,9 @@ async fn test_user_registration() {
     let app = TestApp::new().await;
 
     // Create a user using the helper which handles invite creation
-    let user_data = common::create_test_user(&app, "test@example.com", "Test User", "password123").await;
-    
+    let user_data =
+        common::create_test_user(&app, "test@example.com", "Test User", "password123").await;
+
     assert_eq!(user_data["user"]["email"], "test@example.com");
     assert_eq!(user_data["user"]["name"], "Test User");
     assert!(user_data["user"]["id"].is_string());
@@ -20,7 +21,8 @@ async fn test_user_registration_duplicate_email() {
     let app = TestApp::new().await;
 
     // First registration should succeed
-    let _user1 = common::create_test_user(&app, "duplicate@example.com", "First User", "password123").await;
+    let _user1 =
+        common::create_test_user(&app, "duplicate@example.com", "First User", "password123").await;
 
     // Create another invite for second attempt
     let login_response = app
@@ -33,7 +35,7 @@ async fn test_user_registration_duplicate_email() {
         .send()
         .await
         .expect("Failed to login as admin");
-    
+
     assert_eq!(login_response.status(), 200);
 
     let invite_response = app
@@ -45,7 +47,7 @@ async fn test_user_registration_duplicate_email() {
         .send()
         .await
         .expect("Failed to create invite");
-    
+
     let invite_data: serde_json::Value = invite_response.json().await.unwrap();
     let invite_code = invite_data["code"].as_str().unwrap();
 

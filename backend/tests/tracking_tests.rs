@@ -223,7 +223,13 @@ async fn test_create_note_entry_with_photo_ids() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "notephoto@example.com", "Note Photo User", "password123").await;
+    common::create_test_user(
+        &app,
+        "notephoto@example.com",
+        "Note Photo User",
+        "password123",
+    )
+    .await;
 
     // Create a plant
     let plant = common::create_test_plant(&app, "Note Photo Plant", "Photicus").await;
@@ -252,7 +258,7 @@ async fn test_create_note_entry_with_photo_ids() {
     assert_eq!(body["entryType"], "note");
     assert_eq!(body["plantId"], plant_id);
     assert_eq!(body["notes"], "Growth documentation with photos");
-    
+
     // Verify photo IDs are stored
     let photo_ids = body["photoIds"].as_array().unwrap();
     assert_eq!(photo_ids.len(), 2);
@@ -283,7 +289,10 @@ async fn test_get_tracking_entry() {
         .expect("Failed to create tracking entry");
 
     assert_eq!(create_response.status(), 201);
-    let created_entry: serde_json::Value = create_response.json().await.expect("Failed to parse create response");
+    let created_entry: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse create response");
     let entry_id = created_entry["id"].as_str().unwrap();
 
     // Get the tracking entry
@@ -296,7 +305,10 @@ async fn test_get_tracking_entry() {
 
     assert_eq!(get_response.status(), 200);
 
-    let retrieved_entry: serde_json::Value = get_response.json().await.expect("Failed to parse get response");
+    let retrieved_entry: serde_json::Value = get_response
+        .json()
+        .await
+        .expect("Failed to parse get response");
     assert_eq!(retrieved_entry["id"], entry_id);
     assert_eq!(retrieved_entry["entryType"], "watering");
     assert_eq!(retrieved_entry["plantId"], plant_id);
@@ -308,7 +320,13 @@ async fn test_get_tracking_entry_not_found() {
     let app = TestApp::new().await;
 
     // Register and login user
-    common::create_test_user(&app, "notfound@example.com", "Not Found User", "password123").await;
+    common::create_test_user(
+        &app,
+        "notfound@example.com",
+        "Not Found User",
+        "password123",
+    )
+    .await;
 
     // Create a plant
     let plant = common::create_test_plant(&app, "Not Found Plant", "Notfoundicus").await;
@@ -351,7 +369,10 @@ async fn test_update_tracking_entry() {
         .expect("Failed to create tracking entry");
 
     assert_eq!(create_response.status(), 201);
-    let created_entry: serde_json::Value = create_response.json().await.expect("Failed to parse create response");
+    let created_entry: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse create response");
     let entry_id = created_entry["id"].as_str().unwrap();
 
     // Update the tracking entry
@@ -369,10 +390,13 @@ async fn test_update_tracking_entry() {
 
     assert_eq!(update_response.status(), 200);
 
-    let updated_entry: serde_json::Value = update_response.json().await.expect("Failed to parse update response");
+    let updated_entry: serde_json::Value = update_response
+        .json()
+        .await
+        .expect("Failed to parse update response");
     assert_eq!(updated_entry["id"], entry_id);
     assert_eq!(updated_entry["notes"], "Updated note with more details");
-    
+
     // Verify photo IDs are updated
     let photo_ids = updated_entry["photoIds"].as_array().unwrap();
     assert_eq!(photo_ids.len(), 1);
@@ -403,7 +427,10 @@ async fn test_delete_tracking_entry() {
         .expect("Failed to create tracking entry");
 
     assert_eq!(create_response.status(), 201);
-    let created_entry: serde_json::Value = create_response.json().await.expect("Failed to parse create response");
+    let created_entry: serde_json::Value = create_response
+        .json()
+        .await
+        .expect("Failed to parse create response");
     let entry_id = created_entry["id"].as_str().unwrap();
 
     // Delete the tracking entry
@@ -458,7 +485,7 @@ async fn test_create_photo_entry() {
     assert!(body["id"].is_string());
     assert_eq!(body["entryType"], "photo");
     assert_eq!(body["plantId"], plant_id);
-    
+
     // Verify photo IDs are stored
     let photo_ids = body["photoIds"].as_array().unwrap();
     assert_eq!(photo_ids.len(), 1);
@@ -497,7 +524,7 @@ async fn test_list_tracking_entries_with_various_types() {
             "entryType": "photo",
             "timestamp": "2024-01-04T15:00:00Z",
             "photoIds": [uuid::Uuid::new_v4()]
-        })
+        }),
     ];
 
     // Create all entries
@@ -522,7 +549,10 @@ async fn test_list_tracking_entries_with_various_types() {
 
     assert_eq!(list_response.status(), 200);
 
-    let body: serde_json::Value = list_response.json().await.expect("Failed to parse list response");
+    let body: serde_json::Value = list_response
+        .json()
+        .await
+        .expect("Failed to parse list response");
     let entries_list = body["entries"].as_array().unwrap();
     assert_eq!(entries_list.len(), 4);
     assert_eq!(body["total"], 4);
@@ -532,7 +562,7 @@ async fn test_list_tracking_entries_with_various_types() {
         .iter()
         .map(|e| e["timestamp"].as_str().unwrap())
         .collect();
-    
+
     // Should be in descending order (newest first)
     assert_eq!(timestamps[0], "2024-01-04T15:00:00Z"); // photo
     assert_eq!(timestamps[1], "2024-01-03T14:00:00Z"); // note

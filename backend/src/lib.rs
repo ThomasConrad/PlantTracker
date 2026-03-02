@@ -19,7 +19,11 @@ use models::{
         WaitlistSignupRequest,
     },
     photo::{Photo, PhotosResponse},
-    plant::{CareSchedule, CreateCareScheduleRequest, CreateCustomMetricRequest, CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, PlantsResponse, UpdateCareScheduleRequest, UpdateCustomMetricRequest, UpdatePlantRequest},
+    plant::{
+        CareSchedule, CreateCareScheduleRequest, CreateCustomMetricRequest, CreatePlantRequest,
+        CustomMetric, MetricDataType, PlantResponse, PlantsResponse, UpdateCareScheduleRequest,
+        UpdateCustomMetricRequest, UpdatePlantRequest,
+    },
     tracking_entry::{
         CreateTrackingEntryRequest, EntryType, TrackingEntriesResponse, TrackingEntry,
     },

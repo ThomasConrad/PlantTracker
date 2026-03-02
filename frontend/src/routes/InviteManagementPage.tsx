@@ -15,9 +15,19 @@ interface InviteCode {
   created_at: string;
 }
 
+interface WaitlistEntry {
+  id: string;
+  email: string;
+  name?: string;
+  status: string;
+  created_at: string;
+}
+
 export const InviteManagementPage: Component = () => {
   const [invites, setInvites] = createSignal<InviteCode[]>([]);
+  const [waitlist, setWaitlist] = createSignal<WaitlistEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
+  const [waitlistLoading, setWaitlistLoading] = createSignal(false);
   const [createLoading, setCreateLoading] = createSignal(false);
   const [error, setError] = createSignal('');
   const [maxUses, setMaxUses] = createSignal(1);
@@ -25,6 +35,9 @@ export const InviteManagementPage: Component = () => {
 
   createEffect(() => {
     loadInvites();
+    if (authStore.user?.role === 'admin') {
+      loadWaitlist();
+    }
   });
 
   const loadInvites = async () => {
@@ -38,6 +51,19 @@ export const InviteManagementPage: Component = () => {
       console.error('Failed to load invites:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadWaitlist = async () => {
+    try {
+      setWaitlistLoading(true);
+      const response = await apiClient.request<WaitlistEntry[]>('/invites/waitlist/list');
+      setWaitlist(response || []);
+    } catch (err: unknown) {
+      console.error('Failed to load waitlist:', err);
+      setError('Failed to load waitlist');
+    } finally {
+      setWaitlistLoading(false);
     }
   };
 
@@ -219,6 +245,58 @@ export const InviteManagementPage: Component = () => {
           </div>
         </Show>
       </div>
+
+      <Show when={authStore.user?.role === 'admin'}>
+        <div class="bg-white shadow rounded-lg p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-medium text-gray-900">Waitlist</h2>
+            <Button variant="outline" size="sm" onClick={loadWaitlist} loading={waitlistLoading()}>
+              Refresh
+            </Button>
+          </div>
+
+          <Show when={waitlistLoading()}>
+            <p class="text-gray-500">Loading waitlist...</p>
+          </Show>
+
+          <Show when={!waitlistLoading() && waitlist().length === 0}>
+            <p class="text-gray-500">No waitlist entries yet.</p>
+          </Show>
+
+          <Show when={!waitlistLoading() && waitlist().length > 0}>
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <For each={waitlist()}>
+                    {(entry) => (
+                      <tr>
+                        <td class="px-4 py-2 text-sm text-gray-900">{entry.email}</td>
+                        <td class="px-4 py-2 text-sm text-gray-600">{entry.name || '-'}</td>
+                        <td class="px-4 py-2 text-sm">
+                          <span class="px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs capitalize">
+                            {entry.status}
+                          </span>
+                        </td>
+                        <td class="px-4 py-2 text-sm text-gray-600">
+                          {new Date(entry.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    )}
+                  </For>
+                </tbody>
+              </table>
+            </div>
+          </Show>
+        </div>
+      </Show>
     </div>
   );
 };

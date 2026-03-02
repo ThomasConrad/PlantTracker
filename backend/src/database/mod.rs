@@ -14,8 +14,7 @@ pub type DatabasePool = Pool<Sqlite>;
 /// - Database migrations fail to run
 #[allow(dead_code)]
 pub async fn create_pool() -> Result<DatabasePool> {
-    let database_url =
-        env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:planty.db".to_string());
+    let database_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:planty.db".to_string());
     create_pool_with_url(&database_url).await
 }
 

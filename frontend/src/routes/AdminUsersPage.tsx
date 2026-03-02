@@ -22,32 +22,41 @@ interface UserListResponse {
   total_pages: number;
 }
 
+type Role = 'admin' | 'moderator' | 'user';
+
 export const AdminUsersPage: Component = () => {
   const [data, setData] = createSignal<UserListResponse | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [currentPage, setCurrentPage] = createSignal(1);
   const [roleFilter, setRoleFilter] = createSignal('');
+
   const [editingUser, setEditingUser] = createSignal<User | null>(null);
+  const [editingRole, setEditingRole] = createSignal<Role>('user');
+  const [editingCanCreateInvites, setEditingCanCreateInvites] = createSignal(false);
+  const [editingMaxInvitesMode, setEditingMaxInvitesMode] = createSignal<'unlimited' | 'limited'>('limited');
+  const [editingMaxInvites, setEditingMaxInvites] = createSignal('5');
+  const [savingUser, setSavingUser] = createSignal(false);
+  const [deletingUserId, setDeletingUserId] = createSignal<string | null>(null);
 
   const loadUsers = async (page = 1, role = '') => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const params = new URLSearchParams();
       params.set('page', page.toString());
       params.set('limit', '20');
       if (role) params.set('role', role);
-      
+
       const response = await fetch(`/api/v1/admin/users?${params}`, {
-        credentials: 'include'
+        credentials: 'include',
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to load users');
       }
-      
+
       const userData = await response.json();
       setData(userData);
       setCurrentPage(page);
@@ -56,6 +65,80 @@ export const AdminUsersPage: Component = () => {
       setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openEditModal = (user: User) => {
+    setEditingUser(user);
+    setEditingRole((user.role.toLowerCase() as Role) || 'user');
+    setEditingCanCreateInvites(user.can_create_invites);
+    setEditingMaxInvitesMode(user.max_invites === null ? 'unlimited' : 'limited');
+    setEditingMaxInvites(user.max_invites === null ? '5' : String(user.max_invites));
+  };
+
+  const handleSaveUser = async () => {
+    const user = editingUser();
+    if (!user) return;
+
+    try {
+      setSavingUser(true);
+      setError(null);
+
+      const maxInvites =
+        editingMaxInvitesMode() === 'unlimited'
+          ? null
+          : Math.max(0, Number.parseInt(editingMaxInvites() || '0', 10));
+
+      const response = await fetch(`/api/v1/admin/users/${user.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: editingRole(),
+          can_create_invites: editingCanCreateInvites(),
+          max_invites: maxInvites,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to update user');
+      }
+
+      setEditingUser(null);
+      await loadUsers(currentPage(), roleFilter());
+    } catch (err) {
+      console.error('Error updating user:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update user');
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    const confirmed = confirm(`Delete user "${user.name}" (${user.email})? This cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingUserId(user.id);
+      setError(null);
+
+      const response = await fetch(`/api/v1/admin/users/${user.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to delete user');
+      }
+
+      await loadUsers(currentPage(), roleFilter());
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete user');
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -100,7 +183,6 @@ export const AdminUsersPage: Component = () => {
         </div>
       </div>
 
-      {/* Filters */}
       <div class="mb-6">
         <div class="bg-white shadow rounded-lg p-4">
           <div class="flex items-center space-x-4">
@@ -125,24 +207,21 @@ export const AdminUsersPage: Component = () => {
               onClick={() => loadUsers(currentPage(), roleFilter())}
               class="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
-              <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
               Refresh
             </button>
           </div>
         </div>
       </div>
 
-      <Show 
-        when={!loading() && !error() && data()} 
+      <Show
+        when={!loading() && !error() && data()}
         fallback={
-          <Show 
-            when={loading()} 
+          <Show
+            when={loading()}
             fallback={
               <div class="text-center py-12">
                 <div class="text-red-600">{error()}</div>
-                <button 
+                <button
                   onClick={() => loadUsers()}
                   class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
@@ -160,9 +239,7 @@ export const AdminUsersPage: Component = () => {
         <div class="bg-white shadow overflow-hidden sm:rounded-md">
           <div class="px-4 py-5 sm:p-6">
             <div class="mb-4 flex items-center justify-between">
-              <h2 class="text-lg font-medium text-gray-900">
-                Users ({data()?.total || 0})
-              </h2>
+              <h2 class="text-lg font-medium text-gray-900">Users ({data()?.total || 0})</h2>
               <div class="text-sm text-gray-500">
                 Page {data()?.page || 1} of {data()?.total_pages || 1}
               </div>
@@ -200,38 +277,36 @@ export const AdminUsersPage: Component = () => {
                           </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                          <span class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeClass(user.role)}`}>
+                          <span
+                            class={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeClass(user.role)}`}
+                          >
                             {user.role}
                           </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <Show
-                            when={user.can_create_invites}
-                            fallback={<span class="text-gray-400">None</span>}
-                          >
+                          <Show when={user.can_create_invites} fallback={<span class="text-gray-400">None</span>}>
                             <div>
                               <div>Can create invites</div>
                               <div class="text-xs text-gray-500">
-                                {user.invites_remaining !== null 
-                                  ? `${user.invites_remaining} remaining` 
-                                  : 'Unlimited'
-                                }
+                                {user.invites_remaining !== null ? `${user.invites_remaining} remaining` : 'Unlimited'}
                               </div>
                             </div>
                           </Show>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(user.created_at)}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.created_at)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           <button
-                            onClick={() => setEditingUser(user)}
-                            class="text-green-600 hover:text-green-900 mr-3"
+                            class="text-green-700 hover:text-green-900"
+                            onClick={() => openEditModal(user)}
                           >
                             Edit
                           </button>
-                          <button class="text-red-600 hover:text-red-900">
-                            Delete
+                          <button
+                            class="text-red-700 hover:text-red-900 disabled:opacity-50"
+                            disabled={deletingUserId() === user.id}
+                            onClick={() => handleDeleteUser(user)}
+                          >
+                            {deletingUserId() === user.id ? 'Deleting...' : 'Delete'}
                           </button>
                         </td>
                       </tr>
@@ -241,7 +316,6 @@ export const AdminUsersPage: Component = () => {
               </table>
             </div>
 
-            {/* Pagination */}
             <Show when={(data()?.total_pages || 0) > 1}>
               <div class="mt-6 flex items-center justify-between">
                 <button
@@ -267,22 +341,87 @@ export const AdminUsersPage: Component = () => {
         </div>
       </Show>
 
-      {/* Edit User Modal - Placeholder for now */}
       <Show when={editingUser()}>
-        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">
-                Edit User: {editingUser()?.name}
-              </h3>
-              <p class="text-sm text-gray-600 mb-4">
-                User editing functionality will be implemented here.
-              </p>
+        <div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
+            <div class="px-6 py-4 border-b">
+              <h3 class="text-lg font-semibold text-gray-900">Edit User</h3>
+              <p class="text-sm text-gray-600">{editingUser()?.name} ({editingUser()?.email})</p>
+            </div>
+
+            <div class="px-6 py-4 space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  value={editingRole()}
+                  onChange={(e) => setEditingRole(e.currentTarget.value as Role)}
+                  class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="user">User</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <label class="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={editingCanCreateInvites()}
+                  onChange={(e) => setEditingCanCreateInvites(e.currentTarget.checked)}
+                />
+                Can create invites
+              </label>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Invite limit</label>
+                <div class="flex gap-3">
+                  <label class="inline-flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="max_invites_mode"
+                      checked={editingMaxInvitesMode() === 'limited'}
+                      onChange={() => setEditingMaxInvitesMode('limited')}
+                    />
+                    Limited
+                  </label>
+                  <label class="inline-flex items-center gap-2 text-sm">
+                    <input
+                      type="radio"
+                      name="max_invites_mode"
+                      checked={editingMaxInvitesMode() === 'unlimited'}
+                      onChange={() => setEditingMaxInvitesMode('unlimited')}
+                    />
+                    Unlimited
+                  </label>
+                </div>
+
+                <Show when={editingMaxInvitesMode() === 'limited'}>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingMaxInvites()}
+                    onInput={(e) => setEditingMaxInvites(e.currentTarget.value)}
+                    class="mt-2 w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </Show>
+              </div>
+            </div>
+
+            <div class="px-6 py-4 border-t flex justify-end gap-3">
               <button
+                type="button"
                 onClick={() => setEditingUser(null)}
-                class="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                class="px-4 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
-                Close
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingUser()}
+                onClick={handleSaveUser}
+                class="px-4 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {savingUser() ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

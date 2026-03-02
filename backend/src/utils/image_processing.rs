@@ -118,10 +118,10 @@ fn encode_to_webp(image: &DynamicImage) -> Result<Vec<u8>> {
 
     // Create WebP encoder with lossy compression at 85% quality
     let encoder = Encoder::from_rgb(&rgb_image, width, height);
-    
+
     // Encode with 85% quality for good balance of size/quality
     let webp_memory: WebPMemory = encoder.encode(85f32);
-    
+
     Ok(webp_memory.to_vec())
 }
 
@@ -147,25 +147,22 @@ mod tests {
         assert!(!result.data.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_crop_large_image() {
-        // Create a smaller but still large test image (1200x800) to test cropping logic
-        // This is much faster than 5000x3000 but still tests the same functionality
-        let large_img = DynamicImage::new_rgb8(1200, 800);
-        let cropped = crop_to_max_dimension(large_img);
+    #[test]
+    fn test_crop_large_image() {
+        // Test image within limits - should remain unchanged
+        let normal_img = DynamicImage::new_rgb8(1000, 600);
+        let not_cropped = crop_to_max_dimension(normal_img);
+        assert_eq!(not_cropped.width(), 1000);
+        assert_eq!(not_cropped.height(), 600);
 
-        // Should remain unchanged since it's within MAX_DIMENSION (3840)
-        assert_eq!(cropped.width(), 1200);
-        assert_eq!(cropped.height(), 800);
-        
-        // Test with image that actually needs cropping (4000x2000)
+        // Test oversized image - should be resized (use smaller dimensions for speed)
         let oversized_img = DynamicImage::new_rgb8(4000, 2000);
-        let cropped_oversized = crop_to_max_dimension(oversized_img);
-        
+        let cropped = crop_to_max_dimension(oversized_img);
+
         // Should be scaled down to fit within MAX_DIMENSION
-        assert!(cropped_oversized.width() <= MAX_DIMENSION);
-        assert!(cropped_oversized.height() <= MAX_DIMENSION);
-        assert_eq!(cropped_oversized.width(), MAX_DIMENSION); // Wider dimension should hit the limit
+        assert!(cropped.width() <= MAX_DIMENSION);
+        assert!(cropped.height() <= MAX_DIMENSION);
+        assert_eq!(cropped.width(), MAX_DIMENSION); // Wider dimension should hit the limit
     }
 
     #[test]

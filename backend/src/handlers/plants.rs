@@ -75,9 +75,15 @@ async fn list_plants(
     let limit = params.limit.unwrap_or(20);
     let offset = params.offset.unwrap_or(0);
 
-    let (plants, total) =
-        db_plants::list_plants_for_user_with_sort(&app_state.pool, &user.id, limit, offset, params.search.as_deref(), params.sort.as_deref())
-            .await?;
+    let (plants, total) = db_plants::list_plants_for_user_with_sort(
+        &app_state.pool,
+        &user.id,
+        limit,
+        offset,
+        params.search.as_deref(),
+        params.sort.as_deref(),
+    )
+    .await?;
 
     let response = PlantsResponse {
         plants,
@@ -287,11 +293,7 @@ async fn clear_plant_preview(
 
     let plant = db_plants::clear_plant_preview(&app_state.pool, id, &user.id).await?;
 
-    tracing::info!(
-        "Cleared preview for plant: {} for user: {}",
-        id,
-        user.id
-    );
+    tracing::info!("Cleared preview for plant: {} for user: {}", id, user.id);
 
     Ok(Json(plant))
 }

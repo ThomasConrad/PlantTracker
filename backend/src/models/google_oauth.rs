@@ -56,7 +56,9 @@ pub struct GoogleTasksStatus {
 pub struct CreateGoogleTaskRequest {
     #[schema(example = "💧 Water Fiddle Leaf Fig")]
     pub title: String,
-    #[schema(example = "Time to water your Fiddle Leaf Fig. Remember to check soil moisture first.")]
+    #[schema(
+        example = "Time to water your Fiddle Leaf Fig. Remember to check soil moisture first."
+    )]
     pub notes: Option<String>,
     #[schema(example = "2024-01-15T10:00:00Z")]
     pub due_time: DateTime<Utc>,

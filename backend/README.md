@@ -20,6 +20,7 @@ Set at least:
 - `PORT`
 - `FRONTEND_DIR`
 - `RUST_LOG`
+- `WAITLIST_ENABLED` (`false` by default; set `true` to expose waitlist APIs)
 
 ## Run
 
@@ -44,7 +45,7 @@ sqlx migrate run
 
 ## Key API Areas
 - Auth: login/register/logout/me + profile/password/export/delete account
-- Invites/waitlist
+- Invites (waitlist is feature-flagged)
 - Plants/tracking/photos
 - Calendar feed and token rotation
 - Google Tasks integration

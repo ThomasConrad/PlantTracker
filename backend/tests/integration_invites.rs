@@ -22,6 +22,94 @@ async fn test_invite_creation_requires_auth() {
 }
 
 #[tokio::test]
+async fn test_invite_creation_requires_permission() {
+    let app = TestApp::new().await;
+
+    use planty_api::database::users as db_users;
+    use planty_api::models::{CreateUserRequest, UserRole};
+
+    let user_request = CreateUserRequest {
+        name: "Regular User".to_string(),
+        email: "regular@test.com".to_string(),
+        password: "password123".to_string(),
+        invite_code: None,
+    };
+
+    let _user =
+        db_users::create_user_internal(&app.db_pool, &user_request, UserRole::User, false, Some(0))
+            .await
+            .expect("Failed to create regular user");
+
+    let login_response = app
+        .client
+        .post(app.url("/auth/login"))
+        .json(&json!({
+            "email": "regular@test.com",
+            "password": "password123"
+        }))
+        .send()
+        .await
+        .expect("Failed to login regular user");
+    assert_eq!(login_response.status(), 200);
+
+    let create_response = app
+        .client
+        .post(app.url("/invites/create"))
+        .json(&json!({
+            "max_uses": 1
+        }))
+        .send()
+        .await
+        .expect("Failed to send invite create request");
+
+    assert_eq!(create_response.status(), 403);
+}
+
+#[tokio::test]
+async fn test_invite_creation_disallows_unlimited_quota_users() {
+    let app = TestApp::new().await;
+
+    use planty_api::database::users as db_users;
+    use planty_api::models::{CreateUserRequest, UserRole};
+
+    let user_request = CreateUserRequest {
+        name: "Legacy Unlimited User".to_string(),
+        email: "legacy@test.com".to_string(),
+        password: "password123".to_string(),
+        invite_code: None,
+    };
+
+    let _user =
+        db_users::create_user_internal(&app.db_pool, &user_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create legacy user");
+
+    let login_response = app
+        .client
+        .post(app.url("/auth/login"))
+        .json(&json!({
+            "email": "legacy@test.com",
+            "password": "password123"
+        }))
+        .send()
+        .await
+        .expect("Failed to login legacy user");
+    assert_eq!(login_response.status(), 200);
+
+    let create_response = app
+        .client
+        .post(app.url("/invites/create"))
+        .json(&json!({
+            "max_uses": 1
+        }))
+        .send()
+        .await
+        .expect("Failed to send invite create request");
+
+    assert_eq!(create_response.status(), 403);
+}
+
+#[tokio::test]
 async fn test_invite_validation() {
     let app = TestApp::new().await;
 
@@ -37,10 +125,15 @@ async fn test_invite_validation() {
         invite_code: None,
     };
 
-    let _admin_user =
-        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
-            .await
-            .expect("Failed to create admin user");
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        Some(50),
+    )
+    .await
+    .expect("Failed to create admin user");
 
     // Login as admin
     let login_response = app
@@ -116,10 +209,15 @@ async fn test_invite_list() {
         invite_code: None,
     };
 
-    let _admin_user =
-        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
-            .await
-            .expect("Failed to create admin user");
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        Some(50),
+    )
+    .await
+    .expect("Failed to create admin user");
 
     // Login as admin
     let _login_response = app
@@ -181,10 +279,15 @@ async fn test_registration_with_invite() {
         invite_code: None,
     };
 
-    let _admin_user =
-        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
-            .await
-            .expect("Failed to create admin user");
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        Some(50),
+    )
+    .await
+    .expect("Failed to create admin user");
 
     // Login as admin
     let _login_response = app
@@ -321,10 +424,15 @@ async fn test_registration_validation_errors() {
         invite_code: None,
     };
 
-    let _admin_user =
-        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
-            .await
-            .expect("Failed to create admin user");
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        Some(50),
+    )
+    .await
+    .expect("Failed to create admin user");
 
     let _login_response = app
         .client
@@ -442,10 +550,15 @@ async fn test_invite_single_use_enforcement() {
         invite_code: None,
     };
 
-    let _admin_user =
-        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
-            .await
-            .expect("Failed to create admin user");
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        Some(50),
+    )
+    .await
+    .expect("Failed to create admin user");
 
     // Login as admin
     let _login_response = app
@@ -550,6 +663,7 @@ async fn test_invite_single_use_enforcement() {
 
 #[tokio::test]
 async fn test_admin_can_invite_waitlist_entry() {
+    std::env::set_var("WAITLIST_ENABLED", "true");
     let app = TestApp::new().await;
 
     use planty_api::database::users as db_users;
@@ -562,10 +676,15 @@ async fn test_admin_can_invite_waitlist_entry() {
         invite_code: None,
     };
 
-    let _admin_user =
-        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
-            .await
-            .expect("Failed to create admin user");
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        Some(50),
+    )
+    .await
+    .expect("Failed to create admin user");
 
     let login_response = app
         .client
@@ -622,6 +741,7 @@ async fn test_admin_can_invite_waitlist_entry() {
 
 #[tokio::test]
 async fn test_non_admin_cannot_invite_waitlist_entry() {
+    std::env::set_var("WAITLIST_ENABLED", "true");
     let app = TestApp::new().await;
 
     use planty_api::database::users as db_users;

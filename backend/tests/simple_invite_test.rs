@@ -26,7 +26,7 @@ async fn test_invite_registration_flow() {
     };
 
     let admin_user =
-        db_users::create_user_internal(&pool, &admin_request, UserRole::Admin, true, None)
+        db_users::create_user_internal(&pool, &admin_request, UserRole::Admin, true, Some(50))
             .await
             .expect("Failed to create admin user");
 

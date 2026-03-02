@@ -176,10 +176,15 @@ async fn test_concurrent_users_isolated_sessions() {
         invite_code: None,
     };
 
-    let _admin_user =
-        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
-            .await
-            .expect("Failed to create admin user");
+    let _admin_user = db_users::create_user_internal(
+        &app.db_pool,
+        &admin_request,
+        UserRole::Admin,
+        true,
+        Some(50),
+    )
+    .await
+    .expect("Failed to create admin user");
 
     // Login as admin to create invites
     let admin_client = reqwest::Client::builder()

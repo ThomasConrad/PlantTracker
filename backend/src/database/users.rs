@@ -241,6 +241,31 @@ pub async fn update_user_login_time(pool: &DatabasePool, user_id: &str) -> Resul
     Ok(())
 }
 
+pub async fn consume_invite_quota(pool: &DatabasePool, user_id: &str) -> Result<(), AppError> {
+    let now = Utc::now().to_rfc3339();
+    let updated = sqlx::query(
+        "UPDATE users
+         SET invites_created = invites_created + 1, updated_at = ?
+         WHERE id = ?
+           AND can_create_invites = TRUE
+           AND max_invites IS NOT NULL
+           AND invites_created < max_invites",
+    )
+    .bind(now)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::Authorization {
+            message: "Invite creation limit reached or permission denied".to_string(),
+        });
+    }
+
+    Ok(())
+}
+
 pub async fn update_user_profile(
     pool: &DatabasePool,
     user_id: &str,

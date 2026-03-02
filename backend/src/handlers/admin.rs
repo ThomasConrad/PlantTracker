@@ -373,6 +373,14 @@ pub async fn update_user(
     }
 
     if let Some(max_invites) = request.max_invites {
+        if max_invites.is_none() {
+            return Err(AppError::Validation({
+                let mut errors = validator::ValidationErrors::new();
+                errors.add("max_invites", validator::ValidationError::new("required"));
+                errors
+            }));
+        }
+
         sqlx::query!(
             "UPDATE users SET max_invites = ?, updated_at = ? WHERE id = ?",
             max_invites,

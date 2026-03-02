@@ -205,3 +205,37 @@ pub async fn update_waitlist_status(
 
     Ok(entry)
 }
+
+pub async fn invite_waitlist_entry(
+    pool: &DatabasePool,
+    waitlist_id: &str,
+    created_by: &str,
+    max_uses: i32,
+) -> Result<(WaitlistEntry, InviteCode)> {
+    let waitlist_row =
+        sqlx::query_as::<_, WaitlistEntryRow>("SELECT * FROM waitlist WHERE id = $1")
+            .bind(waitlist_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(AppError::Database)?
+            .ok_or(AppError::NotFound {
+                resource: format!("Waitlist entry {waitlist_id}"),
+            })?;
+
+    let waitlist_entry = waitlist_row.to_waitlist_entry()?;
+    if waitlist_entry.status == "registered" {
+        return Err(AppError::Authorization {
+            message: "Cannot invite a waitlist entry that is already registered".to_string(),
+        });
+    }
+
+    let invite_request = CreateInviteRequest {
+        max_uses: Some(max_uses),
+        expires_at: None,
+    };
+    let invite = create_invite_code(pool, &invite_request, Some(created_by)).await?;
+    let updated_waitlist =
+        update_waitlist_status(pool, &waitlist_entry.email, "invited", Some(&invite.code)).await?;
+
+    Ok((updated_waitlist, invite))
+}

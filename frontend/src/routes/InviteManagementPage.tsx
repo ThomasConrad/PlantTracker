@@ -28,6 +28,7 @@ export const InviteManagementPage: Component = () => {
   const [waitlist, setWaitlist] = createSignal<WaitlistEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [waitlistLoading, setWaitlistLoading] = createSignal(false);
+  const [invitingWaitlistId, setInvitingWaitlistId] = createSignal<string | null>(null);
   const [createLoading, setCreateLoading] = createSignal(false);
   const [error, setError] = createSignal('');
   const [maxUses, setMaxUses] = createSignal(1);
@@ -64,6 +65,25 @@ export const InviteManagementPage: Component = () => {
       setError('Failed to load waitlist');
     } finally {
       setWaitlistLoading(false);
+    }
+  };
+
+  const inviteWaitlistEntry = async (entry: WaitlistEntry) => {
+    try {
+      setInvitingWaitlistId(entry.id);
+      setError('');
+      const response = await apiClient.request<{ invite_code: string }>(`/invites/waitlist/${entry.id}/invite`, {
+        method: 'POST',
+        body: JSON.stringify({ max_uses: 1 }),
+      });
+
+      await Promise.all([loadWaitlist(), loadInvites()]);
+      await navigator.clipboard.writeText(`${window.location.origin}/invite?code=${response.invite_code}`);
+    } catch (err: unknown) {
+      console.error('Failed to invite waitlist entry:', err);
+      setError('Failed to create invite for waitlist entry');
+    } finally {
+      setInvitingWaitlistId(null);
     }
   };
 
@@ -272,6 +292,7 @@ export const InviteManagementPage: Component = () => {
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -287,6 +308,21 @@ export const InviteManagementPage: Component = () => {
                         </td>
                         <td class="px-4 py-2 text-sm text-gray-600">
                           {new Date(entry.created_at).toLocaleDateString()}
+                        </td>
+                        <td class="px-4 py-2 text-right">
+                          <Show
+                            when={entry.status === 'pending'}
+                            fallback={<span class="text-xs text-gray-400">-</span>}
+                          >
+                            <Button
+                              size="sm"
+                              onClick={() => inviteWaitlistEntry(entry)}
+                              loading={invitingWaitlistId() === entry.id}
+                              disabled={invitingWaitlistId() !== null}
+                            >
+                              Invite
+                            </Button>
+                          </Show>
                         </td>
                       </tr>
                     )}

@@ -1099,6 +1099,129 @@
           }
         ]
       }
+    },
+    "/reminders/dispatch": {
+      "post": {
+        "tags": [
+          "reminders"
+        ],
+        "operationId": "dispatch_due_reminders",
+        "responses": {
+          "200": {
+            "description": "Dispatched due reminders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispatchRemindersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/reminders/due": {
+      "get": {
+        "tags": [
+          "reminders"
+        ],
+        "operationId": "get_due_reminders",
+        "responses": {
+          "200": {
+            "description": "Due reminders list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DueRemindersResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/reminders/preferences": {
+      "get": {
+        "tags": [
+          "reminders"
+        ],
+        "operationId": "get_preferences",
+        "responses": {
+          "200": {
+            "description": "Reminder preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderPreferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "reminders"
+        ],
+        "operationId": "update_preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReminderPreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated reminder preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderPreferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1453,6 +1576,85 @@
           },
           "unit": {
             "type": "string"
+          }
+        }
+      },
+      "DispatchRemindersResponse": {
+        "type": "object",
+        "required": [
+          "reminders",
+          "sentCount"
+        ],
+        "properties": {
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DueReminder"
+            }
+          },
+          "sentCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "DueReminder": {
+        "type": "object",
+        "required": [
+          "plantId",
+          "plantName",
+          "reminderType",
+          "dueAt",
+          "dueDate",
+          "daysOverdue",
+          "alreadySent"
+        ],
+        "properties": {
+          "alreadySent": {
+            "type": "boolean"
+          },
+          "daysOverdue": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dueAt": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string"
+          },
+          "plantName": {
+            "type": "string"
+          },
+          "reminderType": {
+            "type": "string"
+          }
+        }
+      },
+      "DueRemindersResponse": {
+        "type": "object",
+        "required": [
+          "reminders",
+          "totalDue",
+          "unsentCount"
+        ],
+        "properties": {
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DueReminder"
+            }
+          },
+          "totalDue": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unsentCount": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },
@@ -1830,6 +2032,29 @@
           }
         }
       },
+      "ReminderPreferences": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "reminderTime",
+          "timezone",
+          "browserNotificationsEnabled"
+        ],
+        "properties": {
+          "browserNotificationsEnabled": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "reminderTime": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
       "StoreTokensRequest": {
         "type": "object",
         "required": [
@@ -2083,6 +2308,29 @@
           }
         }
       },
+      "UpdateReminderPreferencesRequest": {
+        "type": "object",
+        "required": [
+          "enabled",
+          "reminderTime",
+          "timezone",
+          "browserNotificationsEnabled"
+        ],
+        "properties": {
+          "browserNotificationsEnabled": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "reminderTime": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
       "UpdateUserRequest": {
         "type": "object",
         "properties": {
@@ -2240,6 +2488,10 @@
     {
       "name": "google-tasks",
       "description": "Google Tasks integration endpoints"
+    },
+    {
+      "name": "reminders",
+      "description": "In-app and browser reminder endpoints"
     }
   ]
 }

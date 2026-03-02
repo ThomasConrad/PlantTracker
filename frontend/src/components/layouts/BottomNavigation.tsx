@@ -81,7 +81,7 @@ export const BottomNavigation: Component = () => {
           class="bottom-nav-item"
           onClick={() => setShowSettings(!showSettings())}
         >
-          <NavIcon isActive={showSettings() || location.pathname.startsWith('/calendar/settings') || location.pathname.startsWith('/settings')}>
+          <NavIcon isActive={showSettings() || location.pathname.startsWith('/calendar/settings') || location.pathname.startsWith('/settings') || location.pathname.startsWith('/reminders')}>
             <path 
               stroke-linecap="round" 
               stroke-linejoin="round" 

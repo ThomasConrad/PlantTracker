@@ -18,6 +18,7 @@ import { PlantDetailPage } from '@/routes/PlantDetailPage';
 import { PlantFormPage } from '@/routes/PlantFormPage';
 import { CalendarPage } from '@/routes/CalendarPage';
 import { CalendarSettingsPage } from '@/routes/CalendarSettingsPage';
+import { RemindersPage } from '@/routes/RemindersPage';
 import { SearchPage } from '@/routes/SearchPage';
 import { NotFoundPage } from '@/routes/NotFoundPage';
 import { PrivacyPage } from '@/routes/PrivacyPage';
@@ -177,6 +178,19 @@ const App: Component = () => {
             >
               <AppLayout>
                 <CalendarSettingsPage />
+              </AppLayout>
+            </Show>
+          )}
+        />
+        <Route
+          path="/reminders"
+          component={() => (
+            <Show
+              when={authStore.isAuthenticated}
+              fallback={<Navigate href="/signup" />}
+            >
+              <AppLayout>
+                <RemindersPage />
               </AppLayout>
             </Show>
           )}

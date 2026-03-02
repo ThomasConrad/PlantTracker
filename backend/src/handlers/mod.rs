@@ -5,4 +5,5 @@ pub mod google_tasks;
 pub mod invites;
 pub mod photos;
 pub mod plants;
+pub mod reminders;
 pub mod tracking;

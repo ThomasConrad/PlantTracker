@@ -27,6 +27,7 @@ mod utils;
 use app_state::AppState;
 use handlers::{
     admin as admin_handlers, auth as auth_handlers, calendar, google_tasks, invites, plants,
+    reminders,
 };
 use planty_api::ApiDoc;
 use utils::{
@@ -149,6 +150,7 @@ async fn main() -> anyhow::Result<()> {
         .nest("/plants", plants::routes())
         .nest("/calendar", calendar::routes())
         .nest("/google-tasks", google_tasks::routes())
+        .nest("/reminders", reminders::routes())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/openapi.json", get(|| async { Json(ApiDoc::openapi()) }))
         .with_state(app_state);

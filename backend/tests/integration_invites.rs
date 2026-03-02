@@ -547,3 +547,137 @@ async fn test_invite_single_use_enforcement() {
         }
     }
 }
+
+#[tokio::test]
+async fn test_admin_can_invite_waitlist_entry() {
+    let app = TestApp::new().await;
+
+    use planty_api::database::users as db_users;
+    use planty_api::models::{CreateUserRequest, UserRole};
+
+    let admin_request = CreateUserRequest {
+        name: "Admin User".to_string(),
+        email: "admin@test.com".to_string(),
+        password: "password123".to_string(),
+        invite_code: None,
+    };
+
+    let _admin_user =
+        db_users::create_user_internal(&app.db_pool, &admin_request, UserRole::Admin, true, None)
+            .await
+            .expect("Failed to create admin user");
+
+    let login_response = app
+        .client
+        .post(app.url("/auth/login"))
+        .json(&json!({
+            "email": "admin@test.com",
+            "password": "password123"
+        }))
+        .send()
+        .await
+        .expect("Failed to login as admin");
+    assert_eq!(login_response.status(), 200);
+
+    let waitlist_response = app
+        .client
+        .post(app.url("/invites/waitlist"))
+        .json(&json!({
+            "email": "waitlist-user@test.com",
+            "name": "Waitlist User",
+            "message": "Please invite me"
+        }))
+        .send()
+        .await
+        .expect("Failed to create waitlist entry");
+    assert_eq!(waitlist_response.status(), 201);
+
+    let created_waitlist: Value = waitlist_response
+        .json()
+        .await
+        .expect("Failed to parse waitlist response");
+    let waitlist_id = created_waitlist["id"]
+        .as_str()
+        .expect("Waitlist response should include id");
+
+    let invite_response = app
+        .client
+        .post(app.url(&format!("/invites/waitlist/{waitlist_id}/invite")))
+        .json(&json!({
+            "max_uses": 2
+        }))
+        .send()
+        .await
+        .expect("Failed to invite waitlist entry");
+    assert_eq!(invite_response.status(), 200);
+
+    let invited_payload: Value = invite_response
+        .json()
+        .await
+        .expect("Failed to parse invite waitlist response");
+
+    assert!(invited_payload["invite_code"].as_str().is_some());
+    assert_eq!(invited_payload["waitlist_entry"]["status"], "invited");
+}
+
+#[tokio::test]
+async fn test_non_admin_cannot_invite_waitlist_entry() {
+    let app = TestApp::new().await;
+
+    use planty_api::database::users as db_users;
+    use planty_api::models::{CreateUserRequest, UserRole};
+
+    let user_request = CreateUserRequest {
+        name: "Normal User".to_string(),
+        email: "user@test.com".to_string(),
+        password: "password123".to_string(),
+        invite_code: None,
+    };
+
+    let _user =
+        db_users::create_user_internal(&app.db_pool, &user_request, UserRole::User, false, Some(0))
+            .await
+            .expect("Failed to create normal user");
+
+    let login_response = app
+        .client
+        .post(app.url("/auth/login"))
+        .json(&json!({
+            "email": "user@test.com",
+            "password": "password123"
+        }))
+        .send()
+        .await
+        .expect("Failed to login as normal user");
+    assert_eq!(login_response.status(), 200);
+
+    // Create waitlist entry (public-ish endpoint)
+    let waitlist_response = app
+        .client
+        .post(app.url("/invites/waitlist"))
+        .json(&json!({
+            "email": "another-waitlist@test.com"
+        }))
+        .send()
+        .await
+        .expect("Failed to create waitlist entry");
+    assert_eq!(waitlist_response.status(), 201);
+
+    let created_waitlist: Value = waitlist_response
+        .json()
+        .await
+        .expect("Failed to parse waitlist response");
+    let waitlist_id = created_waitlist["id"]
+        .as_str()
+        .expect("Waitlist response should include id");
+
+    let invite_response = app
+        .client
+        .post(app.url(&format!("/invites/waitlist/{waitlist_id}/invite")))
+        .json(&json!({}))
+        .send()
+        .await
+        .expect("Failed to call invite endpoint");
+
+    assert_eq!(invite_response.status(), 403);
+}

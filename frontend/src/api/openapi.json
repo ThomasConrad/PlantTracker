@@ -749,65 +749,6 @@
         }
       }
     },
-    "/invites/waitlist": {
-      "post": {
-        "tags": [
-          "invites"
-        ],
-        "operationId": "join_waitlist",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WaitlistSignupRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Added to waitlist",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WaitlistResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request or email already exists"
-          }
-        }
-      }
-    },
-    "/invites/waitlist/list": {
-      "get": {
-        "tags": [
-          "invites"
-        ],
-        "operationId": "list_waitlist",
-        "responses": {
-          "200": {
-            "description": "List of waitlist entries",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WaitlistResponse"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
-      }
-    },
     "/plants": {
       "get": {
         "tags": [
@@ -2268,53 +2209,6 @@
             "type": "string"
           }
         }
-      },
-      "WaitlistResponse": {
-        "type": "object",
-        "required": [
-          "id",
-          "email",
-          "status",
-          "created_at"
-        ],
-        "properties": {
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "email": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string"
-          }
-        }
-      },
-      "WaitlistSignupRequest": {
-        "type": "object",
-        "required": [
-          "email"
-        ],
-        "properties": {
-          "email": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
-          },
-          "name": {
-            "type": "string",
-            "nullable": true
-          }
-        }
       }
     }
   },
@@ -2329,7 +2223,7 @@
     },
     {
       "name": "invites",
-      "description": "Invite system and waitlist endpoints"
+      "description": "Invite system endpoints"
     },
     {
       "name": "plants",

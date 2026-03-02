@@ -14,8 +14,6 @@ type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
 type PhotosResponse = components['schemas']['PhotosResponse'];
 type PlantsResponse = components['schemas']['PlantsResponse'];
-type WaitlistSignupRequest = components['schemas']['WaitlistSignupRequest'];
-type WaitlistResponse = components['schemas']['WaitlistResponse'];
 interface UpdateProfileRequest {
   name: string;
   email: string;
@@ -32,6 +30,20 @@ interface UpdateTrackingEntryRequest {
   timestamp?: string;
   value?: unknown;
   notes?: string;
+}
+
+interface WaitlistSignupRequest {
+  email: string;
+  name?: string;
+  message?: string;
+}
+
+interface WaitlistResponse {
+  id: string;
+  email: string;
+  name?: string;
+  status: string;
+  created_at: string;
 }
 
 

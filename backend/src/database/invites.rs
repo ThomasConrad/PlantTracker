@@ -43,6 +43,60 @@ pub async fn create_invite_code(
     Ok(invite)
 }
 
+pub async fn create_invite_code_consuming_quota(
+    pool: &DatabasePool,
+    request: &CreateInviteRequest,
+    creator_user_id: &str,
+) -> Result<InviteCode> {
+    let mut tx = pool.begin().await.map_err(AppError::Database)?;
+    let now_str = Utc::now().to_rfc3339();
+
+    let updated = sqlx::query(
+        "UPDATE users
+         SET invites_created = invites_created + 1, updated_at = ?
+         WHERE id = ?
+           AND can_create_invites = TRUE
+           AND max_invites IS NOT NULL
+           AND invites_created < max_invites",
+    )
+    .bind(&now_str)
+    .bind(creator_user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::Authorization {
+            message: "Invite creation limit reached or permission denied".to_string(),
+        });
+    }
+
+    let id = Uuid::new_v4().to_string();
+    let code = InviteCode::generate_code();
+    let max_uses = request.max_uses.unwrap_or(1);
+    let expires_at_str = request.expires_at.map(|dt| dt.to_rfc3339());
+
+    let invite_row = sqlx::query_as::<_, InviteCodeRow>(
+        r#"
+        INSERT INTO invite_codes (id, code, created_by, max_uses, expires_at, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $6)
+        RETURNING *
+        "#,
+    )
+    .bind(&id)
+    .bind(&code)
+    .bind(creator_user_id)
+    .bind(max_uses)
+    .bind(expires_at_str)
+    .bind(&now_str)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(AppError::Database)?;
+
+    tx.commit().await.map_err(AppError::Database)?;
+    invite_row.to_invite_code()
+}
+
 pub async fn validate_invite_code(pool: &DatabasePool, code: &str) -> Result<InviteCode> {
     let invite_row =
         sqlx::query_as::<_, InviteCodeRow>("SELECT * FROM invite_codes WHERE code = $1")

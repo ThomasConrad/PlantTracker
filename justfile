@@ -44,19 +44,24 @@ build-backend:
 
 # === DEVELOPMENT COMMANDS ===
 
-# Start development server (builds frontend and runs backend)
+# Start development server with hot reload:
+# - Vite (HMR) on :3000
+# - Axum API (cargo-watch) on :3001
 dev:
     @echo "🚀 Starting development server..."
-    just build-frontend
-    cd backend && cargo run --bin planty-api
+    npm run dev
+
+# Start frontend dev server only (Vite HMR)
+frontend:
+    @echo "⚡ Starting frontend (Vite HMR) on :3000..."
+    cd frontend && npm run dev -- --port 3000 --strictPort
 
 # === RUN COMMANDS ===
 
-# Run backend (builds frontend first, then serves everything)
+# Run backend dev API only with auto-reload (cargo-watch)
 backend:
-    @echo "🦀 Starting backend..."
-    just build-frontend
-    cd backend && cargo run --bin planty-api
+    @echo "🦀 Starting backend API with cargo-watch on :3001..."
+    cd backend && PORT=3001 FRONTEND_DIR=../frontend/.vite-dev cargo watch -x run
 
 run-release:
     @echo "🦀 Starting backend (release)..."

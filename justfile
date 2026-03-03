@@ -61,7 +61,7 @@ frontend:
 # Run backend dev API only with auto-reload (cargo-watch)
 backend:
     @echo "🦀 Starting backend API with cargo-watch on :3001..."
-    cd backend && PORT=3001 FRONTEND_DIR=../frontend/.vite-dev cargo watch -x run
+    cd backend && PORT=3001 FRONTEND_DIR=../frontend/.vite-dev cargo watch -x "run --bin planty-api"
 
 run-release:
     @echo "🦀 Starting backend (release)..."

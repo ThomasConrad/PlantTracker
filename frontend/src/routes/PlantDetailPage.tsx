@@ -20,7 +20,8 @@ export const PlantDetailPage: Component = () => {
   const [isDragging, setIsDragging] = createSignal(false);
   const [dragStartY, setDragStartY] = createSignal(0);
   const [dragStartOffset, setDragStartOffset] = createSignal(0);
-  const [dragFromHandle, setDragFromHandle] = createSignal(false);
+  const [dragStartScrollTop, setDragStartScrollTop] = createSignal(0);
+  let panelContentRef: HTMLDivElement | undefined;
   const PANEL_EXPANDED_OFFSET = 8;
   const PANEL_DEFAULT_OFFSET = 60;
   const PANEL_COLLAPSED_OFFSET = 90;
@@ -46,35 +47,84 @@ export const PlantDetailPage: Component = () => {
   });
 
   // Touch event handlers for mobile swipe panel
-  const handleDragHandleTouchStart = (e: TouchEvent) => {
+  const handlePanelTouchStart = (e: TouchEvent) => {
     if (!isMobile()) return;
-    e.stopPropagation(); // Prevent event bubbling
     setIsDragging(true);
-    setDragFromHandle(true);
     setDragStartY(e.touches[0].clientY);
     setDragStartOffset(panelOffset());
+    setDragStartScrollTop(panelContentRef?.scrollTop || 0);
   };
 
   const handleTouchMove = (e: TouchEvent) => {
-    if (!isMobile() || !isDragging() || !dragFromHandle()) return;
-    e.preventDefault(); // Prevent scrolling while dragging
-    
+    if (!isMobile() || !isDragging()) return;
+
     const currentY = e.touches[0].clientY;
     const deltaY = currentY - dragStartY();
-    
+
     // Get the content area height (excluding header)
     const contentAreaHeight = window.innerHeight - 80; // 80px header height
-    const deltaPercent = (deltaY / contentAreaHeight) * 100;
-    
-    // Allow collapsing further so plant preview is visible while keeping handle accessible.
-    const newOffset = Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, dragStartOffset() + deltaPercent));
-    setPanelOffset(newOffset);
+    const startOffset = dragStartOffset();
+    const startScrollTop = dragStartScrollTop();
+
+    // Unified gesture model:
+    // 1) Move panel until top/bottom limits.
+    // 2) Once fully expanded, continue gesture as content scroll.
+    if (deltaY < 0) {
+      // Drag up
+      const upDrag = -deltaY;
+      const panelTravelToTopPx =
+        ((startOffset - PANEL_EXPANDED_OFFSET) / 100) * contentAreaHeight;
+
+      e.preventDefault();
+      if (upDrag <= panelTravelToTopPx) {
+        const newOffset = startOffset - (upDrag / contentAreaHeight) * 100;
+        setPanelOffset(
+          Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, newOffset))
+        );
+      } else {
+        setPanelOffset(PANEL_EXPANDED_OFFSET);
+        const extraUpPx = upDrag - panelTravelToTopPx;
+        if (panelContentRef) {
+          panelContentRef.scrollTop = startScrollTop + extraUpPx;
+        }
+      }
+      return;
+    }
+
+    // Drag down
+    const downDrag = deltaY;
+    const isExpanded = startOffset <= PANEL_EXPANDED_OFFSET + 0.5;
+
+    if (isExpanded && startScrollTop > 0) {
+      e.preventDefault();
+      if (downDrag <= startScrollTop) {
+        if (panelContentRef) {
+          panelContentRef.scrollTop = startScrollTop - downDrag;
+        }
+        setPanelOffset(PANEL_EXPANDED_OFFSET);
+      } else {
+        if (panelContentRef) {
+          panelContentRef.scrollTop = 0;
+        }
+        const remainingDownPx = downDrag - startScrollTop;
+        const newOffset =
+          PANEL_EXPANDED_OFFSET + (remainingDownPx / contentAreaHeight) * 100;
+        setPanelOffset(
+          Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, newOffset))
+        );
+      }
+    } else {
+      e.preventDefault();
+      const newOffset = startOffset + (downDrag / contentAreaHeight) * 100;
+      setPanelOffset(
+        Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, newOffset))
+      );
+    }
   };
 
   const handleTouchEnd = () => {
     if (!isMobile() || !isDragging()) return;
     setIsDragging(false);
-    setDragFromHandle(false);
     
     // Snap to positions based on final offset
     const currentOffset = panelOffset();
@@ -180,19 +230,23 @@ export const PlantDetailPage: Component = () => {
                     height: `${100 - panelOffset() + 10}%`,
                     'min-height': '20%'
                   }}
+                  onTouchStart={handlePanelTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
                 >
                   {/* Drag handle */}
                   <div 
                     class="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing"
-                    onTouchStart={handleDragHandleTouchStart}
                   >
                     <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
                   </div>
                   
                   {/* Content */}
-                  <div class="px-4 pb-8 overflow-y-auto flex-1" style={{ height: 'calc(100% - 32px)' }}>
+                  <div
+                    ref={panelContentRef}
+                    class="px-4 pb-8 overflow-y-auto flex-1"
+                    style={{ height: 'calc(100% - 32px)' }}
+                  >
                     <div class="space-y-6">
                       <PlantCareStatus plant={plant} />
                       <ActivityLog plant={plant} />

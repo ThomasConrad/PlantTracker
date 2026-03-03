@@ -18,11 +18,13 @@ export const PlantDetailPage: Component = () => {
   const [isMobile, setIsMobile] = createSignal(false);
   const [panelOffset, setPanelOffset] = createSignal(60); // Start at 60% of screen height
   const [isDragging, setIsDragging] = createSignal(false);
+  const [gestureMode, setGestureMode] = createSignal<'none' | 'sheet' | 'content'>('none');
   const [dragStartY, setDragStartY] = createSignal(0);
   const [dragStartOffset, setDragStartOffset] = createSignal(0);
   const [dragStartScrollTop, setDragStartScrollTop] = createSignal(0);
   let panelContentRef: HTMLDivElement | undefined;
-  const PANEL_EXPANDED_OFFSET = 8;
+  let dragMode: 'none' | 'sheet' | 'content' = 'none';
+  const PANEL_EXPANDED_OFFSET = 12;
   const PANEL_DEFAULT_OFFSET = 60;
   const PANEL_COLLAPSED_OFFSET = 90;
 
@@ -50,6 +52,8 @@ export const PlantDetailPage: Component = () => {
   const handlePanelTouchStart = (e: TouchEvent) => {
     if (!isMobile()) return;
     setIsDragging(true);
+    dragMode = 'none';
+    setGestureMode('none');
     setDragStartY(e.touches[0].clientY);
     setDragStartOffset(panelOffset());
     setDragStartScrollTop(panelContentRef?.scrollTop || 0);
@@ -60,6 +64,35 @@ export const PlantDetailPage: Component = () => {
 
     const currentY = e.touches[0].clientY;
     const deltaY = currentY - dragStartY();
+    const absDelta = Math.abs(deltaY);
+    const activeScrollTop = panelContentRef?.scrollTop || 0;
+    const expanded = panelOffset() <= PANEL_EXPANDED_OFFSET + 0.5;
+
+    // Decide gesture target once movement is intentional.
+    if (dragMode === 'none' && absDelta >= 4) {
+      if (deltaY < 0) {
+        dragMode = expanded ? 'content' : 'sheet';
+      } else {
+        dragMode = expanded && activeScrollTop > 0 ? 'content' : 'sheet';
+      }
+      setGestureMode(dragMode);
+    }
+
+    // If content is at top and user drags down, transition to sheet collapse.
+    if (dragMode === 'content' && deltaY > 0 && activeScrollTop <= 0.5) {
+      dragMode = 'sheet';
+      setGestureMode('sheet');
+      setDragStartY(currentY);
+      setDragStartOffset(panelOffset());
+      setDragStartScrollTop(0);
+      return;
+    }
+
+    if (dragMode === 'content') {
+      return;
+    }
+
+    if (dragMode !== 'sheet') return;
 
     // Get the content area height (excluding header)
     const contentAreaHeight = window.innerHeight - 80; // 80px header height
@@ -76,6 +109,9 @@ export const PlantDetailPage: Component = () => {
         ((startOffset - PANEL_EXPANDED_OFFSET) / 100) * contentAreaHeight;
 
       e.preventDefault();
+      if (panelContentRef) {
+        panelContentRef.scrollTop = 0;
+      }
       if (upDrag <= panelTravelToTopPx) {
         const newOffset = startOffset - (upDrag / contentAreaHeight) * 100;
         setPanelOffset(
@@ -115,6 +151,9 @@ export const PlantDetailPage: Component = () => {
       }
     } else {
       e.preventDefault();
+      if (panelContentRef) {
+        panelContentRef.scrollTop = 0;
+      }
       const newOffset = startOffset + (downDrag / contentAreaHeight) * 100;
       setPanelOffset(
         Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, newOffset))
@@ -125,6 +164,8 @@ export const PlantDetailPage: Component = () => {
   const handleTouchEnd = () => {
     if (!isMobile() || !isDragging()) return;
     setIsDragging(false);
+    dragMode = 'none';
+    setGestureMode('none');
     
     // Snap to positions based on final offset
     const currentOffset = panelOffset();
@@ -223,7 +264,9 @@ export const PlantDetailPage: Component = () => {
               <div class="flex-1 relative overflow-hidden">
                 {/* Swipe-up content panel */}
                 <div 
-                  class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out z-30"
+                  class={`absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl z-30 ${
+                    isDragging() ? '' : 'transition-transform duration-300 ease-out'
+                  }`}
                   style={{
                     bottom: '4rem',
                     transform: `translateY(${panelOffset()}%)`,
@@ -233,19 +276,18 @@ export const PlantDetailPage: Component = () => {
                   onTouchStart={handlePanelTouchStart}
                   onTouchMove={handleTouchMove}
                   onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
                 >
-                  {/* Drag handle */}
-                  <div 
-                    class="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-grab active:cursor-grabbing"
-                  >
-                    <div class="w-12 h-1.5 bg-gray-300 rounded-full"></div>
-                  </div>
-                  
                   {/* Content */}
                   <div
                     ref={panelContentRef}
-                    class="px-4 pb-8 overflow-y-auto flex-1"
-                    style={{ height: 'calc(100% - 32px)' }}
+                    class="px-4 pb-8 flex-1"
+                    style={{
+                      height: '100%',
+                      'padding-top': '1rem',
+                      'overflow-y': gestureMode() === 'sheet' ? 'hidden' : 'auto',
+                      'overscroll-behavior': 'contain',
+                    }}
                   >
                     <div class="space-y-6">
                       <PlantCareStatus plant={plant} />

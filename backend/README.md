@@ -22,6 +22,11 @@ Set at least:
 - `RUST_LOG`
 - `WAITLIST_ENABLED` (`false` by default; set `true` to expose waitlist APIs)
 
+For local Vite dev + proxy:
+- Set `PORT=3001` for backend
+- Set `FRONTEND_DIR` to a non-existent path (or keep default; Vite will proxy API requests)
+- Optional: `DEV_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000`
+
 ## Run
 
 ```bash

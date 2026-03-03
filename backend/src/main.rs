@@ -1,6 +1,6 @@
 use axum::{
     extract::DefaultBodyLimit,
-    http::{header, Method, StatusCode},
+    http::{header, HeaderValue, Method, StatusCode},
     middleware::from_fn,
     response::{Html, Json},
     routing::get,
@@ -102,10 +102,27 @@ async fn main() -> anyhow::Result<()> {
     // Authentication setup
     let (session_layer, auth_layer) = auth::create_auth_layers(pool.clone());
 
-    // CORS configuration - allow all origins in development
+    // CORS configuration
     let cors = if cfg!(debug_assertions) {
-        // Development: Allow any origin
-        CorsLayer::permissive()
+        // Development: Allow local frontend origins and credentials for cookie auth.
+        let allowed_origins = env::var("DEV_ALLOWED_ORIGINS")
+            .unwrap_or_else(|_| {
+                "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173".to_string()
+            })
+            .split(',')
+            .filter_map(|origin| origin.trim().parse::<HeaderValue>().ok())
+            .collect::<Vec<_>>();
+
+        CorsLayer::new()
+            .allow_origin(allowed_origins)
+            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+            .allow_headers([
+                header::CONTENT_TYPE,
+                header::AUTHORIZATION,
+                header::COOKIE,
+                header::SET_COOKIE,
+            ])
+            .allow_credentials(true)
     } else {
         // Production: Restrict to specific origins
         let allowed_origins = env::var("ALLOWED_ORIGINS")
@@ -171,7 +188,8 @@ async fn main() -> anyhow::Result<()> {
     } else {
         Router::new()
             .route("/", get(health_check))
-            .nest("/v1", api_router)
+            .nest("/api/v1", api_router)
+            .route("/api/health", get(health_check))
     };
 
     // Configure file upload limit from environment

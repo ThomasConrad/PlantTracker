@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const apiTarget = process.env.VITE_API_TARGET || 'http://localhost:3001';
+
 export default defineConfig({
   plugins: [
     solid(),
@@ -51,7 +53,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: apiTarget,
         changeOrigin: true,
         secure: false,
       }

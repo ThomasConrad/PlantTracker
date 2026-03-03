@@ -122,7 +122,7 @@ export const PlantDetailPage: Component = () => {
         if (isMobile()) {
           // Mobile layout with swipe-up panel
           return (
-            <div class="h-full flex flex-col overflow-hidden">
+            <div class="h-full flex flex-col overflow-hidden relative">
               {/* Full-screen plant preview background */}
               <div class="absolute inset-0">
                 <Show when={plant.previewUrl} fallback={
@@ -172,6 +172,7 @@ export const PlantDetailPage: Component = () => {
                 <div 
                   class="absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out z-30"
                   style={{
+                    bottom: '4rem',
                     transform: `translateY(${panelOffset()}%)`,
                     height: `${100 - panelOffset() + 10}%`,
                     'min-height': '20%'

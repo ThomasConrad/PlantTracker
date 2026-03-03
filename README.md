@@ -35,6 +35,16 @@ npm run install:frontend
 npm run dev
 ```
 
+Dev mode defaults:
+- Frontend (Vite + HMR): `http://localhost:3000`
+- Backend API (Axum via cargo-watch): `http://localhost:3001`
+- Vite proxies `/api/*` to backend automatically.
+
+If you do not have `cargo-watch` yet:
+```bash
+cargo install cargo-watch
+```
+
 ## Quality Gate
 
 ```bash

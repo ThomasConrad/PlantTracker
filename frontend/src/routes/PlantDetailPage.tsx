@@ -21,6 +21,9 @@ export const PlantDetailPage: Component = () => {
   const [dragStartY, setDragStartY] = createSignal(0);
   const [dragStartOffset, setDragStartOffset] = createSignal(0);
   const [dragFromHandle, setDragFromHandle] = createSignal(false);
+  const PANEL_EXPANDED_OFFSET = 8;
+  const PANEL_DEFAULT_OFFSET = 60;
+  const PANEL_COLLAPSED_OFFSET = 90;
 
   createEffect(() => {
     if (params.id) {
@@ -63,8 +66,8 @@ export const PlantDetailPage: Component = () => {
     const contentAreaHeight = window.innerHeight - 80; // 80px header height
     const deltaPercent = (deltaY / contentAreaHeight) * 100;
     
-    // Prevent dragging below 75% (always keep some panel visible)
-    const newOffset = Math.max(10, Math.min(75, dragStartOffset() + deltaPercent));
+    // Allow collapsing further so plant preview is visible while keeping handle accessible.
+    const newOffset = Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, dragStartOffset() + deltaPercent));
     setPanelOffset(newOffset);
   };
 
@@ -76,11 +79,11 @@ export const PlantDetailPage: Component = () => {
     // Snap to positions based on final offset
     const currentOffset = panelOffset();
     if (currentOffset < 30) {
-      setPanelOffset(10); // Fully expanded
-    } else if (currentOffset > 65) {
-      setPanelOffset(75); // Mostly hidden (but always recoverable)
+      setPanelOffset(PANEL_EXPANDED_OFFSET); // Fully expanded
+    } else if (currentOffset > 75) {
+      setPanelOffset(PANEL_COLLAPSED_OFFSET); // Mostly hidden (but still recoverable)
     } else {
-      setPanelOffset(60); // Default position
+      setPanelOffset(PANEL_DEFAULT_OFFSET); // Default position
     }
   };
 

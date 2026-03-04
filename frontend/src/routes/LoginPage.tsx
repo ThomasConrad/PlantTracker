@@ -1,10 +1,12 @@
 import { Component, createSignal } from 'solid-js';
-import { A, useNavigate } from '@solidjs/router';
+import { A, useLocation, useNavigate } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { resolvePostLoginPath } from '@/utils/authRedirect';
 
 export const LoginPage: Component = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
@@ -21,7 +23,7 @@ export const LoginPage: Component = () => {
         email: email(),
         password: password(),
       });
-      navigate('/plants');
+      navigate(resolvePostLoginPath(location.search), { replace: true });
     } catch (error) {
       console.error('Login failed:', error);
     } finally {

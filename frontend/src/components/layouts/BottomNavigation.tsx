@@ -57,45 +57,50 @@ export const BottomNavigation: Component = () => {
           />
         </NavIcon>
       )
-    }
+    },
   ];
+
+  const settingsActive =
+    showSettings() ||
+    location.pathname.startsWith('/calendar/settings') ||
+    location.pathname.startsWith('/settings') ||
+    location.pathname.startsWith('/reminders');
 
   return (
     <nav class="bottom-nav">
       <div class="bottom-nav-container">
-        {navItems.map(item => {
-          const active = isActive(item.path);
-          return (
-            <A
-              href={item.path}
-              class="bottom-nav-item"
-              activeClass=""
-            >
-              {item.icon(active)}
-            </A>
-          );
-        })}
-        
-        {/* Settings button */}
-        <button 
-          class="bottom-nav-item"
-          onClick={() => setShowSettings(!showSettings())}
-        >
-          <NavIcon isActive={showSettings() || location.pathname.startsWith('/calendar/settings') || location.pathname.startsWith('/settings') || location.pathname.startsWith('/reminders')}>
-            <path 
-              stroke-linecap="round" 
-              stroke-linejoin="round" 
-              stroke-width={2} 
-              d="M4 6h16M4 12h16M4 18h16" 
+        <A href={navItems[0].path} class="bottom-nav-item" activeClass="">
+          {navItems[0].icon(isActive(navItems[0].path))}
+        </A>
+        <A href={navItems[1].path} class="bottom-nav-item" activeClass="">
+          {navItems[1].icon(isActive(navItems[1].path))}
+        </A>
+
+        <div class="bottom-nav-center-slot">
+          <A href="/plants/new" class="bottom-nav-add-button" aria-label="Add plant">
+            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2.5} d="M12 5v14m7-7H5" />
+            </svg>
+          </A>
+        </div>
+
+        <A href={navItems[2].path} class="bottom-nav-item" activeClass="">
+          {navItems[2].icon(isActive(navItems[2].path))}
+        </A>
+
+        <button class="bottom-nav-item" onClick={() => setShowSettings(!showSettings())}>
+          <NavIcon isActive={settingsActive}>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width={2}
+              d="M4 6h16M4 12h16M4 18h16"
             />
           </NavIcon>
         </button>
       </div>
-      
-      <SettingsMenu 
-        isOpen={showSettings()} 
-        onClose={() => setShowSettings(false)} 
-      />
+
+      <SettingsMenu isOpen={showSettings()} onClose={() => setShowSettings(false)} />
     </nav>
   );
 };

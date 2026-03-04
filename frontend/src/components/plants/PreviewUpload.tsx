@@ -24,6 +24,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   let fileInputRef: HTMLInputElement | undefined;
   let videoRef: HTMLVideoElement | undefined;
   let canvasRef: HTMLCanvasElement | undefined;
+  let previewObjectUrl: string | null = null;
 
   // Detect if device is mobile
   onMount(() => {
@@ -37,6 +38,10 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
     window.addEventListener('resize', checkMobile);
     
     onCleanup(() => {
+      if (previewObjectUrl) {
+        URL.revokeObjectURL(previewObjectUrl);
+        previewObjectUrl = null;
+      }
       window.removeEventListener('resize', checkMobile);
       stopCamera();
     });
@@ -44,18 +49,19 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
 
   // Create preview when file is selected
   const createPreview = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+    }
+    previewObjectUrl = URL.createObjectURL(file);
+    setPreview(previewObjectUrl);
   };
 
   // Compress image if it's too large
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve) => {
-      // If file is smaller than 2MB, don't compress
-      if (file.size < 2 * 1024 * 1024) {
+      // Skip compression for smaller files. Mobile devices are slower at canvas work.
+      const skipCompressionThreshold = isMobile() ? 4 * 1024 * 1024 : 3 * 1024 * 1024;
+      if (file.size < skipCompressionThreshold) {
         resolve(file);
         return;
       }
@@ -64,12 +70,13 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      const img = new Image();
-      
-      img.onload = () => {
-        // Calculate new dimensions (max 4K for large images)
-        const maxDimension = 3840;
-        let { width, height } = img;
+      const objectUrl = URL.createObjectURL(file);
+
+      const finishCompression = (source: CanvasImageSource, sourceWidth: number, sourceHeight: number) => {
+        // Keep enough detail for plant previews while reducing processing time.
+        const maxDimension = isMobile() ? 1920 : 2560;
+        let width = sourceWidth;
+        let height = sourceHeight;
         
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
@@ -85,9 +92,10 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
         canvas.height = height;
         
         // Draw and compress
-        ctx?.drawImage(img, 0, 0, width, height);
+        ctx?.drawImage(source, 0, 0, width, height);
         
         canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
           setCompressing(false);
           if (blob) {
             const compressedFile = new File([blob], file.name, {
@@ -99,10 +107,33 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
           } else {
             resolve(file);
           }
-        }, 'image/jpeg', 0.9); // 90% quality
+        }, 'image/jpeg', 0.82);
       };
-      
-      img.src = URL.createObjectURL(file);
+
+      const img = new Image();
+
+      img.onload = () => finishCompression(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
+      img.onerror = () => {
+        // Some mobile formats fail in <img>; fall back to original file.
+        URL.revokeObjectURL(objectUrl);
+        setCompressing(false);
+        resolve(file);
+      };
+
+      // Use EXIF orientation when available to avoid rotated camera uploads.
+      if ('createImageBitmap' in window) {
+        createImageBitmap(file, { imageOrientation: 'from-image' })
+          .then((bitmap) => {
+            finishCompression(bitmap, bitmap.width, bitmap.height);
+            bitmap.close();
+          })
+          .catch(() => {
+            img.src = objectUrl;
+          });
+        return;
+      }
+
+      img.src = objectUrl;
     });
   };
 
@@ -110,21 +141,35 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   const handleFileChange = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && (!file.type || file.type.startsWith('image/'))) {
+      createPreview(file);
       try {
         const compressedFile = await compressImage(file);
-        createPreview(compressedFile);
+        if (compressedFile !== file) {
+          createPreview(compressedFile);
+        }
         props.onFileSelect(compressedFile);
       } catch (error) {
         console.error('Failed to process image:', error);
-        createPreview(file);
         props.onFileSelect(file);
       }
+    } else if (file) {
+      alert('Please select an image file.');
     }
   };
 
   // Start camera
   const startCamera = async () => {
+    if (!window.isSecureContext) {
+      alert('Camera requires HTTPS (or localhost). On phone, use https:// for this dev server, or use "Choose File" to take a photo.');
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert('Camera is not supported in this browser. Please use "Choose File" instead.');
+      return;
+    }
+
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
@@ -143,7 +188,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
-      alert('Camera access denied or not available. Please use file upload instead.');
+      alert('Unable to access camera. Check browser camera permission for this site, or use "Choose File" instead.');
     }
   };
 
@@ -429,6 +474,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        capture={isMobile() ? 'environment' : undefined}
         onChange={handleFileChange}
         class="hidden"
       />

@@ -1,32 +1,53 @@
 import { Component, createEffect, createSignal, Show, onMount, onCleanup } from 'solid-js';
-import { A, useNavigate, useParams } from '@solidjs/router';
+import { A, useParams } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
 import { PlantCareStatus } from '@/components/plants/PlantCareStatus';
 import { ActivityLog } from '@/components/plants/ActivityLog';
 import { PhotoGallery } from '@/components/plants/PhotoGallery';
+import { PlantHistoryTimeline } from '@/components/plants/PlantHistoryTimeline';
 import { formatDate } from '@/utils/date';
 
 export const PlantDetailPage: Component = () => {
-  const navigate = useNavigate();
   const params = useParams();
-  const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false);
-  const [deleting, setDeleting] = createSignal(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = createSignal(false);
+  const [archiving, setArchiving] = createSignal(false);
   
   // Mobile swipe-up panel state
   const [isMobile, setIsMobile] = createSignal(false);
   const [panelOffset, setPanelOffset] = createSignal(60); // Start at 60% of screen height
   const [isDragging, setIsDragging] = createSignal(false);
-  const [gestureMode, setGestureMode] = createSignal<'none' | 'sheet' | 'content'>('none');
-  const [dragStartY, setDragStartY] = createSignal(0);
-  const [dragStartOffset, setDragStartOffset] = createSignal(0);
-  const [dragStartScrollTop, setDragStartScrollTop] = createSignal(0);
   let panelContentRef: HTMLDivElement | undefined;
-  let dragMode: 'none' | 'sheet' | 'content' = 'none';
+  let lastTouchY = 0;
+  let lastTouchTime = 0;
+  let touchVelocityY = 0;
   const PANEL_EXPANDED_OFFSET = 12;
   const PANEL_DEFAULT_OFFSET = 60;
   const PANEL_COLLAPSED_OFFSET = 90;
+  const PANEL_SNAP_EPSILON = 1;
+
+  const normalizePanelOffset = (offset: number) => {
+    if (offset <= PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON) {
+      return PANEL_EXPANDED_OFFSET;
+    }
+    if (offset >= PANEL_COLLAPSED_OFFSET - PANEL_SNAP_EPSILON) {
+      return PANEL_COLLAPSED_OFFSET;
+    }
+    return offset;
+  };
+
+  const clampPanelOffset = (offset: number) =>
+    normalizePanelOffset(
+      Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, offset))
+    );
+
+  createEffect(() => {
+    if (!isMobile()) return;
+    if (panelOffset() > PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON && panelContentRef) {
+      panelContentRef.scrollTop = 0;
+    }
+  });
 
   createEffect(() => {
     if (params.id) {
@@ -37,7 +58,10 @@ export const PlantDetailPage: Component = () => {
   // Mobile detection and resize handler
   onMount(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const isNarrowViewport = window.innerWidth < 768;
+      const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+      const hasNoHover = window.matchMedia('(hover: none)').matches;
+      setIsMobile(isNarrowViewport && (hasCoarsePointer || hasNoHover));
     };
     
     checkMobile();
@@ -51,143 +75,136 @@ export const PlantDetailPage: Component = () => {
   // Touch event handlers for mobile swipe panel
   const handlePanelTouchStart = (e: TouchEvent) => {
     if (!isMobile()) return;
+    const now = performance.now();
     setIsDragging(true);
-    dragMode = 'none';
-    setGestureMode('none');
-    setDragStartY(e.touches[0].clientY);
-    setDragStartOffset(panelOffset());
-    setDragStartScrollTop(panelContentRef?.scrollTop || 0);
+    lastTouchY = e.touches[0].clientY;
+    lastTouchTime = now;
+    touchVelocityY = 0;
   };
 
   const handleTouchMove = (e: TouchEvent) => {
     if (!isMobile() || !isDragging()) return;
 
     const currentY = e.touches[0].clientY;
-    const deltaY = currentY - dragStartY();
-    const absDelta = Math.abs(deltaY);
+    const now = performance.now();
+    const stepDeltaY = currentY - lastTouchY;
     const activeScrollTop = panelContentRef?.scrollTop || 0;
-    const expanded = panelOffset() <= PANEL_EXPANDED_OFFSET + 0.5;
+    const expanded = panelOffset() <= PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON;
+    const dt = Math.max(1, now - lastTouchTime);
+    const instantaneousVelocity = stepDeltaY / dt;
+    touchVelocityY = touchVelocityY * 0.7 + instantaneousVelocity * 0.3;
+    lastTouchY = currentY;
+    lastTouchTime = now;
+    if (Math.abs(stepDeltaY) < 0.5) return;
 
-    // Decide gesture target once movement is intentional.
-    if (dragMode === 'none' && absDelta >= 4) {
-      if (deltaY < 0) {
-        dragMode = expanded ? 'content' : 'sheet';
-      } else {
-        dragMode = expanded && activeScrollTop > 0 ? 'content' : 'sheet';
-      }
-      setGestureMode(dragMode);
-    }
-
-    // If content is at top and user drags down, transition to sheet collapse.
-    if (dragMode === 'content' && deltaY > 0 && activeScrollTop <= 0.5) {
-      dragMode = 'sheet';
-      setGestureMode('sheet');
-      setDragStartY(currentY);
-      setDragStartOffset(panelOffset());
-      setDragStartScrollTop(0);
-      return;
-    }
-
-    if (dragMode === 'content') {
-      return;
-    }
-
-    if (dragMode !== 'sheet') return;
-
-    // Get the content area height (excluding header)
     const contentAreaHeight = window.innerHeight - 80; // 80px header height
-    const startOffset = dragStartOffset();
-    const startScrollTop = dragStartScrollTop();
-
-    // Unified gesture model:
-    // 1) Move panel until top/bottom limits.
-    // 2) Once fully expanded, continue gesture as content scroll.
-    if (deltaY < 0) {
-      // Drag up
-      const upDrag = -deltaY;
-      const panelTravelToTopPx =
-        ((startOffset - PANEL_EXPANDED_OFFSET) / 100) * contentAreaHeight;
-
+    const offsetDelta = (stepDeltaY / contentAreaHeight) * 100;
+    // Simple model:
+    // 1) If sheet is not expanded, gesture always moves sheet.
+    // 2) If expanded, content scrolls normally except pull-down at content top collapses sheet.
+    if (!expanded) {
       e.preventDefault();
       if (panelContentRef) {
         panelContentRef.scrollTop = 0;
       }
-      if (upDrag <= panelTravelToTopPx) {
-        const newOffset = startOffset - (upDrag / contentAreaHeight) * 100;
-        setPanelOffset(
-          Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, newOffset))
-        );
-      } else {
-        setPanelOffset(PANEL_EXPANDED_OFFSET);
-        const extraUpPx = upDrag - panelTravelToTopPx;
-        if (panelContentRef) {
-          panelContentRef.scrollTop = startScrollTop + extraUpPx;
-        }
-      }
+      setPanelOffset((prev) => clampPanelOffset(prev + offsetDelta));
       return;
     }
 
-    // Drag down
-    const downDrag = deltaY;
-    const isExpanded = startOffset <= PANEL_EXPANDED_OFFSET + 0.5;
-
-    if (isExpanded && startScrollTop > 0) {
-      e.preventDefault();
-      if (downDrag <= startScrollTop) {
-        if (panelContentRef) {
-          panelContentRef.scrollTop = startScrollTop - downDrag;
-        }
-        setPanelOffset(PANEL_EXPANDED_OFFSET);
-      } else {
-        if (panelContentRef) {
-          panelContentRef.scrollTop = 0;
-        }
-        const remainingDownPx = downDrag - startScrollTop;
-        const newOffset =
-          PANEL_EXPANDED_OFFSET + (remainingDownPx / contentAreaHeight) * 100;
-        setPanelOffset(
-          Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, newOffset))
-        );
-      }
-    } else {
+    if (stepDeltaY > 0 && activeScrollTop <= 0.5) {
       e.preventDefault();
       if (panelContentRef) {
         panelContentRef.scrollTop = 0;
       }
-      const newOffset = startOffset + (downDrag / contentAreaHeight) * 100;
-      setPanelOffset(
-        Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, newOffset))
-      );
+      setPanelOffset((prev) => clampPanelOffset(prev + offsetDelta));
     }
   };
 
   const handleTouchEnd = () => {
     if (!isMobile() || !isDragging()) return;
+    const releaseVelocityY = touchVelocityY;
     setIsDragging(false);
-    dragMode = 'none';
-    setGestureMode('none');
+    lastTouchY = 0;
+    lastTouchTime = 0;
+    touchVelocityY = 0;
     
-    // Snap to positions based on final offset
+    // Project velocity to choose nearest snap point without abrupt jumps.
     const currentOffset = panelOffset();
-    if (currentOffset < 30) {
-      setPanelOffset(PANEL_EXPANDED_OFFSET); // Fully expanded
-    } else if (currentOffset > 75) {
-      setPanelOffset(PANEL_COLLAPSED_OFFSET); // Mostly hidden (but still recoverable)
+    const absVelocity = Math.abs(releaseVelocityY);
+    const projectedOffset =
+      absVelocity >= 0.15
+        ? clampPanelOffset(currentOffset + releaseVelocityY * 18)
+        : currentOffset;
+    const snapPoints = [PANEL_EXPANDED_OFFSET, PANEL_DEFAULT_OFFSET, PANEL_COLLAPSED_OFFSET];
+    const nearestSnap = snapPoints.reduce((closest, point) =>
+      Math.abs(point - projectedOffset) < Math.abs(closest - projectedOffset) ? point : closest
+    );
+
+    if (nearestSnap <= PANEL_EXPANDED_OFFSET + 0.5) {
+      setPanelOffset(PANEL_EXPANDED_OFFSET);
+    } else if (nearestSnap >= PANEL_COLLAPSED_OFFSET - 0.5) {
+      setPanelOffset(PANEL_COLLAPSED_OFFSET);
     } else {
-      setPanelOffset(PANEL_DEFAULT_OFFSET); // Default position
+      setPanelOffset(PANEL_DEFAULT_OFFSET);
     }
   };
 
-  const handleDelete = async () => {
+  const handlePanelWheel = (e: WheelEvent) => {
+    if (e.defaultPrevented) return;
+
+    const contentAreaHeight = window.innerHeight - 80;
+    const currentOffset = panelOffset();
+    const scrollTop = panelContentRef?.scrollTop || 0;
+    const expanded = currentOffset <= PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON;
+    const collapsed = currentOffset >= PANEL_COLLAPSED_OFFSET - PANEL_SNAP_EPSILON;
+    const deltaY = e.deltaY;
+
+    // Consume inertial wheel at hard boundaries without introducing any delay.
+    const pushingPastBottom = collapsed && deltaY < 0;
+    if (pushingPastBottom) {
+      e.preventDefault();
+      if (panelContentRef) {
+        panelContentRef.scrollTop = 0;
+      }
+      return;
+    }
+
+    // While not expanded, wheel always moves the sheet.
+    if (!expanded) {
+      e.preventDefault();
+      if (panelContentRef) {
+        panelContentRef.scrollTop = 0;
+      }
+      setPanelOffset(clampPanelOffset(currentOffset - (deltaY / contentAreaHeight) * 100));
+      return;
+    }
+
+    // When expanded and content is at top, scrolling up collapses the sheet.
+    if (deltaY < 0 && scrollTop <= 0.5) {
+      e.preventDefault();
+      if (panelContentRef) {
+        panelContentRef.scrollTop = 0;
+      }
+      setPanelOffset(clampPanelOffset(currentOffset - (deltaY / contentAreaHeight) * 100));
+    }
+  };
+
+  const handleArchiveToggle = async () => {
     try {
-      setDeleting(true);
-      await plantsStore.deletePlant(params.id);
-      navigate('/plants');
+      setArchiving(true);
+      const plant = plantsStore.selectedPlant;
+      if (!plant) return;
+
+      if (plant.archivedAt) {
+        await plantsStore.unarchivePlant(params.id);
+      } else {
+        await plantsStore.archivePlant(params.id);
+      }
     } catch (error) {
-      console.error('Failed to delete plant:', error);
+      console.error('Failed to update archive status:', error);
     } finally {
-      setDeleting(false);
-      setShowDeleteConfirm(false);
+      setArchiving(false);
+      setShowArchiveConfirm(false);
     }
   };
 
@@ -250,18 +267,34 @@ export const PlantDetailPage: Component = () => {
                   <h1 class="text-xl font-bold text-white drop-shadow-lg">{plant.name}</h1>
                   <p class="text-sm text-white/80 italic">{plant.genus}</p>
                 </div>
-                <A
-                  href={`/plants/${plant.id}/edit`}
-                  class="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
-                >
-                  <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </A>
+                <div class="flex items-center gap-2">
+                  <A
+                    href={`/plants/${plant.id}/edit`}
+                    class="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                  >
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </A>
+                  <button
+                    type="button"
+                    onClick={() => setShowArchiveConfirm(true)}
+                    class="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+                    aria-label={plant.archivedAt ? 'Unarchive plant' : 'Archive plant'}
+                  >
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M5 8h14M7 8V6a1 1 0 011-1h8a1 1 0 011 1v2m-9 4h8m-8 4h8M6 8v10a2 2 0 002 2h8a2 2 0 002-2V8" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Content area below header */}
-              <div class="flex-1 relative overflow-hidden">
+              <div
+                class="flex-1 relative overflow-hidden"
+                style={{ 'overscroll-behavior': 'none' }}
+                onWheel={handlePanelWheel}
+              >
                 {/* Swipe-up content panel */}
                 <div 
                   class={`absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl z-30 ${
@@ -271,7 +304,11 @@ export const PlantDetailPage: Component = () => {
                     bottom: '4rem',
                     transform: `translateY(${panelOffset()}%)`,
                     height: `${100 - panelOffset() + 10}%`,
-                    'min-height': '20%'
+                    'min-height': '20%',
+                    'touch-action':
+                      panelOffset() > PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON
+                        ? 'none'
+                        : 'pan-y',
                   }}
                   onTouchStart={handlePanelTouchStart}
                   onTouchMove={handleTouchMove}
@@ -285,17 +322,62 @@ export const PlantDetailPage: Component = () => {
                     style={{
                       height: '100%',
                       'padding-top': '1rem',
-                      'overflow-y': gestureMode() === 'sheet' ? 'hidden' : 'auto',
+                      'overflow-y':
+                        panelOffset() > PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON
+                          ? 'hidden'
+                          : 'auto',
                       'overscroll-behavior': 'contain',
                     }}
                   >
                     <div class="space-y-6">
                       <PlantCareStatus plant={plant} />
                       <ActivityLog plant={plant} />
+                      <PlantHistoryTimeline plant={plant} />
                     </div>
                   </div>
                 </div>
               </div>
+
+              <Show when={showArchiveConfirm()}>
+                <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                  <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl ring-1 ring-gray-200">
+                    <div class="px-6 py-5 border-b border-gray-100">
+                      <h3 class="text-lg font-semibold text-gray-900">
+                        {plant.archivedAt ? 'Unarchive Plant' : 'Archive Plant'}
+                      </h3>
+                      <p class="text-sm text-gray-500">
+                        {plant.archivedAt ? 'This plant will appear in your active list again.' : 'This plant will be hidden from the default list.'}
+                      </p>
+                    </div>
+                    <div class="px-6 py-4">
+                      <p class="text-sm text-gray-600 leading-relaxed">
+                        {plant.archivedAt
+                          ? `Unarchive "${plant.name}"?`
+                          : `Archive "${plant.name}"? You can unarchive it later.`}
+                      </p>
+                    </div>
+                    <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowArchiveConfirm(false)}
+                        disabled={archiving()}
+                        class="shadow-sm"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={handleArchiveToggle}
+                        loading={archiving()}
+                        disabled={archiving()}
+                        class="shadow-sm"
+                      >
+                        {plant.archivedAt ? 'Unarchive' : 'Archive'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Show>
             </div>
           );
         } else {
@@ -351,15 +433,17 @@ export const PlantDetailPage: Component = () => {
                           Edit
                         </A>
                         <Button
-                          variant="danger"
+                          variant="outline"
                           size="sm"
-                          onClick={() => setShowDeleteConfirm(true)}
+                          onClick={() => setShowArchiveConfirm(true)}
+                          loading={archiving()}
+                          disabled={archiving()}
                           class="shadow-sm"
                         >
                           <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M5 8h14M7 8V6a1 1 0 011-1h8a1 1 0 011 1v2m-9 4h8m-8 4h8M6 8v10a2 2 0 002 2h8a2 2 0 002-2V8" />
                           </svg>
-                          Delete
+                          {plant.archivedAt ? 'Unarchive' : 'Archive'}
                         </Button>
                       </div>
                     </div>
@@ -374,6 +458,7 @@ export const PlantDetailPage: Component = () => {
                       <div class="lg:col-span-2 space-y-6">
                         <PlantCareStatus plant={plant} />
                         <ActivityLog plant={plant} />
+                        <PlantHistoryTimeline plant={plant} />
                       </div>
                       
                       {/* Plant Info Sidebar */}
@@ -501,62 +586,41 @@ export const PlantDetailPage: Component = () => {
                 </div>
               </div>
 
-              {/* Enhanced Delete Confirmation Modal */}
-              <Show when={showDeleteConfirm()}>
+              <Show when={showArchiveConfirm()}>
                 <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                   <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl ring-1 ring-gray-200">
-                    {/* Modal Header */}
                     <div class="px-6 py-5 border-b border-gray-100">
-                      <div class="flex items-center space-x-3">
-                        <div class="flex-shrink-0">
-                          <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                            <svg class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </div>
-                        </div>
-                        <div>
-                          <h3 class="text-lg font-semibold text-gray-900">
-                            Delete Plant
-                          </h3>
-                          <p class="text-sm text-gray-500">
-                            This action cannot be undone
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Modal Content */}
-                    <div class="px-6 py-4">
-                      <p class="text-sm text-gray-600 leading-relaxed">
-                        Are you sure you want to delete <strong class="font-semibold text-gray-900">"{plant.name}"</strong>? 
-                        This will permanently remove all plant data, photos, and care history.
+                      <h3 class="text-lg font-semibold text-gray-900">
+                        {plant.archivedAt ? 'Unarchive Plant' : 'Archive Plant'}
+                      </h3>
+                      <p class="text-sm text-gray-500">
+                        {plant.archivedAt ? 'This plant will appear in your active list again.' : 'This plant will be hidden from the default list.'}
                       </p>
                     </div>
-                    
-                    {/* Modal Actions */}
+                    <div class="px-6 py-4">
+                      <p class="text-sm text-gray-600 leading-relaxed">
+                        {plant.archivedAt
+                          ? `Unarchive "${plant.name}"?`
+                          : `Archive "${plant.name}"? You can unarchive it later.`}
+                      </p>
+                    </div>
                     <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">
                       <Button
                         variant="outline"
-                        onClick={() => setShowDeleteConfirm(false)}
-                        disabled={deleting()}
+                        onClick={() => setShowArchiveConfirm(false)}
+                        disabled={archiving()}
                         class="shadow-sm"
                       >
                         Cancel
                       </Button>
                       <Button
-                        variant="danger"
-                        onClick={handleDelete}
-                        loading={deleting()}
-                        disabled={deleting()}
+                        variant="primary"
+                        onClick={handleArchiveToggle}
+                        loading={archiving()}
+                        disabled={archiving()}
                         class="shadow-sm"
                       >
-                        <Show when={!deleting()}>
-                          Delete Plant
-                        </Show>
-                        <Show when={deleting()}>
-                          Deleting...
-                        </Show>
+                        {plant.archivedAt ? 'Unarchive' : 'Archive'}
                       </Button>
                     </div>
                   </div>

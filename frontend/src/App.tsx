@@ -1,5 +1,5 @@
-import { Component, createEffect, Show } from 'solid-js';
-import { Routes, Route, Navigate } from '@solidjs/router';
+import { Component, ParentComponent, Show, createEffect, createMemo } from 'solid-js';
+import { Routes, Route, Navigate, useLocation } from '@solidjs/router';
 import { authStore } from '@/stores/auth';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { AppLayout } from '@/components/layouts/AppLayout';
@@ -26,6 +26,59 @@ import { TermsPage } from '@/routes/TermsPage';
 import { ContactPage } from '@/routes/ContactPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { ThemeProvider } from '@/providers/ThemeProvider';
+import { buildLoginRedirectPath, resolvePostLoginPath } from '@/utils/authRedirect';
+
+const LoginRoute: Component = () => {
+  const location = useLocation();
+  const redirectPath = createMemo(() => resolvePostLoginPath(location.search));
+
+  return (
+    <Show
+      when={!authStore.isAuthenticated}
+      fallback={<Navigate href={redirectPath()} />}
+    >
+      <AuthLayout>
+        <LoginPage />
+      </AuthLayout>
+    </Show>
+  );
+};
+
+const ProtectedRoute: ParentComponent = (props) => {
+  const location = useLocation();
+  const loginPath = createMemo(() =>
+    buildLoginRedirectPath(location.pathname, location.search, location.hash)
+  );
+
+  return (
+    <Show
+      when={authStore.isAuthenticated}
+      fallback={<Navigate href={loginPath()} />}
+    >
+      {props.children}
+    </Show>
+  );
+};
+
+const AdminRoute: ParentComponent = (props) => {
+  const location = useLocation();
+  const fallbackPath = createMemo(() => {
+    if (!authStore.isAuthenticated) {
+      return buildLoginRedirectPath(location.pathname, location.search, location.hash);
+    }
+
+    return '/plants';
+  });
+
+  return (
+    <Show
+      when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
+      fallback={<Navigate href={fallbackPath()} />}
+    >
+      {props.children}
+    </Show>
+  );
+};
 
 const App: Component = () => {
   createEffect(() => {
@@ -44,19 +97,7 @@ const App: Component = () => {
       >
       <Routes>
         {/* Public routes */}
-        <Route
-          path="/login"
-          component={() => (
-            <Show
-              when={!authStore.isAuthenticated}
-              fallback={<Navigate href="/plants" />}
-            >
-              <AuthLayout>
-                <LoginPage />
-              </AuthLayout>
-            </Show>
-          )}
-        />
+        <Route path="/login" component={LoginRoute} />
         <Route
           path="/signup"
           component={() => (
@@ -107,183 +148,141 @@ const App: Component = () => {
         <Route
           path="/plants"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <PlantsPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/plants/new"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <PlantFormPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/plants/:id"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <PlantDetailPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/plants/:id/edit"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <PlantFormPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/calendar"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <CalendarPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/calendar/settings"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <CalendarSettingsPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/reminders"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <RemindersPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/search"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <SearchPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/invites"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <InviteManagementPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         <Route
           path="/admin/dashboard"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
-              fallback={<Navigate href="/plants" />}
-            >
+            <AdminRoute>
               <AppLayout>
                 <AdminDashboardPage />
               </AppLayout>
-            </Show>
+            </AdminRoute>
           )}
         />
         <Route
           path="/admin/users"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
-              fallback={<Navigate href="/plants" />}
-            >
+            <AdminRoute>
               <AppLayout>
                 <AdminUsersPage />
               </AppLayout>
-            </Show>
+            </AdminRoute>
           )}
         />
         <Route
           path="/admin/settings"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
-              fallback={<Navigate href="/plants" />}
-            >
+            <AdminRoute>
               <AppLayout>
                 <AdminSettingsPage />
               </AppLayout>
-            </Show>
+            </AdminRoute>
           )}
         />
         <Route
           path="/admin/health"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated && authStore.user?.role === 'admin'}
-              fallback={<Navigate href="/plants" />}
-            >
+            <AdminRoute>
               <AppLayout>
                 <AdminHealthPage />
               </AppLayout>
-            </Show>
+            </AdminRoute>
           )}
         />
         <Route
           path="/settings"
           component={() => (
-            <Show
-              when={authStore.isAuthenticated}
-              fallback={<Navigate href="/signup" />}
-            >
+            <ProtectedRoute>
               <AppLayout>
                 <UserSettingsPage />
               </AppLayout>
-            </Show>
+            </ProtectedRoute>
           )}
         />
         

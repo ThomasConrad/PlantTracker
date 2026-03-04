@@ -13,6 +13,7 @@ import type { components } from './api-generated';
 export type Plant = components['schemas']['PlantResponse'] & {
   thumbnailId?: string | null;
   thumbnailUrl?: string | null;
+  archivedAt?: string | null;
 };
 
 export interface Photo {

@@ -26,6 +26,7 @@ pub struct PlantRow {
     pub last_watered: Option<String>,
     pub last_fertilized: Option<String>,
     pub preview_id: Option<String>,
+    pub archived_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -78,6 +79,13 @@ impl PlantRow {
                 .preview_id
                 .as_ref()
                 .map(|thumb_id| format!("/api/v1/plants/{}/photos/{}", self.id, thumb_id)),
+            archived_at: self
+                .archived_at
+                .map(|s| s.parse::<DateTime<Utc>>())
+                .transpose()
+                .map_err(|_| AppError::Internal {
+                    message: "Invalid datetime in database".to_string(),
+                })?,
             custom_metrics: vec![],
             created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
                 AppError::Internal {
@@ -306,7 +314,7 @@ pub async fn list_plants_for_user(
     offset: i64,
     search: Option<&str>,
 ) -> Result<(Vec<PlantResponse>, i64), AppError> {
-    list_plants_for_user_with_sort(pool, user_id, limit, offset, search, None).await
+    list_plants_for_user_with_sort(pool, user_id, limit, offset, search, None, false).await
 }
 
 pub async fn list_plants_for_user_with_sort(
@@ -316,6 +324,7 @@ pub async fn list_plants_for_user_with_sort(
     offset: i64,
     search: Option<&str>,
     sort: Option<&str>,
+    include_archived: bool,
 ) -> Result<(Vec<PlantResponse>, i64), AppError> {
     // Determine sort order
     let order_clause = match sort {
@@ -325,15 +334,21 @@ pub async fn list_plants_for_user_with_sort(
         _ => "ORDER BY created_at DESC", // default
     };
 
+    let archived_clause = if include_archived {
+        ""
+    } else {
+        " AND archived_at IS NULL"
+    };
+
     let (query, count_query, search_param) = search.map_or((
-            format!("SELECT * FROM plants WHERE user_id = ? {} LIMIT ? OFFSET ?", order_clause),
-            "SELECT COUNT(*) as count FROM plants WHERE user_id = ?".to_string(),
+            format!("SELECT * FROM plants WHERE user_id = ? {} {} LIMIT ? OFFSET ?", archived_clause, order_clause),
+            format!("SELECT COUNT(*) as count FROM plants WHERE user_id = ?{}", archived_clause),
             None
         ), |search_term| {
         let search_pattern = format!("%{search_term}%");
         (
-            format!("SELECT * FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?) {} LIMIT ? OFFSET ?", order_clause),
-            "SELECT COUNT(*) as count FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?)".to_string(),
+            format!("SELECT * FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?) {} {} LIMIT ? OFFSET ?", archived_clause, order_clause),
+            format!("SELECT COUNT(*) as count FROM plants WHERE user_id = ? AND (name LIKE ? OR genus LIKE ?){}", archived_clause),
             Some(search_pattern)
         )
     });
@@ -622,6 +637,67 @@ pub async fn delete_plant(
     }
 
     Ok(())
+}
+
+pub async fn archive_plant(
+    pool: &DatabasePool,
+    plant_id: Uuid,
+    user_id: &str,
+) -> Result<PlantResponse, AppError> {
+    let plant_id_str = plant_id.to_string();
+    let now = Utc::now().to_rfc3339();
+
+    let result = sqlx::query(
+        "UPDATE plants SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+    )
+    .bind(&now)
+    .bind(&now)
+    .bind(&plant_id_str)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to archive plant: {}", e);
+        AppError::Database(e)
+    })?;
+
+    if result.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    get_plant_by_id(pool, plant_id).await
+}
+
+pub async fn unarchive_plant(
+    pool: &DatabasePool,
+    plant_id: Uuid,
+    user_id: &str,
+) -> Result<PlantResponse, AppError> {
+    let plant_id_str = plant_id.to_string();
+    let now = Utc::now().to_rfc3339();
+
+    let result = sqlx::query(
+        "UPDATE plants SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?",
+    )
+    .bind(&now)
+    .bind(&plant_id_str)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to unarchive plant: {}", e);
+        AppError::Database(e)
+    })?;
+
+    if result.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    get_plant_by_id(pool, plant_id).await
 }
 
 pub async fn set_plant_preview(

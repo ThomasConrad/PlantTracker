@@ -3,6 +3,7 @@ import { A, useNavigate, useParams } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { PlantForm } from '@/components/plants/PlantForm';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Button } from '@/components/ui/Button';
 import { apiClient } from '@/api/client';
 import type { PlantFormData, Photo } from '@/types';
 
@@ -11,6 +12,8 @@ export const PlantFormPage: Component = () => {
   const params = useParams();
   const [loading, setLoading] = createSignal(false);
   const [existingPhotos, setExistingPhotos] = createSignal<Photo[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = createSignal(false);
+  const [deleting, setDeleting] = createSignal(false);
 
   const isEditing = () => !!params.id;
 
@@ -100,6 +103,21 @@ export const PlantFormPage: Component = () => {
       ? "Update your plant's information and care settings."
       : "Track your plant's care and growth over time.";
   const getSubmitText = () => isEditing() ? 'Update Plant' : 'Create Plant';
+
+  const handleDelete = async () => {
+    if (!params.id) return;
+
+    try {
+      setDeleting(true);
+      await plantsStore.deletePlant(params.id);
+      navigate('/plants');
+    } catch (error) {
+      console.error('Failed to delete plant:', error);
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
     <div class="min-h-full pb-20 sm:pb-8">
@@ -251,8 +269,62 @@ export const PlantFormPage: Component = () => {
               </div>
             </div>
           </Show>
+
+          <Show when={isEditing()}>
+            <div class="mt-6 border border-red-200 bg-red-50 rounded-xl p-5">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h3 class="text-sm font-semibold text-red-900">Delete Plant</h3>
+                  <p class="text-sm text-red-700 mt-1">
+                    Permanently remove this plant and all associated data.
+                  </p>
+                </div>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  class="w-full sm:w-auto"
+                >
+                  Delete Plant
+                </Button>
+              </div>
+            </div>
+          </Show>
         </div>
       </div>
+
+      <Show when={showDeleteConfirm()}>
+        <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl ring-1 ring-gray-200">
+            <div class="px-6 py-5 border-b border-gray-100">
+              <h3 class="text-lg font-semibold text-gray-900">Delete Plant</h3>
+              <p class="text-sm text-gray-500">This action cannot be undone</p>
+            </div>
+            <div class="px-6 py-4">
+              <p class="text-sm text-gray-600 leading-relaxed">
+                Are you sure you want to delete this plant? This removes photos, tracking history, and schedules permanently.
+              </p>
+            </div>
+            <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting()}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDelete}
+                loading={deleting()}
+                disabled={deleting()}
+              >
+                Delete Plant
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Show>
     </div>
   );
-}; 
+};

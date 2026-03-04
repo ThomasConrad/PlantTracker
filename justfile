@@ -56,6 +56,27 @@ frontend:
     @echo "⚡ Starting frontend (Vite HMR) on :3000..."
     cd frontend && npm run dev -- --port 3000 --strictPort
 
+# Start production-like local preview:
+# - Builds frontend (including PWA artifacts)
+# - Runs Axum API on :3001
+# - Runs Vite preview on :3000 with /api proxy
+preview:
+    @echo "🔎 Starting production-like preview..."
+    cd frontend && npm run build
+    npx concurrently \
+        "just preview-backend" \
+        "just preview-frontend"
+
+# Run backend API for preview mode
+preview-backend:
+    @echo "🦀 Starting backend API on :3001..."
+    cd backend && PORT=3001 FRONTEND_DIR=../frontend/dist cargo run --bin planty-api
+
+# Run frontend preview server
+preview-frontend:
+    @echo "⚡ Starting frontend preview on :3000..."
+    cd frontend && npm run preview -- --port 3000 --strictPort
+
 # === RUN COMMANDS ===
 
 # Run backend dev API only with auto-reload (cargo-watch)

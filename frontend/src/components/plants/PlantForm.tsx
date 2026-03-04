@@ -153,7 +153,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                   ...prev,
                   wateringSchedule: checked 
                     ? { intervalDays: 7, amount: undefined, unit: 'ml', notes: '' }
-                    : undefined
+                    : {}
                 }));
               }}
             />
@@ -246,7 +246,7 @@ value={formData().wateringSchedule?.notes || ''}
                   ...prev,
                   fertilizingSchedule: checked 
                     ? { intervalDays: 14, amount: undefined, unit: 'ml', notes: '' }
-                    : undefined
+                    : {}
                 }));
               }}
             />

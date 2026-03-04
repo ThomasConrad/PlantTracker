@@ -49,7 +49,7 @@ fn get_argon2_test_config() -> Argon2<'static> {
 }
 
 use crate::database::DatabasePool;
-use crate::models::{CreateUserRequest, User, UserRole, UserRow};
+use crate::models::{CreateUserRequest, FirstDayOfWeek, PreferredUnits, User, UserRole, UserRow};
 use crate::utils::errors::AppError;
 
 pub async fn create_user(
@@ -96,21 +96,21 @@ pub async fn create_user_internal(
     let now = Utc::now().to_rfc3339();
     let role_str = role.to_string();
 
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
-        INSERT INTO users (id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+        INSERT INTO users (id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
+        VALUES (?, ?, ?, 'sunday', 'metric', ?, ?, ?, ?, 0, ?, ?)
         "#,
-        user_id,
-        request.email,
-        request.name,
-        password_hash,
-        role_str,
-        can_create_invites,
-        max_invites,
-        now,
-        now
     )
+    .bind(&user_id)
+    .bind(&request.email)
+    .bind(&request.name)
+    .bind(&password_hash)
+    .bind(&role_str)
+    .bind(can_create_invites)
+    .bind(max_invites)
+    .bind(&now)
+    .bind(&now)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -153,7 +153,7 @@ async fn get_max_total_users(pool: &DatabasePool) -> Result<i32, AppError> {
 
 pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, AppError> {
     let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?"
+        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?"
     )
         .bind(user_id)
         .fetch_optional(pool)
@@ -175,7 +175,7 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, 
 
 pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User, AppError> {
     let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE email = ?"
+        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE email = ?"
     )
         .bind(email)
         .fetch_optional(pool)
@@ -246,6 +246,8 @@ pub async fn update_user_profile(
     user_id: &str,
     name: &str,
     email: &str,
+    first_day_of_week: &FirstDayOfWeek,
+    preferred_units: &PreferredUnits,
 ) -> Result<User, AppError> {
     let existing =
         sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE email = ? AND id != ?")
@@ -260,9 +262,13 @@ pub async fn update_user_profile(
     }
 
     let now = Utc::now().to_rfc3339();
-    let updated = sqlx::query("UPDATE users SET name = ?, email = ?, updated_at = ? WHERE id = ?")
+    let updated = sqlx::query(
+        "UPDATE users SET name = ?, email = ?, first_day_of_week = ?, preferred_units = ?, updated_at = ? WHERE id = ?",
+    )
         .bind(name)
         .bind(email)
+        .bind(first_day_of_week.to_string())
+        .bind(preferred_units.to_string())
         .bind(now)
         .bind(user_id)
         .execute(pool)
@@ -309,7 +315,7 @@ pub async fn change_user_password(
 
 pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Value, AppError> {
     let user = sqlx::query(
-        "SELECT id, email, name, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?",
+        "SELECT id, email, name, first_day_of_week, preferred_units, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?",
     )
     .bind(user_id)
     .fetch_optional(pool)

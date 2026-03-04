@@ -38,6 +38,11 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
         
         {/* Plant name and genus overlay */}
         <div class="absolute bottom-0 left-0 right-0 p-5">
+          <Show when={props.plant.archivedAt}>
+            <div class="inline-flex items-center rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white mb-2">
+              Archived
+            </div>
+          </Show>
           <h3 class="text-white font-bold text-xl leading-tight mb-1 drop-shadow-lg">
             {props.plant.name}
           </h3>

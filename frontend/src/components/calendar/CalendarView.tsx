@@ -1,5 +1,6 @@
 import { Component, createSignal, Show, For, onMount, createMemo, createEffect } from 'solid-js';
 import { plantsStore } from '@/stores/plants';
+import { authStore } from '@/stores/auth';
 import type { Plant } from '@/types';
 import type { components } from '@/types/api-generated';
 import { EventDetailModal } from './EventDetailModal';
@@ -38,6 +39,16 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
   const [calendarSwiping, setCalendarSwiping] = createSignal(false);
   const [calendarSwipeOffset, setCalendarSwipeOffset] = createSignal(0);
   const [calendarAnimating, setCalendarAnimating] = createSignal(false);
+  const weekStartOffset = createMemo(() => (authStore.user?.firstDayOfWeek === 'monday' ? 1 : 0));
+
+  const getCalendarStartForMonth = (date: Date) => {
+    const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+    const dayOfWeek = firstDay.getDay();
+    const offset = (dayOfWeek - weekStartOffset() + 7) % 7;
+    const start = new Date(firstDay);
+    start.setDate(start.getDate() - offset);
+    return start;
+  };
 
   // Get the first day of the current month
   const firstDayOfMonth = createMemo(() => {
@@ -48,11 +59,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
 
   // Get the first day of the calendar (may be from previous month)
   const calendarStart = createMemo(() => {
-    const firstDay = firstDayOfMonth();
-    const dayOfWeek = firstDay.getDay();
-    const start = new Date(firstDay);
-    start.setDate(start.getDate() - dayOfWeek);
-    return start;
+    return getCalendarStartForMonth(firstDayOfMonth());
   });
 
   // Get calendar days (42 days = 6 weeks) - reactive to selectedDate for highlighting
@@ -77,11 +84,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     const days: Date[] = [];
     const prevMonth = new Date(currentDate());
     prevMonth.setMonth(prevMonth.getMonth() - 1);
-    
-    const firstDayOfPrevMonth = new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 1);
-    const dayOfWeek = firstDayOfPrevMonth.getDay();
-    const start = new Date(firstDayOfPrevMonth);
-    start.setDate(start.getDate() - dayOfWeek);
+    const start = getCalendarStartForMonth(prevMonth);
     
     for (let i = 0; i < 42; i++) {
       const day = new Date(start);
@@ -97,11 +100,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     const days: Date[] = [];
     const nextMonth = new Date(currentDate());
     nextMonth.setMonth(nextMonth.getMonth() + 1);
-    
-    const firstDayOfNextMonth = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 1);
-    const dayOfWeek = firstDayOfNextMonth.getDay();
-    const start = new Date(firstDayOfNextMonth);
-    start.setDate(start.getDate() - dayOfWeek);
+    const start = getCalendarStartForMonth(nextMonth);
     
     for (let i = 0; i < 42; i++) {
       const day = new Date(start);
@@ -364,8 +363,14 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const dayNamesShort = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const dayNames = createMemo(() =>
+    weekStartOffset() === 1
+      ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  );
+  const dayNamesShort = createMemo(() =>
+    weekStartOffset() === 1 ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  );
 
   // Get activity dots for a date
   const getActivityDots = (date: Date) => {
@@ -434,7 +439,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
               >
                 {/* Compact Day Headers */}
                 <div class="grid grid-cols-7 gap-0.5 mb-0.5">
-                  <For each={dayNamesShort}>
+                  <For each={dayNamesShort()}>
                     {(day) => (
                       <div class="py-0.5 px-1 text-center text-xs font-medium text-gray-600">
                         {day}
@@ -739,7 +744,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
           <div class="p-6 overflow-hidden">
             {/* Day Headers */}
             <div class="grid grid-cols-7 gap-px mb-2">
-              <For each={dayNames}>
+              <For each={dayNames()}>
                 {(day) => (
                   <div class="p-2 text-center text-sm font-medium text-gray-700">
                     {day}

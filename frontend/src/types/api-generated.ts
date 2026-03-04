@@ -766,6 +766,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             email: string;
+            firstDayOfWeek: components["schemas"]["FirstDayOfWeek"];
             id: string;
             /** Format: int32 */
             invitesCreated: number;
@@ -774,10 +775,15 @@ export interface components {
             /** Format: int32 */
             maxInvites?: number | null;
             name: string;
+            preferredUnits: components["schemas"]["PreferredUnits"];
             role: components["schemas"]["UserRole"];
             /** Format: date-time */
             updatedAt: string;
         };
+        /** @enum {string} */
+        FirstDayOfWeek: "sunday" | "monday";
+        /** @enum {string} */
+        PreferredUnits: "metric" | "imperial";
         /** @enum {string} */
         UserRole: "admin" | "moderator" | "user";
         ValidateInviteRequest: {

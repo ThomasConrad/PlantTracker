@@ -10,6 +10,8 @@ erDiagram
         uuid id PK
         varchar email UK
         varchar name
+        varchar first_day_of_week
+        varchar preferred_units
         varchar password_hash
         timestamp created_at
         timestamp updated_at
@@ -75,6 +77,8 @@ Core user accounts for the application.
 - `id`: Primary key (UUID)
 - `email`: Unique email address for login
 - `name`: Display name
+- `first_day_of_week`: Calendar week start preference (`sunday` or `monday`)
+- `preferred_units`: Measurement system preference (`metric` or `imperial`)
 - `password_hash`: Bcrypt hashed password
 - `created_at`, `updated_at`: Audit timestamps
 

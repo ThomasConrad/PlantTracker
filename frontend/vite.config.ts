@@ -11,24 +11,33 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
+        id: '/',
         name: 'Planty',
-        short_name: 'planty',
+        short_name: 'Planty',
         description: 'Track your plants watering, fertilizing, and growth',
         theme_color: '#16a34a',
         background_color: '#ffffff',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'portrait-primary',
         start_url: '/',
         icons: [
           {
             src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
           },
           {
             src: 'pwa-512x512.png',
             sizes: '512x512',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       },
@@ -51,6 +60,18 @@ export default defineConfig({
     })
   ],
   server: {
+    host: '0.0.0.0',
+    proxy: {
+      '/api': {
+        target: apiTarget,
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
+  preview: {
+    host: '0.0.0.0',
+    allowedHosts: ['d13b-188-120-84-138.ngrok-free.app'],
     proxy: {
       '/api': {
         target: apiTarget,

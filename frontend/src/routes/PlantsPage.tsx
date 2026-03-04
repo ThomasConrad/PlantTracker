@@ -11,7 +11,7 @@ export const PlantsPage: Component = () => {
   createEffect(() => {
     plantsStore.loadPlants({ 
       search: searchQuery() || undefined,
-      sort: sortBy()
+      sort: sortBy(),
     });
   });
 
@@ -51,32 +51,15 @@ export const PlantsPage: Component = () => {
   return (
     <div class="pb-20 sm:pb-6">
       {/* Header Section */}
-      <div class="px-6 pt-6 pb-4">
-        <A
-          href="/plants/new"
-          class="primary-action-button"
-        >
-          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2.5}>
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Plant
-        </A>
-        
-        {/* Plant count and sort */}
-        <div class="flex-between mt-6">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl font-bold text-gray-900">
-              {plantsStore.plants.length}
-            </span>
-            <span class="text-gray-500 text-lg">
-              {plantsStore.plants.length === 1 ? 'plant' : 'plants'}
-            </span>
-          </div>
-          
-          <div class="flex items-center gap-2">
-            <span class="text-sm text-gray-500 font-medium">Sort by</span>
+      <div class="px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">
+            {plantsStore.plants.length} {plantsStore.plants.length === 1 ? 'plant' : 'plants'}
+          </h1>
+          <label class="inline-flex items-center gap-2">
+            <span class="text-sm font-medium text-gray-500">Sort</span>
             <select
-              class="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              class="text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               value={sortBy()}
               onChange={(e) => setSortBy(e.currentTarget.value)}
             >
@@ -85,7 +68,7 @@ export const PlantsPage: Component = () => {
               <option value="name_asc">Name A-Z</option>
               <option value="name_desc">Name Z-A</option>
             </select>
-          </div>
+          </label>
         </div>
       </div>
 

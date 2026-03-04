@@ -1,5 +1,6 @@
 import { render } from 'solid-js/web';
 import { Router } from '@solidjs/router';
+import { registerSW } from 'virtual:pwa-register';
 import './index.css';
 import App from './App';
 
@@ -10,6 +11,10 @@ if ((import.meta as { env?: { DEV?: boolean } }).env?.DEV && !(root instanceof H
     'Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?',
   );
 }
+
+registerSW({
+  immediate: true,
+});
 
 render(() => (
   <Router>

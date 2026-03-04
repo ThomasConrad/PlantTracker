@@ -12,6 +12,8 @@ pub struct User {
     pub id: String, // Changed to String for SQLite compatibility
     pub email: String,
     pub name: String,
+    pub first_day_of_week: FirstDayOfWeek,
+    pub preferred_units: PreferredUnits,
     pub password_hash: String,
     pub role: UserRole,
     pub can_create_invites: bool,
@@ -27,6 +29,62 @@ pub enum UserRole {
     Admin,
     Moderator,
     User,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum FirstDayOfWeek {
+    Sunday,
+    Monday,
+}
+
+impl std::fmt::Display for FirstDayOfWeek {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FirstDayOfWeek::Sunday => write!(f, "sunday"),
+            FirstDayOfWeek::Monday => write!(f, "monday"),
+        }
+    }
+}
+
+impl std::str::FromStr for FirstDayOfWeek {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "sunday" => Ok(FirstDayOfWeek::Sunday),
+            "monday" => Ok(FirstDayOfWeek::Monday),
+            _ => Err(format!("Invalid first day of week: {}", s)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, utoipa::ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum PreferredUnits {
+    Metric,
+    Imperial,
+}
+
+impl std::fmt::Display for PreferredUnits {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PreferredUnits::Metric => write!(f, "metric"),
+            PreferredUnits::Imperial => write!(f, "imperial"),
+        }
+    }
+}
+
+impl std::str::FromStr for PreferredUnits {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "metric" => Ok(PreferredUnits::Metric),
+            "imperial" => Ok(PreferredUnits::Imperial),
+            _ => Err(format!("Invalid preferred units: {}", s)),
+        }
+    }
 }
 
 impl std::fmt::Display for UserRole {
@@ -57,6 +115,8 @@ pub struct UserRow {
     pub id: String,
     pub email: String,
     pub name: String,
+    pub first_day_of_week: String,
+    pub preferred_units: String,
     pub password_hash: String,
     pub role: String,
     pub can_create_invites: bool,
@@ -73,6 +133,16 @@ impl UserRow {
             id: self.id,
             email: self.email,
             name: self.name,
+            first_day_of_week: self.first_day_of_week.parse().map_err(|e| {
+                crate::utils::errors::AppError::Internal {
+                    message: format!("Invalid first day of week in database: {}", e),
+                }
+            })?,
+            preferred_units: self.preferred_units.parse().map_err(|e| {
+                crate::utils::errors::AppError::Internal {
+                    message: format!("Invalid preferred units in database: {}", e),
+                }
+            })?,
             password_hash: self.password_hash,
             role: self
                 .role
@@ -134,6 +204,8 @@ pub struct UpdateProfileRequest {
     pub email: String,
     #[validate(length(min = 2))]
     pub name: String,
+    pub first_day_of_week: Option<FirstDayOfWeek>,
+    pub preferred_units: Option<PreferredUnits>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
@@ -156,6 +228,8 @@ pub struct UserResponse {
     pub id: String,
     pub email: String,
     pub name: String,
+    pub first_day_of_week: FirstDayOfWeek,
+    pub preferred_units: PreferredUnits,
     pub role: UserRole,
     pub can_create_invites: bool,
     pub max_invites: Option<i32>,
@@ -207,6 +281,8 @@ impl From<User> for UserResponse {
             id: user.id,
             email: user.email,
             name: user.name,
+            first_day_of_week: user.first_day_of_week,
+            preferred_units: user.preferred_units,
             role: user.role,
             can_create_invites: user.can_create_invites,
             max_invites: user.max_invites,
@@ -313,6 +389,8 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            first_day_of_week: FirstDayOfWeek::Sunday,
+            preferred_units: PreferredUnits::Metric,
             password_hash: "hashed_password".to_string(),
             role: UserRole::User,
             can_create_invites: false,
@@ -333,6 +411,8 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            first_day_of_week: FirstDayOfWeek::Sunday,
+            preferred_units: PreferredUnits::Metric,
             password_hash: "hashed_password".to_string(),
             role: UserRole::User,
             can_create_invites: false,
@@ -357,6 +437,8 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            first_day_of_week: FirstDayOfWeek::Sunday,
+            preferred_units: PreferredUnits::Metric,
             role: UserRole::User,
             can_create_invites: false,
             max_invites: Some(5),
@@ -383,6 +465,8 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            first_day_of_week: "sunday".to_string(),
+            preferred_units: "metric".to_string(),
             password_hash: "hashed_password".to_string(),
             role: "user".to_string(),
             can_create_invites: false,
@@ -406,6 +490,8 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            first_day_of_week: "sunday".to_string(),
+            preferred_units: "metric".to_string(),
             password_hash: "hashed_password".to_string(),
             role: "user".to_string(),
             can_create_invites: false,
@@ -431,6 +517,8 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            first_day_of_week: FirstDayOfWeek::Sunday,
+            preferred_units: PreferredUnits::Metric,
             password_hash: "hashed_password".to_string(),
             role: UserRole::User,
             can_create_invites: false,
@@ -453,6 +541,8 @@ mod tests {
             id: "test-id".to_string(),
             email: "test@example.com".to_string(),
             name: "Test User".to_string(),
+            first_day_of_week: FirstDayOfWeek::Sunday,
+            preferred_units: PreferredUnits::Metric,
             password_hash: "hashed_password".to_string(),
             role: UserRole::User,
             can_create_invites: false,

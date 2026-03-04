@@ -54,6 +54,7 @@ pub struct Plant {
     pub last_watered: Option<DateTime<Utc>>,
     pub last_fertilized: Option<DateTime<Utc>>,
     pub preview_id: Option<Uuid>,
+    pub archived_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -218,6 +219,7 @@ pub struct PlantResponse {
     pub last_fertilized: Option<DateTime<Utc>>,
     pub preview_id: Option<Uuid>,
     pub preview_url: Option<String>,
+    pub archived_at: Option<DateTime<Utc>>,
     pub custom_metrics: Vec<CustomMetric>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

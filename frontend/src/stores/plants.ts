@@ -33,7 +33,7 @@ const plantsStore = {
     return error();
   },
 
-  async loadPlants(params?: { search?: string; sort?: string }): Promise<void> {
+  async loadPlants(params?: { search?: string; sort?: string; includeArchived?: boolean }): Promise<void> {
     try {
       setLoading(true);
       setError(null);
@@ -152,6 +152,50 @@ const plantsStore = {
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete plant';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  },
+
+  async archivePlant(plantId: string): Promise<Plant> {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedPlant = await apiClient.archivePlant(plantId);
+      setPlants(prev => prev.filter(plant => plant.id !== plantId));
+
+      if (selectedPlant()?.id === plantId) {
+        setSelectedPlant(updatedPlant);
+      }
+
+      return updatedPlant;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to archive plant';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  },
+
+  async unarchivePlant(plantId: string): Promise<Plant> {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedPlant = await apiClient.unarchivePlant(plantId);
+      setPlants(prev =>
+        prev.map(plant => plant.id === plantId ? updatedPlant : plant)
+      );
+
+      if (selectedPlant()?.id === plantId) {
+        setSelectedPlant(updatedPlant);
+      }
+
+      return updatedPlant;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to unarchive plant';
       setError(errorMessage);
       throw err;
     } finally {

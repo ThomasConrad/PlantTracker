@@ -797,6 +797,16 @@
               "type": "string",
               "nullable": true
             }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "description": "Include archived plants in list results",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
           }
         ],
         "responses": {
@@ -985,6 +995,98 @@
         "responses": {
           "204": {
             "description": "Plant deleted successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{id}/archive": {
+      "post": {
+        "tags": [
+          "plants"
+        ],
+        "operationId": "archive_plant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant archived successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "plants"
+        ],
+        "operationId": "unarchive_plant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant unarchived successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantResponse"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized"
@@ -1949,6 +2051,11 @@
           "userId"
         ],
         "properties": {
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -2393,6 +2500,8 @@
           "id",
           "email",
           "name",
+          "firstDayOfWeek",
+          "preferredUnits",
           "role",
           "canCreateInvites",
           "invitesCreated",
@@ -2409,6 +2518,9 @@
           },
           "email": {
             "type": "string"
+          },
+          "firstDayOfWeek": {
+            "$ref": "#/components/schemas/FirstDayOfWeek"
           },
           "id": {
             "type": "string"
@@ -2429,6 +2541,9 @@
           },
           "name": {
             "type": "string"
+          },
+          "preferredUnits": {
+            "$ref": "#/components/schemas/PreferredUnits"
           },
           "role": {
             "$ref": "#/components/schemas/UserRole"

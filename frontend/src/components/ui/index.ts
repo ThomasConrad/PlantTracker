@@ -1,6 +1,7 @@
 // Base Components
 export { Button } from './Button';
 export { Input } from './Input';
+export { Select } from './Select';
 export { LoadingSpinner } from './LoadingSpinner';
 
 // Layout Components
@@ -33,6 +34,8 @@ export { ThemeToggle } from './ThemeToggle';
 export type { 
   ButtonProps, 
   InputProps, 
+  SelectProps,
+  SelectOption,
   LoadingSpinnerProps, 
   CardProps, 
   ModalProps, 

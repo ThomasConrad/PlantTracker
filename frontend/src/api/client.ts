@@ -17,6 +17,8 @@ type PlantsResponse = components['schemas']['PlantsResponse'];
 interface UpdateProfileRequest {
   name: string;
   email: string;
+  first_day_of_week?: 'sunday' | 'monday';
+  preferred_units?: 'metric' | 'imperial';
 }
 interface ChangePasswordRequest {
   current_password: string;
@@ -211,12 +213,14 @@ class ApiClient {
     offset?: number;
     search?: string;
     sort?: string;
+    includeArchived?: boolean;
   }): Promise<PlantsResponse> {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.offset) searchParams.set('offset', params.offset.toString());
     if (params?.search) searchParams.set('search', params.search);
     if (params?.sort) searchParams.set('sort', params.sort);
+    if (params?.includeArchived) searchParams.set('includeArchived', 'true');
 
     const query = searchParams.toString();
     return this.request<PlantsResponse>(`/plants${query ? `?${query}` : ''}`);
@@ -243,6 +247,18 @@ class ApiClient {
   async deletePlant(plantId: string): Promise<void> {
     await this.request(`/plants/${plantId}`, {
       method: 'DELETE',
+    });
+  }
+
+  async archivePlant(plantId: string): Promise<Plant> {
+    return this.request<Plant>(`/plants/${plantId}/archive`, {
+      method: 'POST',
+    });
+  }
+
+  async unarchivePlant(plantId: string): Promise<Plant> {
+    return this.request<Plant>(`/plants/${plantId}/unarchive`, {
+      method: 'POST',
     });
   }
 

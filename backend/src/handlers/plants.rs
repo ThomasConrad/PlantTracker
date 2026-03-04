@@ -24,6 +24,8 @@ pub fn routes() -> Router<AppState> {
             "/:id",
             get(get_plant).put(update_plant).delete(delete_plant),
         )
+        .route("/:id/archive", post(archive_plant))
+        .route("/:id/unarchive", post(unarchive_plant))
         .route("/:id/preview/:photo_id", put(set_plant_preview))
         .route("/:id/preview", delete(clear_plant_preview))
         .nest("/:plant_id", photos::routes())
@@ -31,11 +33,13 @@ pub fn routes() -> Router<AppState> {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ListPlantsQuery {
     limit: Option<i64>,
     offset: Option<i64>,
     search: Option<String>,
     sort: Option<String>, // "date_asc", "date_desc" (default), "name_asc", "name_desc"
+    include_archived: Option<bool>,
 }
 
 #[utoipa::path(
@@ -45,7 +49,8 @@ struct ListPlantsQuery {
         ("limit" = Option<i64>, Query, description = "Maximum number of plants to return"),
         ("offset" = Option<i64>, Query, description = "Number of plants to skip"),
         ("search" = Option<String>, Query, description = "Search term for plant names"),
-        ("sort" = Option<String>, Query, description = "Sort order: date_asc, date_desc, name_asc, name_desc")
+        ("sort" = Option<String>, Query, description = "Sort order: date_asc, date_desc, name_asc, name_desc"),
+        ("includeArchived" = Option<bool>, Query, description = "Include archived plants in list results")
     ),
     responses(
         (status = 200, description = "List of plants", body = PlantsResponse),
@@ -82,6 +87,7 @@ async fn list_plants(
         offset,
         params.search.as_deref(),
         params.sort.as_deref(),
+        params.include_archived.unwrap_or(false),
     )
     .await?;
 
@@ -247,6 +253,68 @@ async fn delete_plant(
 
     tracing::info!("Deleted plant with id: {} for user: {}", id, user.id);
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    post,
+    path = "/plants/{id}/archive",
+    params(
+        ("id" = Uuid, Path, description = "Plant ID")
+    ),
+    responses(
+        (status = 200, description = "Plant archived successfully", body = PlantResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "plants",
+    security(
+        ("session" = [])
+    )
+)]
+pub async fn archive_plant(
+    auth_session: AuthSession,
+    State(app_state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<PlantResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    tracing::info!("Archive plant request for id: {} by user: {}", id, user.id);
+    let plant = db_plants::archive_plant(&app_state.pool, id, &user.id).await?;
+    Ok(Json(plant))
+}
+
+#[utoipa::path(
+    post,
+    path = "/plants/{id}/unarchive",
+    params(
+        ("id" = Uuid, Path, description = "Plant ID")
+    ),
+    responses(
+        (status = 200, description = "Plant unarchived successfully", body = PlantResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "plants",
+    security(
+        ("session" = [])
+    )
+)]
+pub async fn unarchive_plant(
+    auth_session: AuthSession,
+    State(app_state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<PlantResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    tracing::info!("Unarchive plant request for id: {} by user: {}", id, user.id);
+    let plant = db_plants::unarchive_plant(&app_state.pool, id, &user.id).await?;
+    Ok(Json(plant))
 }
 
 async fn set_plant_preview(

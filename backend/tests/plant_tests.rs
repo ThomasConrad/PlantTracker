@@ -198,6 +198,45 @@ async fn test_update_plant() {
 }
 
 #[tokio::test]
+async fn test_update_plant_can_disable_schedules() {
+    let app = TestApp::new().await;
+
+    // Register and login user
+    common::create_test_user(
+        &app,
+        "disable-schedule@example.com",
+        "Disable Schedule User",
+        "password123",
+    )
+    .await;
+
+    // Create a plant with active schedules
+    let plant = common::create_test_plant(&app, "Schedule Plant", "Ficus").await;
+    let plant_id = plant["id"].as_str().unwrap();
+
+    // Disable both schedules by sending explicit empty schedule objects
+    let response = app
+        .client
+        .put(app.url(&format!("/plants/{}", plant_id)))
+        .json(&json!({
+            "wateringSchedule": {},
+            "fertilizingSchedule": {}
+        }))
+        .send()
+        .await
+        .expect("Failed to send update plant request");
+
+    assert_eq!(response.status(), 200);
+
+    let body: serde_json::Value = response.json().await.expect("Failed to parse response");
+    assert_eq!(body["wateringSchedule"]["intervalDays"], serde_json::Value::Null);
+    assert_eq!(
+        body["fertilizingSchedule"]["intervalDays"],
+        serde_json::Value::Null
+    );
+}
+
+#[tokio::test]
 async fn test_delete_plant() {
     let app = TestApp::new().await;
 
@@ -370,4 +409,70 @@ async fn test_plant_pagination() {
     assert_eq!(body["plants"].as_array().unwrap().len(), 10);
     assert_eq!(body["limit"], 10);
     assert_eq!(body["offset"], 10);
+}
+
+#[tokio::test]
+async fn test_archive_and_unarchive_plant() {
+    let app = TestApp::new().await;
+
+    common::create_test_user(&app, "archive@example.com", "Archive User", "password123").await;
+
+    let plant = common::create_test_plant(&app, "Plant to Archive", "Ficus").await;
+    let plant_id = plant["id"].as_str().unwrap();
+
+    let archive_response = app
+        .client
+        .post(app.url(&format!("/plants/{}/archive", plant_id)))
+        .send()
+        .await
+        .expect("Failed to archive plant");
+
+    assert_eq!(archive_response.status(), 200);
+    let archived_body: serde_json::Value = archive_response
+        .json()
+        .await
+        .expect("Failed to parse archive response");
+    assert!(archived_body["archivedAt"].is_string());
+
+    let list_response = app
+        .client
+        .get(app.url("/plants"))
+        .send()
+        .await
+        .expect("Failed to list plants");
+
+    assert_eq!(list_response.status(), 200);
+    let list_body: serde_json::Value = list_response
+        .json()
+        .await
+        .expect("Failed to parse list response");
+    assert_eq!(list_body["total"], 0);
+
+    let include_archived_response = app
+        .client
+        .get(app.url("/plants?includeArchived=true"))
+        .send()
+        .await
+        .expect("Failed to list plants with archived");
+
+    assert_eq!(include_archived_response.status(), 200);
+    let include_archived_body: serde_json::Value = include_archived_response
+        .json()
+        .await
+        .expect("Failed to parse archived list response");
+    assert_eq!(include_archived_body["total"], 1);
+
+    let unarchive_response = app
+        .client
+        .post(app.url(&format!("/plants/{}/unarchive", plant_id)))
+        .send()
+        .await
+        .expect("Failed to unarchive plant");
+
+    assert_eq!(unarchive_response.status(), 200);
+    let unarchived_body: serde_json::Value = unarchive_response
+        .json()
+        .await
+        .expect("Failed to parse unarchive response");
+    assert_eq!(unarchived_body["archivedAt"], serde_json::Value::Null);
 }

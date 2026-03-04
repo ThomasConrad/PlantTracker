@@ -206,15 +206,31 @@
 
   /* Bottom Navigation styles */
   .bottom-nav {
-    @apply bg-white border-t border-gray-200 sm:hidden safe-area-bottom;
+    @apply sm:hidden px-4 pt-2 bg-gray-50;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
   }
 
   .bottom-nav-container {
-    @apply grid grid-cols-4 h-16;
+    --add-size: 52px;
+    @apply relative grid grid-cols-5 h-[58px] items-center bg-white border border-gray-200 rounded-full overflow-visible;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   }
 
   .bottom-nav-item {
     @apply flex items-center justify-center transition-colors duration-200 hover:bg-gray-50;
+    position: relative;
+    z-index: 1;
+  }
+
+  .bottom-nav-center-slot {
+    @apply relative flex items-center justify-center;
+    z-index: 2;
+  }
+
+  .bottom-nav-add-button {
+    @apply absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-primary-600 shadow-md ring-2 ring-white transition-transform duration-200 active:scale-95 hover:bg-primary-700;
+    height: var(--add-size);
+    width: var(--add-size);
   }
 
   .bottom-nav-icon {
@@ -614,13 +630,16 @@
 
   /* Mobile layout utilities */
   .mobile-content-container {
-    height: 100vh;
+    height: 100dvh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
 
   .mobile-content-area {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }

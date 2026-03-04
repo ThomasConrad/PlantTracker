@@ -13,6 +13,20 @@ export interface InputProps extends JSX.InputHTMLAttributes<HTMLInputElement> {
   error?: string;
 }
 
+// Select Component Types
+export interface SelectOption {
+  value: string;
+  label: string;
+}
+
+export interface SelectProps extends JSX.SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string;
+  error?: string;
+  options: SelectOption[];
+  placeholder?: string;
+  onValueChange?: (value: string) => void;
+}
+
 // Loading Spinner Types
 export interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';

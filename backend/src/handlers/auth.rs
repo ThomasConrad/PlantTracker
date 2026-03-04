@@ -230,6 +230,14 @@ async fn update_profile(
         &user.id,
         &payload.name,
         &payload.email,
+        payload
+            .first_day_of_week
+            .as_ref()
+            .unwrap_or(&user.first_day_of_week),
+        payload
+            .preferred_units
+            .as_ref()
+            .unwrap_or(&user.preferred_units),
     )
     .await?;
 

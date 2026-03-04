@@ -1,6 +1,7 @@
 import { Component, createSignal, onMount, Show } from 'solid-js';
 import { apiClient } from '@/api/client';
 import { authStore } from '@/stores/auth';
+import { Select } from '@/components/ui';
 
 export const UserSettingsPage: Component = () => {
   const [profileSaving, setProfileSaving] = createSignal(false);
@@ -13,6 +14,8 @@ export const UserSettingsPage: Component = () => {
 
   const [name, setName] = createSignal('');
   const [email, setEmail] = createSignal('');
+  const [firstDayOfWeek, setFirstDayOfWeek] = createSignal<'sunday' | 'monday'>('sunday');
+  const [preferredUnits, setPreferredUnits] = createSignal<'metric' | 'imperial'>('metric');
   const [currentPassword, setCurrentPassword] = createSignal('');
   const [newPassword, setNewPassword] = createSignal('');
   const [confirmPassword, setConfirmPassword] = createSignal('');
@@ -22,6 +25,8 @@ export const UserSettingsPage: Component = () => {
     if (authStore.user) {
       setName(authStore.user.name || '');
       setEmail(authStore.user.email || '');
+      setFirstDayOfWeek(authStore.user.firstDayOfWeek || 'sunday');
+      setPreferredUnits(authStore.user.preferredUnits || 'metric');
     }
   });
 
@@ -36,7 +41,12 @@ export const UserSettingsPage: Component = () => {
 
     try {
       setProfileSaving(true);
-      await apiClient.updateProfile({ name: name().trim(), email: email().trim() });
+      await apiClient.updateProfile({
+        name: name().trim(),
+        email: email().trim(),
+        first_day_of_week: firstDayOfWeek(),
+        preferred_units: preferredUnits(),
+      });
       await authStore.initializeAuth();
       showSuccess('Profile updated successfully.');
     } catch (err) {
@@ -158,6 +168,30 @@ export const UserSettingsPage: Component = () => {
                 onInput={(e) => setEmail(e.currentTarget.value)}
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500"
                 required
+              />
+            </div>
+            <div>
+              <Select
+                id="first-day-of-week"
+                label="First Day of Week"
+                value={firstDayOfWeek()}
+                onValueChange={(value) => setFirstDayOfWeek(value as 'sunday' | 'monday')}
+                options={[
+                  { value: 'sunday', label: 'Sunday' },
+                  { value: 'monday', label: 'Monday' },
+                ]}
+              />
+            </div>
+            <div>
+              <Select
+                id="preferred-units"
+                label="Preferred Units"
+                value={preferredUnits()}
+                onValueChange={(value) => setPreferredUnits(value as 'metric' | 'imperial')}
+                options={[
+                  { value: 'metric', label: 'Metric (cm, ml, g)' },
+                  { value: 'imperial', label: 'Imperial (in, fl oz, oz)' },
+                ]}
               />
             </div>
           </div>

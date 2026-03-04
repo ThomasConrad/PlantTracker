@@ -60,6 +60,8 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::plants::get_plant,
         crate::handlers::plants::update_plant,
         crate::handlers::plants::delete_plant,
+        crate::handlers::plants::archive_plant,
+        crate::handlers::plants::unarchive_plant,
         crate::handlers::tracking::list_entries,
         crate::handlers::tracking::create_entry,
         crate::handlers::google_tasks::get_google_auth_url,

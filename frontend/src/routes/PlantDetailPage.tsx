@@ -3,51 +3,37 @@ import { A, useParams } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Button } from '@/components/ui/Button';
-import { PlantCareStatus } from '@/components/plants/PlantCareStatus';
 import { ActivityLog } from '@/components/plants/ActivityLog';
 import { PhotoGallery } from '@/components/plants/PhotoGallery';
 import { PlantHistoryTimeline } from '@/components/plants/PlantHistoryTimeline';
-import { formatDate } from '@/utils/date';
+import { calculateDaysUntil, formatDate, isOverdue } from '@/utils/date';
+import {
+  makeTransformScheduler,
+  VelocityTracker,
+  translateY,
+  SNAP_TRANSITION,
+  FLING_THRESHOLD,
+  detectDirection,
+} from '@/utils/touch';
 
 export const PlantDetailPage: Component = () => {
+  type QuickCareType = 'watering' | 'fertilizing';
+
   const params = useParams();
   const [showArchiveConfirm, setShowArchiveConfirm] = createSignal(false);
   const [archiving, setArchiving] = createSignal(false);
-  
-  // Mobile swipe-up panel state
-  const [isMobile, setIsMobile] = createSignal(false);
-  const [panelOffset, setPanelOffset] = createSignal(60); // Start at 60% of screen height
-  const [isDragging, setIsDragging] = createSignal(false);
-  let panelContentRef: HTMLDivElement | undefined;
-  let lastTouchY = 0;
-  let lastTouchTime = 0;
-  let touchVelocityY = 0;
-  const PANEL_EXPANDED_OFFSET = 12;
-  const PANEL_DEFAULT_OFFSET = 60;
-  const PANEL_COLLAPSED_OFFSET = 90;
-  const PANEL_SNAP_EPSILON = 1;
-
-  const normalizePanelOffset = (offset: number) => {
-    if (offset <= PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON) {
-      return PANEL_EXPANDED_OFFSET;
-    }
-    if (offset >= PANEL_COLLAPSED_OFFSET - PANEL_SNAP_EPSILON) {
-      return PANEL_COLLAPSED_OFFSET;
-    }
-    return offset;
-  };
-
-  const clampPanelOffset = (offset: number) =>
-    normalizePanelOffset(
-      Math.max(PANEL_EXPANDED_OFFSET, Math.min(PANEL_COLLAPSED_OFFSET, offset))
-    );
-
-  createEffect(() => {
-    if (!isMobile()) return;
-    if (panelOffset() > PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON && panelContentRef) {
-      panelContentRef.scrollTop = 0;
-    }
+  const [quickActionLoading, setQuickActionLoading] = createSignal<Record<QuickCareType, boolean>>({
+    watering: false,
+    fertilizing: false,
   });
+  const [quickActionError, setQuickActionError] = createSignal<string | null>(null);
+  
+  // Mobile slide-up panel state
+  const [isMobile, setIsMobile] = createSignal(false);
+  const [sheetOpen, setSheetOpen] = createSignal(false);
+  let overlayRef: HTMLDivElement | undefined;
+  let overlayScrollRef: HTMLDivElement | undefined;
+  let headerRef: HTMLDivElement | undefined;
 
   createEffect(() => {
     if (params.id) {
@@ -56,138 +42,188 @@ export const PlantDetailPage: Component = () => {
   });
 
   // Mobile detection and resize handler
+  let cleanupGestures: (() => void) | undefined;
+
+  const setupPlantPanelGestures = () => {
+    if (!overlayRef || !overlayScrollRef) return;
+
+    const overlay = overlayRef;
+    const overlayScroll = overlayScrollRef;
+
+    // Snap positions: fullTop = just below header, midTop = showing ~25% of panel
+    const HEADER_HEIGHT = 80; // matches header style height
+    const viewportH = () => window.visualViewport?.height || window.innerHeight;
+    const getFullTop = () => HEADER_HEIGHT;
+    const getMidTop = () => viewportH() * 0.65; // Panel collapsed, showing ~35% of viewport
+
+    const clampOverlayTop = (y: number) => Math.max(getFullTop(), Math.min(getMidTop(), y));
+
+    const scheduleOverlayY = makeTransformScheduler(y => {
+      overlay.style.height = Math.max(120, viewportH() - HEADER_HEIGHT) + 'px';
+      translateY(overlay, y);
+    });
+
+    function getLiveOverlayTop() {
+      return overlay.getBoundingClientRect().top;
+    }
+
+    function snapOverlay(velocity: number, currentTop: number) {
+      overlay.style.transition = SNAP_TRANSITION;
+      const midTop = getMidTop();
+      const fullTop = getFullTop();
+      const midPoint = (fullTop + midTop) / 2;
+
+      let snapTo: number;
+      if (velocity < -FLING_THRESHOLD) {
+        snapTo = fullTop;
+      } else if (velocity > FLING_THRESHOLD) {
+        snapTo = midTop;
+      } else {
+        snapTo = currentTop < midPoint ? fullTop : midTop;
+      }
+
+      overlay.style.height = Math.max(120, viewportH() - HEADER_HEIGHT) + 'px';
+      translateY(overlay, snapTo);
+      setSheetOpen(snapTo <= fullTop);
+    }
+
+    const overlayVelocity = new VelocityTracker();
+    let dragging = false;
+    let pending = false;
+    let direction: 'horizontal' | 'vertical' | null = null;
+    let startY = 0;
+    let startX = 0;
+    let startTop = 0;
+    let latestTop = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      scheduleOverlayY.cancel();
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startTop = getLiveOverlayTop();
+      latestTop = startTop;
+      overlayVelocity.start(startY);
+      dragging = false;
+      pending = true;
+      direction = null;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!pending) return;
+      const x = e.touches[0].clientX;
+      const y = e.touches[0].clientY;
+      const dx = x - startX;
+      const dy = y - startY;
+
+      if (!direction) {
+        direction = detectDirection(dx, dy);
+      }
+      if (direction === 'horizontal') return;
+      if (direction !== 'vertical') return;
+
+      // Allow native scroll inside content when sheet is fully open
+      if (!dragging && (e.target as HTMLElement)?.closest('.plant-panel-scroll')) {
+        const scrollEl = overlayScroll;
+        const maxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+        const atTop = getLiveOverlayTop() <= getFullTop() + 2;
+        const canScrollUp = scrollEl.scrollTop > 0 && dy > 0;
+        const canScrollDown = scrollEl.scrollTop < maxScroll && dy < 0;
+        if (atTop && maxScroll > 1 && (canScrollUp || canScrollDown)) {
+          startY = y;
+          startTop = getLiveOverlayTop();
+          latestTop = startTop;
+          overlayVelocity.start(y);
+          return;
+        }
+        if (!atTop || dy > 0) scrollEl.scrollTop = 0;
+      }
+
+      if (!dragging) {
+        dragging = true;
+        overlay.style.transition = 'none';
+        startY = y;
+        startTop = getLiveOverlayTop();
+        latestTop = startTop;
+        overlayVelocity.start(y);
+      }
+
+      e.preventDefault();
+      overlayVelocity.update(y);
+      latestTop = clampOverlayTop(startTop + (y - startY));
+      scheduleOverlayY(startTop + (y - startY));
+    };
+
+    const onTouchEnd = () => {
+      if (!pending) return;
+      pending = false;
+      if (!dragging) return;
+      dragging = false;
+      scheduleOverlayY.cancel();
+      overlay.style.height = Math.max(120, viewportH() - HEADER_HEIGHT) + 'px';
+      translateY(overlay, latestTop);
+      snapOverlay(overlayVelocity.velocity, latestTop);
+    };
+
+    overlay.addEventListener('touchstart', onTouchStart, { passive: true });
+    overlay.addEventListener('touchmove', onTouchMove, { passive: false });
+    overlay.addEventListener('touchend', onTouchEnd);
+    overlay.addEventListener('touchcancel', onTouchEnd);
+
+    // Initial position (collapsed)
+    requestAnimationFrame(() => {
+      const midTop = getMidTop();
+      overlay.style.height = Math.max(120, viewportH() - HEADER_HEIGHT) + 'px';
+      translateY(overlay, midTop);
+      requestAnimationFrame(() => {
+        overlay.style.transition = SNAP_TRANSITION;
+      });
+    });
+
+    return () => {
+      overlay.removeEventListener('touchstart', onTouchStart);
+      overlay.removeEventListener('touchmove', onTouchMove);
+      overlay.removeEventListener('touchend', onTouchEnd);
+      overlay.removeEventListener('touchcancel', onTouchEnd);
+    };
+  };
+
   onMount(() => {
     const checkMobile = () => {
       const isNarrowViewport = window.innerWidth < 768;
       const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
       const hasNoHover = window.matchMedia('(hover: none)').matches;
-      setIsMobile(isNarrowViewport && (hasCoarsePointer || hasNoHover));
+      const mobile = isNarrowViewport && (hasCoarsePointer || hasNoHover);
+      setIsMobile(mobile);
     };
     
     checkMobile();
     window.addEventListener('resize', checkMobile);
+
+    // Setup gestures after DOM is ready
+    requestAnimationFrame(() => {
+      if (isMobile()) {
+        cleanupGestures = setupPlantPanelGestures();
+      }
+    });
     
     onCleanup(() => {
       window.removeEventListener('resize', checkMobile);
+      cleanupGestures?.();
     });
   });
 
-  // Touch event handlers for mobile swipe panel
-  const handlePanelTouchStart = (e: TouchEvent) => {
-    if (!isMobile()) return;
-    const now = performance.now();
-    setIsDragging(true);
-    lastTouchY = e.touches[0].clientY;
-    lastTouchTime = now;
-    touchVelocityY = 0;
-  };
-
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isMobile() || !isDragging()) return;
-
-    const currentY = e.touches[0].clientY;
-    const now = performance.now();
-    const stepDeltaY = currentY - lastTouchY;
-    const activeScrollTop = panelContentRef?.scrollTop || 0;
-    const expanded = panelOffset() <= PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON;
-    const dt = Math.max(1, now - lastTouchTime);
-    const instantaneousVelocity = stepDeltaY / dt;
-    touchVelocityY = touchVelocityY * 0.7 + instantaneousVelocity * 0.3;
-    lastTouchY = currentY;
-    lastTouchTime = now;
-    if (Math.abs(stepDeltaY) < 0.5) return;
-
-    const contentAreaHeight = window.innerHeight - 80; // 80px header height
-    const offsetDelta = (stepDeltaY / contentAreaHeight) * 100;
-    // Simple model:
-    // 1) If sheet is not expanded, gesture always moves sheet.
-    // 2) If expanded, content scrolls normally except pull-down at content top collapses sheet.
-    if (!expanded) {
-      e.preventDefault();
-      if (panelContentRef) {
-        panelContentRef.scrollTop = 0;
-      }
-      setPanelOffset((prev) => clampPanelOffset(prev + offsetDelta));
-      return;
-    }
-
-    if (stepDeltaY > 0 && activeScrollTop <= 0.5) {
-      e.preventDefault();
-      if (panelContentRef) {
-        panelContentRef.scrollTop = 0;
-      }
-      setPanelOffset((prev) => clampPanelOffset(prev + offsetDelta));
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (!isMobile() || !isDragging()) return;
-    const releaseVelocityY = touchVelocityY;
-    setIsDragging(false);
-    lastTouchY = 0;
-    lastTouchTime = 0;
-    touchVelocityY = 0;
-    
-    // Project velocity to choose nearest snap point without abrupt jumps.
-    const currentOffset = panelOffset();
-    const absVelocity = Math.abs(releaseVelocityY);
-    const projectedOffset =
-      absVelocity >= 0.15
-        ? clampPanelOffset(currentOffset + releaseVelocityY * 18)
-        : currentOffset;
-    const snapPoints = [PANEL_EXPANDED_OFFSET, PANEL_DEFAULT_OFFSET, PANEL_COLLAPSED_OFFSET];
-    const nearestSnap = snapPoints.reduce((closest, point) =>
-      Math.abs(point - projectedOffset) < Math.abs(closest - projectedOffset) ? point : closest
-    );
-
-    if (nearestSnap <= PANEL_EXPANDED_OFFSET + 0.5) {
-      setPanelOffset(PANEL_EXPANDED_OFFSET);
-    } else if (nearestSnap >= PANEL_COLLAPSED_OFFSET - 0.5) {
-      setPanelOffset(PANEL_COLLAPSED_OFFSET);
+  // Re-setup gestures when mobile state changes
+  createEffect(() => {
+    if (isMobile()) {
+      requestAnimationFrame(() => {
+        cleanupGestures?.();
+        cleanupGestures = setupPlantPanelGestures();
+      });
     } else {
-      setPanelOffset(PANEL_DEFAULT_OFFSET);
+      cleanupGestures?.();
+      cleanupGestures = undefined;
     }
-  };
-
-  const handlePanelWheel = (e: WheelEvent) => {
-    if (e.defaultPrevented) return;
-
-    const contentAreaHeight = window.innerHeight - 80;
-    const currentOffset = panelOffset();
-    const scrollTop = panelContentRef?.scrollTop || 0;
-    const expanded = currentOffset <= PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON;
-    const collapsed = currentOffset >= PANEL_COLLAPSED_OFFSET - PANEL_SNAP_EPSILON;
-    const deltaY = e.deltaY;
-
-    // Consume inertial wheel at hard boundaries without introducing any delay.
-    const pushingPastBottom = collapsed && deltaY < 0;
-    if (pushingPastBottom) {
-      e.preventDefault();
-      if (panelContentRef) {
-        panelContentRef.scrollTop = 0;
-      }
-      return;
-    }
-
-    // While not expanded, wheel always moves the sheet.
-    if (!expanded) {
-      e.preventDefault();
-      if (panelContentRef) {
-        panelContentRef.scrollTop = 0;
-      }
-      setPanelOffset(clampPanelOffset(currentOffset - (deltaY / contentAreaHeight) * 100));
-      return;
-    }
-
-    // When expanded and content is at top, scrolling up collapses the sheet.
-    if (deltaY < 0 && scrollTop <= 0.5) {
-      e.preventDefault();
-      if (panelContentRef) {
-        panelContentRef.scrollTop = 0;
-      }
-      setPanelOffset(clampPanelOffset(currentOffset - (deltaY / contentAreaHeight) * 100));
-    }
-  };
+  });
 
   const handleArchiveToggle = async () => {
     try {
@@ -206,6 +242,93 @@ export const PlantDetailPage: Component = () => {
       setArchiving(false);
       setShowArchiveConfirm(false);
     }
+  };
+
+  const handleQuickCare = async (entryType: QuickCareType) => {
+    try {
+      setQuickActionError(null);
+      setQuickActionLoading((prev) => ({ ...prev, [entryType]: true }));
+      await plantsStore.createTrackingEntry(params.id, {
+        entryType,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Failed to create quick care entry:', error);
+      setQuickActionError('Could not save that action. Please try again.');
+    } finally {
+      setQuickActionLoading((prev) => ({ ...prev, [entryType]: false }));
+    }
+  };
+
+  const QuickCareButton: Component<{
+    entryType: QuickCareType;
+    label: string;
+    overdue?: boolean;
+    size?: 'sm' | 'md' | 'lg';
+    class?: string;
+  }> = (props) => (
+    <Button
+      variant={props.overdue ? 'danger' : 'primary'}
+      size={props.size || 'sm'}
+      class={props.class}
+      onClick={() => handleQuickCare(props.entryType)}
+      loading={quickActionLoading()[props.entryType]}
+    >
+      {props.label}
+    </Button>
+  );
+
+  const getCareStatus = (lastDate: string | null, intervalDays: number | null, actionLabel: string) => {
+    if (!intervalDays) {
+      return {
+        title: `No ${actionLabel.toLowerCase()} schedule`,
+        detail: 'Enable this in Edit Plant.',
+        statusClass: 'border-gray-200 bg-gray-50 text-gray-700',
+        badgeLabel: 'No schedule',
+        badgeClass: 'bg-gray-100 text-gray-700',
+      };
+    }
+
+    const overdue = isOverdue(lastDate, intervalDays);
+    const days = calculateDaysUntil(lastDate, intervalDays);
+
+    if (overdue) {
+      return {
+        title: `${actionLabel} overdue`,
+        detail: 'Due now.',
+        statusClass: 'border-red-200 bg-red-50 text-red-800',
+        badgeLabel: 'Overdue',
+        badgeClass: 'bg-red-100 text-red-700',
+      };
+    }
+
+    if (days === 0) {
+      return {
+        title: `${actionLabel} today`,
+        detail: 'You are on schedule.',
+        statusClass: 'border-amber-200 bg-amber-50 text-amber-800',
+        badgeLabel: 'Due today',
+        badgeClass: 'bg-amber-100 text-amber-700',
+      };
+    }
+
+    if (days === 1) {
+      return {
+        title: `${actionLabel} tomorrow`,
+        detail: 'You are on schedule.',
+        statusClass: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+        badgeLabel: 'Due tomorrow',
+        badgeClass: 'bg-emerald-100 text-emerald-700',
+      };
+    }
+
+    return {
+      title: `${actionLabel} in ${days} days`,
+      detail: 'You are on schedule.',
+      statusClass: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+      badgeLabel: `In ${days} days`,
+      badgeClass: 'bg-emerald-100 text-emerald-700',
+    };
   };
 
   return (
@@ -229,9 +352,26 @@ export const PlantDetailPage: Component = () => {
     >
       {(() => {
         const plant = plantsStore.selectedPlant!;
+        const fertilizingEnabled = Boolean(plant.fertilizingSchedule?.intervalDays);
+        const wateringStatus = getCareStatus(
+          plant.lastWatered ?? null,
+          plant.wateringSchedule?.intervalDays ?? null,
+          'Watering'
+        );
+        const fertilizingStatus = getCareStatus(
+          plant.lastFertilized ?? null,
+          plant.fertilizingSchedule?.intervalDays ?? null,
+          'Fertilizing'
+        );
+        const wateringIntervalDays = plant.wateringSchedule?.intervalDays;
+        const wateringOverdue = Boolean(wateringIntervalDays) &&
+          isOverdue(plant.lastWatered ?? null, wateringIntervalDays!);
+        const fertilizingOverdue =
+          fertilizingEnabled &&
+          isOverdue(plant.lastFertilized ?? null, plant.fertilizingSchedule!.intervalDays!);
         
         if (isMobile()) {
-          // Mobile layout with swipe-up panel
+          // Mobile layout with slide-up panel (same pattern as calendar)
           return (
             <div class="h-full flex flex-col overflow-hidden relative">
               {/* Full-screen plant preview background */}
@@ -249,12 +389,11 @@ export const PlantDetailPage: Component = () => {
                     class="w-full h-full object-cover"
                   />
                 </Show>
-                {/* Overlay gradient */}
                 <div class="absolute inset-0 bg-black/20"></div>
               </div>
 
               {/* Fixed header with back button and plant name */}
-              <div class="relative z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent flex-shrink-0" style={{ height: '80px' }}>
+              <div ref={headerRef} class="relative z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent flex-shrink-0" style={{ height: '80px' }}>
                 <A
                   href="/plants"
                   class="p-2 rounded-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
@@ -289,50 +428,121 @@ export const PlantDetailPage: Component = () => {
                 </div>
               </div>
 
-              {/* Content area below header */}
-              <div
-                class="flex-1 relative overflow-hidden"
-                style={{ 'overscroll-behavior': 'none' }}
-                onWheel={handlePanelWheel}
-              >
-                {/* Swipe-up content panel */}
-                <div 
-                  class={`absolute inset-x-0 bottom-0 bg-white rounded-t-3xl shadow-2xl z-30 ${
-                    isDragging() ? '' : 'transition-transform duration-300 ease-out'
-                  }`}
-                  style={{
-                    bottom: '4rem',
-                    transform: `translateY(${panelOffset()}%)`,
-                    height: `${100 - panelOffset() + 10}%`,
-                    'min-height': '20%',
-                    'touch-action':
-                      panelOffset() > PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON
-                        ? 'none'
-                        : 'pan-y',
-                  }}
-                  onTouchStart={handlePanelTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  onTouchCancel={handleTouchEnd}
-                >
-                  {/* Content */}
-                  <div
-                    ref={panelContentRef}
-                    class="px-4 pb-8 flex-1"
-                    style={{
-                      height: '100%',
-                      'padding-top': '1rem',
-                      'overflow-y':
-                        panelOffset() > PANEL_EXPANDED_OFFSET + PANEL_SNAP_EPSILON
-                          ? 'hidden'
-                          : 'auto',
-                      'overscroll-behavior': 'contain',
-                    }}
-                  >
-                    <div class="space-y-6">
-                      <PlantCareStatus plant={plant} />
-                      <ActivityLog plant={plant} />
-                      <PlantHistoryTimeline plant={plant} />
+              {/* Slide-up overlay panel */}
+              <div class="mc-agenda-overlay plant-detail-overlay" ref={overlayRef}>
+                <button class="mc-agenda-handle" onClick={() => {
+                  setSheetOpen(!sheetOpen());
+                  if (overlayRef) {
+                    const viewportH = window.visualViewport?.height || window.innerHeight;
+                    const fullTop = 80;
+                    const midTop = viewportH * 0.65;
+                    overlayRef.style.transition = SNAP_TRANSITION;
+                    overlayRef.style.height = Math.max(120, viewportH - 80) + 'px';
+                    translateY(overlayRef, sheetOpen() ? fullTop : midTop);
+                  }
+                }}></button>
+
+                <div class="plant-panel-scroll" ref={overlayScrollRef} style={{
+                  flex: '1',
+                  'overflow-y': 'auto',
+                  'overflow-x': 'hidden',
+                  '-webkit-overflow-scrolling': 'touch',
+                  'overscroll-behavior': 'contain',
+                  'min-height': '0',
+                  'padding-bottom': '120px',
+                }}>
+                  <div class="space-y-5">
+                    {/* Quick care buttons */}
+                    <div class="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm px-4 py-3">
+                      <div class={`grid gap-3 ${fertilizingEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        <QuickCareButton
+                          entryType="watering"
+                          label="Water now"
+                          overdue={wateringOverdue}
+                          size="md"
+                          class="min-h-[44px] w-full"
+                        />
+                        <Show when={fertilizingEnabled}>
+                          <QuickCareButton
+                            entryType="fertilizing"
+                            label="Fertilize now"
+                            overdue={fertilizingOverdue}
+                            size="md"
+                            class="min-h-[44px] w-full"
+                          />
+                        </Show>
+                      </div>
+                      <Show when={quickActionError()}>
+                        <p class="text-xs text-red-600 mt-2">{quickActionError()}</p>
+                      </Show>
+                    </div>
+
+                    <div class="px-4 space-y-6">
+                      <section class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+                        <div class="px-4 py-4 border-b border-gray-100 bg-gray-50/60">
+                          <h2 class="text-base font-semibold text-gray-900">Care Today</h2>
+                        </div>
+                        <div class="p-4 space-y-3">
+                          <div class={`rounded-xl border p-3 ${wateringStatus.statusClass}`}>
+                            <div class="flex items-start justify-between gap-3">
+                              <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                  <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M7 16a5 5 0 0010 0c0-3-5-8-5-8s-5 5-5 8z" />
+                                  </svg>
+                                  <p class="text-sm font-semibold">{wateringStatus.title}</p>
+                                </div>
+                                <p class="text-xs mt-1 opacity-90">{wateringStatus.detail}</p>
+                                <Show when={plant.lastWatered}>
+                                  <p class="text-xs mt-2 opacity-80">Last watered: {formatDate(plant.lastWatered!)}</p>
+                                </Show>
+                              </div>
+                              <span class={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${wateringStatus.badgeClass}`}>
+                                {wateringStatus.badgeLabel}
+                              </span>
+                            </div>
+                          </div>
+
+                          <Show when={fertilizingEnabled}>
+                            <div class={`rounded-xl border p-3 ${fertilizingStatus.statusClass}`}>
+                              <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                  <div class="flex items-center gap-2">
+                                    <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    <p class="text-sm font-semibold">{fertilizingStatus.title}</p>
+                                  </div>
+                                  <p class="text-xs mt-1 opacity-90">{fertilizingStatus.detail}</p>
+                                  <Show when={plant.lastFertilized}>
+                                    <p class="text-xs mt-2 opacity-80">Last fertilized: {formatDate(plant.lastFertilized!)}</p>
+                                  </Show>
+                                </div>
+                                <span class={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${fertilizingStatus.badgeClass}`}>
+                                  {fertilizingStatus.badgeLabel}
+                                </span>
+                              </div>
+                            </div>
+                          </Show>
+                        </div>
+                      </section>
+
+                      <PhotoGallery
+                        plantId={plant.id}
+                        mode="preview"
+                        fullTimelineHref={`/plants/${plant.id}/photos`}
+                      />
+
+                      <details class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
+                        <summary class="px-4 py-4 cursor-pointer list-none select-none flex items-center justify-between gap-3 bg-gray-50/60">
+                          <h2 class="text-base font-semibold text-gray-900">Advanced</h2>
+                          <span class="text-xs text-gray-500">Expand</span>
+                        </summary>
+                        <div class="p-4 border-t border-gray-100 space-y-4">
+                          <ActivityLog plant={plant} />
+                          <PlantHistoryTimeline plant={plant} />
+                        </div>
+                      </details>
                     </div>
                   </div>
                 </div>
@@ -452,136 +662,60 @@ export const PlantDetailPage: Component = () => {
 
                 {/* Main Content */}
                 <div class="px-4 sm:px-6">
-                  <div class="max-w-7xl mx-auto">
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-                      {/* Plant Care Status and Activity Log - Takes up 2 columns on large screens */}
-                      <div class="lg:col-span-2 space-y-6">
-                        <PlantCareStatus plant={plant} />
-                        <ActivityLog plant={plant} />
-                        <PlantHistoryTimeline plant={plant} />
-                      </div>
-                      
-                      {/* Plant Info Sidebar */}
-                      <div class="space-y-6">
-                        {/* Plant Information Card */}
-                        <div class="bg-white shadow-sm rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
+                  <div class="max-w-5xl mx-auto space-y-6">
+                        <section class="bg-white shadow-sm rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
                           <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-gray-50/50">
-                            <div class="flex items-center space-x-3">
-                              <div class="flex-shrink-0">
-                                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                                  <svg class="h-4 w-4 sm:h-5 sm:w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                </div>
-                              </div>
-                              <div>
-                                <h3 class="text-base sm:text-lg font-semibold text-gray-900">
-                                  Plant Information
-                                </h3>
-                                <p class="text-xs sm:text-sm text-gray-500">
-                                  Care schedule and details
-                                </p>
-                              </div>
-                            </div>
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Care Today</h2>
                           </div>
-                          
-                          <div class="p-4 sm:p-6 space-y-5">
-                            <div class="space-y-1">
-                              <div class="flex items-center justify-between">
-                                <label class="text-sm font-medium text-gray-500">Watering Schedule</label>
-                                <Show when={plant.wateringSchedule?.intervalDays} fallback={
-                                  <div class="flex items-center gap-1.5">
-                                    <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
-                                    <span class="text-xs text-gray-400">Inactive</span>
-                                  </div>
-                                }>
-                                  <div class="flex items-center gap-1.5">
-                                    <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                    <span class="text-xs text-gray-400">Active</span>
-                                  </div>
-                                </Show>
-                              </div>
-                              <Show when={plant.wateringSchedule?.intervalDays} fallback={<p class="text-sm text-gray-500 italic">No watering schedule</p>}>
-                                <p class="text-sm text-gray-900 font-medium">Every {plant.wateringSchedule.intervalDays} days</p>
-                                <Show when={plant.wateringSchedule.amount}>
-                                  <p class="text-xs text-gray-600">{plant.wateringSchedule.amount}{plant.wateringSchedule.unit}</p>
-                                </Show>
-                                <Show when={plant.wateringSchedule.notes}>
-                                  <p class="text-xs text-gray-600 italic">{plant.wateringSchedule.notes}</p>
-                                </Show>
-                              </Show>
-                              {plant.lastWatered && (
-                                <p class="text-xs text-gray-500">Last watered: {formatDate(plant.lastWatered)}</p>
-                              )}
-                            </div>
-                            
-                            <div class="border-t border-gray-100 pt-4">
-                              <div class="space-y-1">
-                                <div class="flex items-center justify-between">
-                                  <label class="text-sm font-medium text-gray-500">Fertilizing Schedule</label>
-                                  <Show when={plant.fertilizingSchedule?.intervalDays} fallback={
-                                    <div class="flex items-center gap-1.5">
-                                      <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
-                                      <span class="text-xs text-gray-400">Inactive</span>
-                                    </div>
-                                  }>
-                                    <div class="flex items-center gap-1.5">
-                                      <div class="w-2 h-2 bg-green-400 rounded-full"></div>
-                                      <span class="text-xs text-gray-400">Active</span>
-                                    </div>
+                          <div class="p-4 sm:p-6 space-y-4">
+                            <div class={`rounded-xl border p-4 ${wateringStatus.statusClass}`}>
+                              <div class="flex items-start justify-between gap-4">
+                                <div>
+                                  <p class="text-sm font-semibold">{wateringStatus.title}</p>
+                                  <p class="text-xs mt-1 opacity-90">{wateringStatus.detail}</p>
+                                  <Show when={plant.lastWatered}>
+                                    <p class="text-xs mt-2 opacity-80">Last watered: {formatDate(plant.lastWatered!)}</p>
                                   </Show>
                                 </div>
-                                <Show when={plant.fertilizingSchedule?.intervalDays} fallback={<p class="text-sm text-gray-500 italic">No fertilizing schedule</p>}>
-                                  <p class="text-sm text-gray-900 font-medium">Every {plant.fertilizingSchedule.intervalDays} days</p>
-                                  <Show when={plant.fertilizingSchedule.amount}>
-                                    <p class="text-xs text-gray-600">{plant.fertilizingSchedule.amount}{plant.fertilizingSchedule.unit}</p>
-                                  </Show>
-                                  <Show when={plant.fertilizingSchedule.notes}>
-                                    <p class="text-xs text-gray-600 italic">{plant.fertilizingSchedule.notes}</p>
-                                  </Show>
-                                </Show>
-                                {plant.lastFertilized && (
-                                  <p class="text-xs text-gray-500">Last fertilized: {formatDate(plant.lastFertilized)}</p>
-                                )}
+                                <QuickCareButton entryType="watering" label="Water now" overdue={wateringOverdue} />
                               </div>
                             </div>
-                            
-                            <div class="border-t border-gray-100 pt-4">
-                              <div class="space-y-1">
-                                <label class="text-sm font-medium text-gray-500">Date Added</label>
-                                <p class="text-sm text-gray-900 font-medium">{formatDate(plant.createdAt)}</p>
+                            <Show when={fertilizingEnabled}>
+                              <div class={`rounded-xl border p-4 ${fertilizingStatus.statusClass}`}>
+                                <div class="flex items-start justify-between gap-4">
+                                  <div>
+                                    <p class="text-sm font-semibold">{fertilizingStatus.title}</p>
+                                    <p class="text-xs mt-1 opacity-90">{fertilizingStatus.detail}</p>
+                                    <Show when={plant.lastFertilized}>
+                                      <p class="text-xs mt-2 opacity-80">Last fertilized: {formatDate(plant.lastFertilized!)}</p>
+                                    </Show>
+                                  </div>
+                                  <QuickCareButton entryType="fertilizing" label="Fertilize now" overdue={fertilizingOverdue} />
+                                </div>
                               </div>
-                            </div>
+                            </Show>
+                            <Show when={quickActionError()}>
+                              <p class="text-sm text-red-600">{quickActionError()}</p>
+                            </Show>
                           </div>
-                        </div>
+                        </section>
 
-                        {/* Photo Gallery Card */}
-                        <div class="bg-white shadow-sm rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
-                          <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-gray-50/50">
-                            <div class="flex items-center space-x-3">
-                              <div class="flex-shrink-0">
-                                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                                  <svg class="h-4 w-4 sm:h-5 sm:w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                  </svg>
-                                </div>
-                              </div>
-                              <div>
-                                <h3 class="text-base sm:text-lg font-semibold text-gray-900">
-                                  Photo Gallery
-                                </h3>
-                                <p class="text-xs sm:text-sm text-gray-500">
-                                  Plant photos and memories
-                                </p>
-                              </div>
-                            </div>
+                        <PhotoGallery
+                          plantId={plant.id}
+                          mode="preview"
+                          fullTimelineHref={`/plants/${plant.id}/photos`}
+                        />
+
+                        <details class="bg-white shadow-sm rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
+                          <summary class="px-4 sm:px-6 py-4 sm:py-5 cursor-pointer list-none select-none flex items-center justify-between gap-3 bg-gray-50/50">
+                            <h2 class="text-base sm:text-lg font-semibold text-gray-900">Advanced</h2>
+                            <span class="text-sm text-gray-500">Expand</span>
+                          </summary>
+                          <div class="p-4 sm:p-6 border-t border-gray-100 space-y-6">
+                            <ActivityLog plant={plant} />
+                            <PlantHistoryTimeline plant={plant} />
                           </div>
-                          <div class="p-4 sm:p-6">
-                            <PhotoGallery plantId={plant.id} />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                        </details>
                   </div>
                 </div>
               </div>

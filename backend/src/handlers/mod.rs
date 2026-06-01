@@ -6,4 +6,5 @@ pub mod invites;
 pub mod photos;
 pub mod plants;
 pub mod reminders;
+pub mod coach;
 pub mod tracking;

@@ -20,13 +20,14 @@ mod app_state;
 mod auth;
 mod database;
 mod handlers;
+mod llm;
 mod middleware;
 mod models;
 mod utils;
 
 use app_state::AppState;
 use handlers::{
-    admin as admin_handlers, auth as auth_handlers, calendar, google_tasks, invites, plants,
+    admin as admin_handlers, auth as auth_handlers, calendar, coach, google_tasks, invites, plants,
     reminders,
 };
 use planty_api::ApiDoc;
@@ -90,6 +91,17 @@ async fn main() -> anyhow::Result<()> {
     // Create application state
     let mut app_state = AppState::new(pool.clone());
 
+    // Initialize plant coach if configured
+    match llm::create_coach() {
+        Ok(c) => {
+            tracing::info!("Plant coach initialized successfully");
+            app_state = app_state.with_coach(std::sync::Arc::from(c));
+        }
+        Err(e) => {
+            tracing::warn!("Plant coach not available: {e}");
+        }
+    }
+
     // Start token refresh scheduler if Google Tasks is configured
     if let Ok(google_config) = GoogleTasksConfig::from_env() {
         tracing::info!("Starting Google OAuth token refresh scheduler");
@@ -115,7 +127,13 @@ async fn main() -> anyhow::Result<()> {
 
         CorsLayer::new()
             .allow_origin(allowed_origins)
-            .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
             .allow_headers([
                 header::CONTENT_TYPE,
                 header::AUTHORIZATION,
@@ -165,6 +183,7 @@ async fn main() -> anyhow::Result<()> {
         .nest("/admin", admin_handlers::routes())
         .nest("/invites", invites::routes())
         .nest("/plants", plants::routes())
+        .nest("/coach", coach::routes())
         .nest("/calendar", calendar::routes())
         .nest("/google-tasks", google_tasks::routes())
         .nest("/reminders", reminders::routes())

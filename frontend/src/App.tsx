@@ -15,6 +15,8 @@ import { AdminHealthPage } from '@/routes/AdminHealthPage';
 import { UserSettingsPage } from '@/routes/UserSettingsPage';
 import { PlantsPage } from '@/routes/PlantsPage';
 import { PlantDetailPage } from '@/routes/PlantDetailPage';
+import { PlantPhotosPage } from '@/routes/PlantPhotosPage';
+import { PlantCoachPage } from '@/routes/PlantCoachPage';
 import { PlantFormPage } from '@/routes/PlantFormPage';
 import { CalendarPage } from '@/routes/CalendarPage';
 import { CalendarSettingsPage } from '@/routes/CalendarSettingsPage';
@@ -186,6 +188,26 @@ const App: Component = () => {
           )}
         />
         <Route
+          path="/plants/:id/photos"
+          component={() => (
+            <ProtectedRoute>
+              <AppLayout>
+                <PlantPhotosPage />
+              </AppLayout>
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/plants/:id/coach"
+          component={() => (
+            <ProtectedRoute>
+              <AppLayout>
+                <PlantCoachPage />
+              </AppLayout>
+            </ProtectedRoute>
+          )}
+        />
+        <Route
           path="/calendar"
           component={() => (
             <ProtectedRoute>
@@ -277,6 +299,16 @@ const App: Component = () => {
         />
         <Route
           path="/settings"
+          component={() => (
+            <ProtectedRoute>
+              <AppLayout>
+                <UserSettingsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          )}
+        />
+        <Route
+          path="/settings/user"
           component={() => (
             <ProtectedRoute>
               <AppLayout>

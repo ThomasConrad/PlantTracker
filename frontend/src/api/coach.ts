@@ -12,6 +12,7 @@ export interface CoachMessage {
 export interface CoachSuggestion {
   id: string;
   suggestionType: 'schedule_change' | 'new_task' | 'care_action' | 'photo_request';
+  description: string;
   payload: any;
   status: 'pending' | 'accepted' | 'dismissed';
   appliedAt?: string;

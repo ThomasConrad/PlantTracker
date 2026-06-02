@@ -31,6 +31,7 @@ pub struct CoachSuggestionRow {
     pub message_id: String,
     pub plant_id: String,
     pub suggestion_type: String,
+    pub description: String,
     pub payload: String,
     pub status: String,
     pub applied_at: Option<String>,
@@ -65,6 +66,7 @@ pub struct CoachMessage {
 pub struct CoachSuggestion {
     pub id: String,
     pub suggestion_type: String,
+    pub description: String,
     pub payload: serde_json::Value,
     pub status: String,
     pub applied_at: Option<String>,

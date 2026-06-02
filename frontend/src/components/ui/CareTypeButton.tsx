@@ -1,9 +1,7 @@
 import { Component, JSX, splitProps } from 'solid-js';
 import { cn } from '@/utils/cn';
 import { CareIcon } from './CareIcon';
-import type { components } from '@/types/api-generated';
-
-type EntryType = components['schemas']['EntryType'];
+type EntryType = 'care' | 'measurement' | 'note' | 'photo';
 
 interface CareTypeButtonProps extends Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> {
   careType: EntryType;
@@ -21,25 +19,16 @@ export const CareTypeButton: Component<CareTypeButtonProps> = (props) => {
   ]);
 
   const careTypeClasses = {
-    watering: local.isActive 
+    care: local.isActive 
       ? 'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-100' 
       : 'bg-white border-gray-200 text-gray-700 hover:bg-blue-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-blue-900',
-    fertilizing: local.isActive 
-      ? 'bg-green-100 border-green-300 text-green-800 dark:bg-green-900 dark:border-green-700 dark:text-green-100' 
-      : 'bg-white border-gray-200 text-gray-700 hover:bg-green-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-green-900',
-    pruning: local.isActive 
+    measurement: local.isActive 
       ? 'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900 dark:border-purple-700 dark:text-purple-100' 
       : 'bg-white border-gray-200 text-gray-700 hover:bg-purple-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-purple-900',
-    repotting: local.isActive 
-      ? 'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900 dark:border-orange-700 dark:text-orange-100' 
-      : 'bg-white border-gray-200 text-gray-700 hover:bg-orange-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-orange-900',
-    'pest-control': local.isActive 
-      ? 'bg-red-100 border-red-300 text-red-800 dark:bg-red-900 dark:border-red-700 dark:text-red-100' 
-      : 'bg-white border-gray-200 text-gray-700 hover:bg-red-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-red-900',
     note: local.isActive 
       ? 'bg-gray-100 border-gray-300 text-gray-800 dark:bg-gray-700 dark:border-gray-500 dark:text-gray-100' 
       : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700',
-    custom: local.isActive 
+    photo: local.isActive 
       ? 'bg-indigo-100 border-indigo-300 text-indigo-800 dark:bg-indigo-900 dark:border-indigo-700 dark:text-indigo-100' 
       : 'bg-white border-gray-200 text-gray-700 hover:bg-indigo-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-indigo-900',
   };
@@ -56,22 +45,20 @@ export const CareTypeButton: Component<CareTypeButtonProps> = (props) => {
     pill: 'rounded-full border',
   };
 
-  const careTypeLabels = {
-    watering: 'Watering',
-    fertilizing: 'Fertilizing', 
-    pruning: 'Pruning',
-    repotting: 'Repotting',
-    'pest-control': 'Pest Control',
+  const careTypeLabels: Record<string, string> = {
+    care: 'Care',
+    measurement: 'Measurement',
     note: 'Note',
-    custom: 'Custom',
+    photo: 'Photo',
   };
 
   // Map EntryType to CareIcon type
   const mapToCareIconType = (type: EntryType): Parameters<typeof CareIcon>[0]['type'] => {
     switch (type) {
-      case 'watering':
-      case 'fertilizing':
-        return type;
+      case 'care':
+        return 'watering';
+      case 'measurement':
+        return 'custom';
       default:
         return 'custom';
     }
@@ -83,7 +70,7 @@ export const CareTypeButton: Component<CareTypeButtonProps> = (props) => {
         'flex flex-col items-center justify-center space-y-1 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
         variantClasses[local.variant || 'default'],
         sizeClasses[local.size || 'md'],
-        careTypeClasses[local.careType as keyof typeof careTypeClasses] || careTypeClasses.custom,
+        careTypeClasses[local.careType as keyof typeof careTypeClasses] || careTypeClasses.care,
         local.class
       )}
       {...rest}
@@ -99,7 +86,7 @@ export const CareTypeButton: Component<CareTypeButtonProps> = (props) => {
             )}
             {(local.showLabel !== false) && (
               <span class="care-type-label">
-                {careTypeLabels[local.careType as keyof typeof careTypeLabels] || local.careType}
+                {careTypeLabels[local.careType] || local.careType}
               </span>
             )}
           </>

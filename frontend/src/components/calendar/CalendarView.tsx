@@ -19,13 +19,20 @@ import {
 
 type TrackingEntry = components['schemas']['TrackingEntry'];
 
+function deriveEntryType(entry: TrackingEntry): 'care' | 'measurement' | 'photo' | 'note' {
+  if (entry.careTaskIds && entry.careTaskIds.length > 0) return 'care';
+  if (entry.measurements && entry.measurements.length > 0) return 'measurement';
+  if (entry.photoIds && entry.photoIds.length > 0) return 'photo';
+  return 'note';
+}
+
 interface CalendarEvent {
   id: string;
   title: string;
   plant: Plant;
   entry: TrackingEntry;
   date: Date;
-  type: 'watering' | 'fertilizing' | 'note' | 'customMetric';
+  type: 'care' | 'measurement' | 'note' | 'photo';
 }
 
 interface CalendarViewProps {
@@ -152,7 +159,8 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
         try {
           const response = await plantsStore.getTrackingEntries(plant.id);
           for (const entry of response.entries) {
-            if (props.selectedTypes?.length && !props.selectedTypes.includes(entry.entryType)) {
+            const entryType = deriveEntryType(entry);
+            if (props.selectedTypes?.length && !props.selectedTypes.includes(entryType)) {
               continue;
             }
             allEvents.push({
@@ -161,7 +169,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
               plant,
               entry,
               date: new Date(entry.timestamp),
-              type: entry.entryType as 'watering' | 'fertilizing' | 'note' | 'customMetric'
+              type: entryType
             });
           }
         } catch (error) {
@@ -178,21 +186,21 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
   };
 
   const getEventTitle = (entry: TrackingEntry, plant: Plant) => {
-    switch (entry.entryType) {
-      case 'watering': return `💧 ${plant.name}`;
-      case 'fertilizing': return `🌱 ${plant.name}`;
+    switch (deriveEntryType(entry)) {
+      case 'care': return `✅ ${plant.name}`;
+      case 'measurement': return `📊 ${plant.name}`;
       case 'note': return `📝 ${plant.name}`;
-      case 'customMetric': return `📊 ${plant.name}`;
+      case 'photo': return `📷 ${plant.name}`;
       default: return plant.name;
     }
   };
 
   const getEventColor = (type: string) => {
     switch (type) {
-      case 'watering': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'fertilizing': return 'bg-green-100 text-green-800 border-green-200';
+      case 'care': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'measurement': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'note': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'customMetric': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'photo': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -675,7 +683,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
 
   const getActivityDots = (date: Date) => {
     const dayEvents = getEventsForDate(date);
-    const activities = { watering: false, fertilizing: false, note: false, customMetric: false };
+    const activities = { care: false, measurement: false, note: false, photo: false };
     dayEvents.forEach(event => { activities[event.type] = true; });
     return activities;
   };
@@ -706,17 +714,17 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                   {day.getDate()}
                 </span>
                 <span class="mc-dots">
-                  <Show when={activities.watering}>
+                  <Show when={activities.care}>
                     <i class="mc-dot bg-blue-500"></i>
                   </Show>
-                  <Show when={activities.fertilizing}>
-                    <i class="mc-dot bg-green-500"></i>
+                  <Show when={activities.measurement}>
+                    <i class="mc-dot bg-purple-500"></i>
                   </Show>
                   <Show when={activities.note}>
                     <i class="mc-dot bg-gray-400"></i>
                   </Show>
-                  <Show when={activities.customMetric}>
-                    <i class="mc-dot bg-purple-500"></i>
+                  <Show when={activities.photo}>
+                    <i class="mc-dot bg-indigo-500"></i>
                   </Show>
                 </span>
               </button>

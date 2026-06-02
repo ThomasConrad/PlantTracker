@@ -1,5 +1,9 @@
 use axum::{
+    body::Body,
+    extract::Multipart,
+    http::{header, StatusCode},
     response::Json,
+    response::Response,
     routing::{delete, get, post, put},
     Router,
 };
@@ -13,6 +17,7 @@ use crate::models::{
     UpdateProfileRequest, UserResponse, UserRole,
 };
 use crate::utils::errors::{AppError, Result};
+use crate::utils::image_processing::process_uploaded_image;
 
 const DEFAULT_ADMIN_INVITE_LIMIT: i32 = 50;
 
@@ -23,6 +28,12 @@ pub fn routes() -> Router<AppState> {
         .route("/logout", post(logout))
         .route("/me", get(me))
         .route("/profile", put(update_profile))
+        .route(
+            "/profile-picture",
+            post(upload_profile_picture)
+                .get(get_profile_picture)
+                .delete(delete_profile_picture),
+        )
         .route("/change-password", post(change_password))
         .route("/export", get(export_data))
         .route("/account", delete(delete_account))
@@ -242,6 +253,101 @@ async fn update_profile(
     .await?;
 
     Ok(Json(updated_user.into()))
+}
+
+async fn upload_profile_picture(
+    auth_session: AuthSession,
+    mut multipart: Multipart,
+) -> Result<(StatusCode, Json<serde_json::Value>)> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    let mut file_data: Option<Vec<u8>> = None;
+    let mut content_type: Option<String> = None;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|_| AppError::Validation(validator::ValidationErrors::new()))?
+    {
+        if field.name().unwrap_or("") == "file" {
+            content_type = field.content_type().map(|s| s.to_string());
+            file_data = Some(
+                field
+                    .bytes()
+                    .await
+                    .map_err(|_| AppError::Validation(validator::ValidationErrors::new()))?
+                    .to_vec(),
+            );
+        }
+    }
+
+    let file_data =
+        file_data.ok_or_else(|| AppError::Validation(validator::ValidationErrors::new()))?;
+    let content_type =
+        content_type.ok_or_else(|| AppError::Validation(validator::ValidationErrors::new()))?;
+
+    if !content_type.starts_with("image/") {
+        return Err(AppError::Validation(validator::ValidationErrors::new()));
+    }
+
+    if file_data.len() > 10 * 1024 * 1024 {
+        return Err(AppError::Validation(validator::ValidationErrors::new()));
+    }
+
+    let processed = process_uploaded_image(&file_data, &content_type)
+        .await
+        .map_err(|_| AppError::Validation(validator::ValidationErrors::new()))?;
+
+    db_users::set_user_profile_picture(
+        &auth_session.backend.db,
+        &user.id,
+        &processed.data,
+        &processed.content_type,
+    )
+    .await?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "success": true,
+            "message": "Profile picture updated"
+        })),
+    ))
+}
+
+async fn get_profile_picture(auth_session: AuthSession) -> Result<Response<Body>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    let picture = db_users::get_user_profile_picture(&auth_session.backend.db, &user.id).await?;
+
+    let (data, content_type) = picture.ok_or(AppError::NotFound {
+        resource: "Profile picture".to_string(),
+    })?;
+
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::CONTENT_LENGTH, data.len())
+        .header(header::CACHE_CONTROL, "private, max-age=3600")
+        .body(Body::from(data))
+        .map_err(|_| AppError::Internal {
+            message: "Failed to build response".to_string(),
+        })?;
+
+    Ok(response)
+}
+
+async fn delete_profile_picture(auth_session: AuthSession) -> Result<StatusCode> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    db_users::delete_user_profile_picture(&auth_session.backend.db, &user.id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[utoipa::path(

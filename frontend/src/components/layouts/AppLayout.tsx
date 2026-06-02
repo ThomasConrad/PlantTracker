@@ -10,6 +10,7 @@ interface AppLayoutProps {
 
 export const AppLayout: Component<AppLayoutProps> = (props) => {
   const [showUserMenu, setShowUserMenu] = createSignal(false);
+  const [avatarLoadError, setAvatarLoadError] = createSignal(false);
 
   createEffect(() => {
     if (authStore.isAuthenticated) {
@@ -17,6 +18,11 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
     } else {
       remindersStore.stopPolling();
     }
+  });
+
+  createEffect(() => {
+    authStore.user?.updatedAt;
+    setAvatarLoadError(false);
   });
 
   onCleanup(() => remindersStore.stopPolling());
@@ -111,9 +117,21 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
                   aria-label="User menu"
                 >
                   <div class="icon-container-md bg-gray-300">
-                    <span class="text-sm font-medium text-gray-700">
-                      {authStore.user?.name?.[0]?.toUpperCase() || 'U'}
-                    </span>
+                    <Show
+                      when={!avatarLoadError()}
+                      fallback={
+                        <span class="text-sm font-medium text-gray-700">
+                          {authStore.user?.name?.[0]?.toUpperCase() || 'U'}
+                        </span>
+                      }
+                    >
+                      <img
+                        src={`/api/v1/auth/profile-picture?v=${encodeURIComponent(authStore.user?.updatedAt || '')}`}
+                        alt="Profile"
+                        class="h-full w-full object-cover rounded-full"
+                        onError={() => setAvatarLoadError(true)}
+                      />
+                    </Show>
                   </div>
                   <svg
                     class="h-5 w-5"
@@ -192,6 +210,18 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                           Calendar Settings
+                        </div>
+                      </A>
+                      <A
+                        href="/settings"
+                        class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <div class="flex items-center">
+                          <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          User Settings
                         </div>
                       </A>
                       <button

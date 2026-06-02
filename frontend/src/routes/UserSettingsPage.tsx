@@ -8,6 +8,7 @@ export const UserSettingsPage: Component = () => {
   const [passwordSaving, setPasswordSaving] = createSignal(false);
   const [exportLoading, setExportLoading] = createSignal(false);
   const [deleteLoading, setDeleteLoading] = createSignal(false);
+  const [pictureSaving, setPictureSaving] = createSignal(false);
 
   const [success, setSuccess] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
@@ -20,6 +21,8 @@ export const UserSettingsPage: Component = () => {
   const [newPassword, setNewPassword] = createSignal('');
   const [confirmPassword, setConfirmPassword] = createSignal('');
   const [deletePassword, setDeletePassword] = createSignal('');
+  const [avatarLoadError, setAvatarLoadError] = createSignal(false);
+  const [pictureVersion, setPictureVersion] = createSignal<string>(Date.now().toString());
 
   onMount(() => {
     if (authStore.user) {
@@ -33,6 +36,45 @@ export const UserSettingsPage: Component = () => {
   const showSuccess = (message: string) => {
     setSuccess(message);
     setTimeout(() => setSuccess(null), 4000);
+  };
+
+  const avatarUrl = () => apiClient.getProfilePictureUrl(pictureVersion());
+
+  const handleProfilePictureUpload = async (e: Event) => {
+    const input = e.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    try {
+      setPictureSaving(true);
+      await apiClient.uploadProfilePicture(file);
+      await authStore.initializeAuth();
+      setPictureVersion(Date.now().toString());
+      setAvatarLoadError(false);
+      showSuccess('Profile picture updated.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload profile picture');
+    } finally {
+      setPictureSaving(false);
+      input.value = '';
+    }
+  };
+
+  const handleRemoveProfilePicture = async () => {
+    setError(null);
+    try {
+      setPictureSaving(true);
+      await apiClient.deleteProfilePicture();
+      await authStore.initializeAuth();
+      setPictureVersion(Date.now().toString());
+      setAvatarLoadError(true);
+      showSuccess('Profile picture removed.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to remove profile picture');
+    } finally {
+      setPictureSaving(false);
+    }
   };
 
   const handleProfileSave = async (e: Event) => {
@@ -148,6 +190,49 @@ export const UserSettingsPage: Component = () => {
         <div class="px-4 py-5 sm:p-6">
           <h2 class="text-lg font-medium text-gray-900 mb-6">Profile Information</h2>
           <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Profile Picture</label>
+              <div class="flex items-center gap-4">
+                <div class="h-16 w-16 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+                  <Show
+                    when={!avatarLoadError()}
+                    fallback={
+                      <span class="text-lg font-semibold text-gray-700">
+                        {authStore.user?.name?.[0]?.toUpperCase() || 'U'}
+                      </span>
+                    }
+                  >
+                    <img
+                      src={avatarUrl()}
+                      alt="Profile"
+                      class="h-full w-full object-cover"
+                      onError={() => setAvatarLoadError(true)}
+                      onLoad={() => setAvatarLoadError(false)}
+                    />
+                  </Show>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <label class="inline-flex cursor-pointer justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">
+                    {pictureSaving() ? 'Uploading...' : 'Upload'}
+                    <input
+                      type="file"
+                      class="hidden"
+                      accept="image/*"
+                      onChange={handleProfilePictureUpload}
+                      disabled={pictureSaving()}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRemoveProfilePicture}
+                    disabled={pictureSaving() || avatarLoadError()}
+                    class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
             <div>
               <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
               <input

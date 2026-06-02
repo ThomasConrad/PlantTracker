@@ -17,15 +17,10 @@ import {
 } from '@/utils/touch';
 
 export const PlantDetailPage: Component = () => {
-  type QuickCareType = 'watering' | 'fertilizing';
-
   const params = useParams();
   const [showArchiveConfirm, setShowArchiveConfirm] = createSignal(false);
   const [archiving, setArchiving] = createSignal(false);
-  const [quickActionLoading, setQuickActionLoading] = createSignal<Record<QuickCareType, boolean>>({
-    watering: false,
-    fertilizing: false,
-  });
+  const [quickActionLoading, setQuickActionLoading] = createSignal<Record<string, boolean>>({});
   const [quickActionError, setQuickActionError] = createSignal<string | null>(null);
   
   // Mobile slide-up panel state
@@ -244,24 +239,24 @@ export const PlantDetailPage: Component = () => {
     }
   };
 
-  const handleQuickCare = async (entryType: QuickCareType) => {
+  const handleQuickCare = async (careTaskId: string) => {
     try {
       setQuickActionError(null);
-      setQuickActionLoading((prev) => ({ ...prev, [entryType]: true }));
+      setQuickActionLoading((prev) => ({ ...prev, [careTaskId]: true }));
       await plantsStore.createTrackingEntry(params.id, {
-        entryType,
+        careTaskIds: [careTaskId],
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
       console.error('Failed to create quick care entry:', error);
       setQuickActionError('Could not save that action. Please try again.');
     } finally {
-      setQuickActionLoading((prev) => ({ ...prev, [entryType]: false }));
+      setQuickActionLoading((prev) => ({ ...prev, [careTaskId]: false }));
     }
   };
 
   const QuickCareButton: Component<{
-    entryType: QuickCareType;
+    careTaskId: string;
     label: string;
     overdue?: boolean;
     size?: 'sm' | 'md' | 'lg';
@@ -271,8 +266,8 @@ export const PlantDetailPage: Component = () => {
       variant={props.overdue ? 'danger' : 'primary'}
       size={props.size || 'sm'}
       class={props.class}
-      onClick={() => handleQuickCare(props.entryType)}
-      loading={quickActionLoading()[props.entryType]}
+      onClick={() => handleQuickCare(props.careTaskId)}
+      loading={quickActionLoading()[props.careTaskId]}
     >
       {props.label}
     </Button>
@@ -352,23 +347,16 @@ export const PlantDetailPage: Component = () => {
     >
       {(() => {
         const plant = plantsStore.selectedPlant!;
-        const fertilizingEnabled = Boolean(plant.fertilizingSchedule?.intervalDays);
-        const wateringStatus = getCareStatus(
-          plant.lastWatered ?? null,
-          plant.wateringSchedule?.intervalDays ?? null,
-          'Watering'
-        );
-        const fertilizingStatus = getCareStatus(
-          plant.lastFertilized ?? null,
-          plant.fertilizingSchedule?.intervalDays ?? null,
-          'Fertilizing'
-        );
-        const wateringIntervalDays = plant.wateringSchedule?.intervalDays;
-        const wateringOverdue = Boolean(wateringIntervalDays) &&
-          isOverdue(plant.lastWatered ?? null, wateringIntervalDays!);
-        const fertilizingOverdue =
-          fertilizingEnabled &&
-          isOverdue(plant.lastFertilized ?? null, plant.fertilizingSchedule!.intervalDays!);
+        const activeTasks = (plant.careTasks || []).filter(t => !t.archivedAt);
+        const taskStatuses = activeTasks.map(task => ({
+          task,
+          status: getCareStatus(
+            task.lastPerformed ?? null,
+            task.intervalDays ?? null,
+            task.name
+          ),
+          overdue: Boolean(task.intervalDays) && isOverdue(task.lastPerformed ?? null, task.intervalDays!),
+        }));
         
         if (isMobile()) {
           // Mobile layout with slide-up panel (same pattern as calendar)
@@ -463,23 +451,16 @@ export const PlantDetailPage: Component = () => {
                   <div class="space-y-5">
                     {/* Quick care buttons */}
                     <div class="sticky top-0 z-40 bg-white border-b border-gray-100 shadow-sm px-4 py-3">
-                      <div class={`grid gap-3 ${fertilizingEnabled ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        <QuickCareButton
-                          entryType="watering"
-                          label="Water now"
-                          overdue={wateringOverdue}
-                          size="md"
-                          class="min-h-[44px] w-full"
-                        />
-                        <Show when={fertilizingEnabled}>
+                      <div class={`grid gap-3 ${taskStatuses.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                        {taskStatuses.map(({ task, overdue }) => (
                           <QuickCareButton
-                            entryType="fertilizing"
-                            label="Fertilize now"
-                            overdue={fertilizingOverdue}
+                            careTaskId={task.id}
+                            label={`${task.icon || ''} ${task.name} now`.trim()}
+                            overdue={overdue}
                             size="md"
                             class="min-h-[44px] w-full"
                           />
-                        </Show>
+                        ))}
                       </div>
                       <Show when={quickActionError()}>
                         <p class="text-xs text-red-600 mt-2">{quickActionError()}</p>
@@ -492,46 +473,27 @@ export const PlantDetailPage: Component = () => {
                           <h2 class="text-base font-semibold text-gray-900">Care Today</h2>
                         </div>
                         <div class="p-4 space-y-3">
-                          <div class={`rounded-xl border p-3 ${wateringStatus.statusClass}`}>
-                            <div class="flex items-start justify-between gap-3">
-                              <div class="min-w-0">
-                                <div class="flex items-center gap-2">
-                                  <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M7 16a5 5 0 0010 0c0-3-5-8-5-8s-5 5-5 8z" />
-                                  </svg>
-                                  <p class="text-sm font-semibold">{wateringStatus.title}</p>
-                                </div>
-                                <p class="text-xs mt-1 opacity-90">{wateringStatus.detail}</p>
-                                <Show when={plant.lastWatered}>
-                                  <p class="text-xs mt-2 opacity-80">Last watered: {formatDate(plant.lastWatered!)}</p>
-                                </Show>
-                              </div>
-                              <span class={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${wateringStatus.badgeClass}`}>
-                                {wateringStatus.badgeLabel}
-                              </span>
-                            </div>
-                          </div>
-
-                          <Show when={fertilizingEnabled}>
-                            <div class={`rounded-xl border p-3 ${fertilizingStatus.statusClass}`}>
+                          {taskStatuses.map(({ task, status }) => (
+                            <div class={`rounded-xl border p-3 ${status.statusClass}`}>
                               <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                   <div class="flex items-center gap-2">
-                                    <svg class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                    </svg>
-                                    <p class="text-sm font-semibold">{fertilizingStatus.title}</p>
+                                    <span class="text-sm">{task.icon || '🌱'}</span>
+                                    <p class="text-sm font-semibold">{status.title}</p>
                                   </div>
-                                  <p class="text-xs mt-1 opacity-90">{fertilizingStatus.detail}</p>
-                                  <Show when={plant.lastFertilized}>
-                                    <p class="text-xs mt-2 opacity-80">Last fertilized: {formatDate(plant.lastFertilized!)}</p>
+                                  <p class="text-xs mt-1 opacity-90">{status.detail}</p>
+                                  <Show when={task.lastPerformed}>
+                                    <p class="text-xs mt-2 opacity-80">Last: {formatDate(task.lastPerformed!)}</p>
                                   </Show>
                                 </div>
-                                <span class={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${fertilizingStatus.badgeClass}`}>
-                                  {fertilizingStatus.badgeLabel}
+                                <span class={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${status.badgeClass}`}>
+                                  {status.badgeLabel}
                                 </span>
                               </div>
                             </div>
+                          ))}
+                          <Show when={taskStatuses.length === 0}>
+                            <p class="text-sm text-gray-500">No care tasks configured.</p>
                           </Show>
                         </div>
                       </section>
@@ -686,31 +648,22 @@ export const PlantDetailPage: Component = () => {
                             <h2 class="text-base sm:text-lg font-semibold text-gray-900">Care Today</h2>
                           </div>
                           <div class="p-4 sm:p-6 space-y-4">
-                            <div class={`rounded-xl border p-4 ${wateringStatus.statusClass}`}>
-                              <div class="flex items-start justify-between gap-4">
-                                <div>
-                                  <p class="text-sm font-semibold">{wateringStatus.title}</p>
-                                  <p class="text-xs mt-1 opacity-90">{wateringStatus.detail}</p>
-                                  <Show when={plant.lastWatered}>
-                                    <p class="text-xs mt-2 opacity-80">Last watered: {formatDate(plant.lastWatered!)}</p>
-                                  </Show>
-                                </div>
-                                <QuickCareButton entryType="watering" label="Water now" overdue={wateringOverdue} />
-                              </div>
-                            </div>
-                            <Show when={fertilizingEnabled}>
-                              <div class={`rounded-xl border p-4 ${fertilizingStatus.statusClass}`}>
+                            {taskStatuses.map(({ task, status, overdue }) => (
+                              <div class={`rounded-xl border p-4 ${status.statusClass}`}>
                                 <div class="flex items-start justify-between gap-4">
                                   <div>
-                                    <p class="text-sm font-semibold">{fertilizingStatus.title}</p>
-                                    <p class="text-xs mt-1 opacity-90">{fertilizingStatus.detail}</p>
-                                    <Show when={plant.lastFertilized}>
-                                      <p class="text-xs mt-2 opacity-80">Last fertilized: {formatDate(plant.lastFertilized!)}</p>
+                                    <p class="text-sm font-semibold">{task.icon || '🌱'} {status.title}</p>
+                                    <p class="text-xs mt-1 opacity-90">{status.detail}</p>
+                                    <Show when={task.lastPerformed}>
+                                      <p class="text-xs mt-2 opacity-80">Last: {formatDate(task.lastPerformed!)}</p>
                                     </Show>
                                   </div>
-                                  <QuickCareButton entryType="fertilizing" label="Fertilize now" overdue={fertilizingOverdue} />
+                                  <QuickCareButton careTaskId={task.id} label={`${task.name} now`} overdue={overdue} />
                                 </div>
                               </div>
+                            ))}
+                            <Show when={taskStatuses.length === 0}>
+                              <p class="text-sm text-gray-500">No care tasks configured.</p>
                             </Show>
                             <Show when={quickActionError()}>
                               <p class="text-sm text-red-600">{quickActionError()}</p>

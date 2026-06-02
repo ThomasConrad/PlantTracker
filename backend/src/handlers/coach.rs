@@ -339,27 +339,34 @@ async fn dismiss_suggestion(
 }
 
 fn build_system_prompt(plant: &crate::models::PlantResponse) -> String {
-    let watering_info = if let Some(days) = plant.watering_schedule.interval_days {
-        format!("every {} days", days)
+    let care_tasks_info = if plant.care_tasks.is_empty() {
+        "No care tasks configured yet.".to_string()
     } else {
-        "no schedule set".to_string()
+        plant
+            .care_tasks
+            .iter()
+            .map(|t| {
+                let schedule = t.task.interval_days
+                    .map(|d| format!("every {} days", d))
+                    .unwrap_or_else(|| "manual/one-off".to_string());
+                let last = t.task.last_performed
+                    .map(|d| d.to_rfc3339())
+                    .unwrap_or_else(|| "never".to_string());
+                let due_info = if t.is_due {
+                    format!(" [OVERDUE by {} days]", t.days_overdue.unwrap_or(0))
+                } else if let Some(days) = t.days_overdue {
+                    format!(" [due in {} days]", -days)
+                } else {
+                    String::new()
+                };
+                format!("  - {} ({}): schedule={}, last={}{}", 
+                    t.task.name, 
+                    t.task.icon.as_deref().unwrap_or(""),
+                    schedule, last, due_info)
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     };
-
-    let fertilizing_info = if let Some(days) = plant.fertilizing_schedule.interval_days {
-        format!("every {} days", days)
-    } else {
-        "no schedule set".to_string()
-    };
-
-    let last_watered = plant
-        .last_watered
-        .map(|d| d.to_rfc3339())
-        .unwrap_or_else(|| "never".to_string());
-
-    let last_fertilized = plant
-        .last_fertilized
-        .map(|d| d.to_rfc3339())
-        .unwrap_or_else(|| "never".to_string());
 
     format!(
         "You are an expert plant care coach. You help users take care of their plants by analyzing photos, \
@@ -370,10 +377,7 @@ fn build_system_prompt(plant: &crate::models::PlantResponse) -> String {
          Plant context:\n\
          - Name: {}\n\
          - Genus: {}\n\
-         - Watering schedule: {}\n\
-         - Fertilizing schedule: {}\n\
-         - Last watered: {}\n\
-         - Last fertilized: {}",
-        plant.name, plant.genus, watering_info, fertilizing_info, last_watered, last_fertilized
+         - Care tasks:\n{}",
+        plant.name, plant.genus, care_tasks_info
     )
 }

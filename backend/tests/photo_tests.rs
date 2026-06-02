@@ -279,6 +279,92 @@ async fn test_delete_photo() {
 }
 
 #[tokio::test]
+async fn test_delete_photo_removes_references_from_tracking_entries() {
+    let app = TestApp::new().await;
+
+    common::create_test_user(
+        &app,
+        "photo-entry-cleanup@example.com",
+        "Photo Entry Cleanup User",
+        "password123",
+    )
+    .await;
+
+    let plant = common::create_test_plant(&app, "Cleanup Plant", "Cleanupicus").await;
+    let plant_id = plant["id"].as_str().unwrap();
+
+    // Upload a photo and reference it in a note entry.
+    let test_image_data = common::create_test_image_data(8, 8);
+    let part = Part::bytes(test_image_data)
+        .file_name("cleanup.jpg")
+        .mime_str("image/jpeg")
+        .expect("Failed to create part");
+    let form = Form::new().part("file", part);
+
+    let upload_response = app
+        .client
+        .post(app.url(&format!("/plants/{}/photos", plant_id)))
+        .multipart(form)
+        .send()
+        .await
+        .expect("Failed to upload photo");
+    assert_eq!(upload_response.status(), 201);
+
+    let upload_body: serde_json::Value = upload_response
+        .json()
+        .await
+        .expect("Failed to parse upload response");
+    let photo_id = upload_body["id"].as_str().unwrap();
+
+    let entry_response = app
+        .client
+        .post(app.url(&format!("/plants/{}/entries", plant_id)))
+        .json(&serde_json::json!({
+            "entryType": "note",
+            "timestamp": "2024-01-01T16:00:00Z",
+            "notes": "Entry with photo",
+            "photoIds": [photo_id]
+        }))
+        .send()
+        .await
+        .expect("Failed to create entry");
+    assert_eq!(entry_response.status(), 201);
+
+    // Delete the photo.
+    let delete_response = app
+        .client
+        .delete(app.url(&format!("/plants/{}/photos/{}", plant_id, photo_id)))
+        .send()
+        .await
+        .expect("Failed to delete photo");
+    assert_eq!(delete_response.status(), 204);
+
+    // Confirm the entry no longer references the deleted photo.
+    let entries_response = app
+        .client
+        .get(app.url(&format!("/plants/{}/entries", plant_id)))
+        .send()
+        .await
+        .expect("Failed to list entries");
+    assert_eq!(entries_response.status(), 200);
+
+    let entries_body: serde_json::Value = entries_response
+        .json()
+        .await
+        .expect("Failed to parse entries response");
+    let entries = entries_body["entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 1);
+    let first_entry = &entries[0];
+    assert!(
+        first_entry["photoIds"].is_null()
+            || first_entry["photoIds"]
+                .as_array()
+                .map(|ids| ids.is_empty())
+                .unwrap_or(false)
+    );
+}
+
+#[tokio::test]
 async fn test_delete_nonexistent_photo() {
     let app = TestApp::new().await;
 

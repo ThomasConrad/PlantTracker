@@ -56,6 +56,7 @@ pub async fn run_migrations(pool: &DatabasePool) -> Result<()> {
     Ok(())
 }
 
+pub mod care_tasks;
 pub mod coach;
 pub mod google_oauth;
 pub mod invites;

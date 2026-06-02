@@ -1105,6 +1105,493 @@
         ]
       }
     },
+    "/plants/{plant_id}/care-tasks": {
+      "get": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "list_care_tasks",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeArchived",
+            "in": "query",
+            "description": "Include archived tasks",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of care tasks for plant",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTasksResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "create_care_task",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCareTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Care task created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTaskWithStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{plant_id}/care-tasks/reorder": {
+      "put": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "reorder_care_tasks",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderCareTasksRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Care tasks reordered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTasksResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{plant_id}/care-tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "get_care_task",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Care task ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Care task details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTaskWithStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "update_care_task",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Care task ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCareTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Care task updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTaskWithStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "delete_care_task",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Care task ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Care task deleted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{plant_id}/care-tasks/{task_id}/archive": {
+      "post": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "archive_care_task",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Care task ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Care task archived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTaskWithStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{plant_id}/care-tasks/{task_id}/log": {
+      "post": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "log_care_task",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Care task ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogCareTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Care task logged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogCareTaskResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{plant_id}/care-tasks/{task_id}/unarchive": {
+      "post": {
+        "tags": [
+          "care_tasks"
+        ],
+        "operationId": "unarchive_care_task",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "task_id",
+            "in": "path",
+            "description": "Care task ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Care task unarchived",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CareTaskWithStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/plants/{plant_id}/entries": {
       "get": {
         "tags": [
@@ -1436,35 +1923,147 @@
           }
         }
       },
-      "CareSchedule": {
+      "CareTask": {
         "type": "object",
+        "description": "A care task represents a specific type of care activity for a plant.\nExamples: \"Water\", \"Fertilize\", \"Prune leaves\", \"Repot\", \"Rotate\", \"Mist\", etc.\nEach can optionally have a recurring schedule (interval_days).",
+        "required": [
+          "id",
+          "plantId",
+          "userId",
+          "name",
+          "sortOrder",
+          "createdAt",
+          "updatedAt"
+        ],
         "properties": {
           "amount": {
             "type": "number",
             "format": "double",
             "nullable": true
           },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
           "intervalDays": {
             "type": "integer",
             "format": "int32",
             "nullable": true
           },
+          "lastPerformed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
           "notes": {
             "type": "string",
             "nullable": true
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
           },
           "unit": {
             "type": "string",
             "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
-      "CreateCareScheduleRequest": {
+      "CareTaskWithStatus": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CareTask"
+          },
+          {
+            "type": "object",
+            "required": [
+              "isDue"
+            ],
+            "properties": {
+              "daysOverdue": {
+                "type": "integer",
+                "format": "int64",
+                "description": "How many days overdue (negative = days until due, 0 = due today, positive = overdue)",
+                "nullable": true
+              },
+              "isDue": {
+                "type": "boolean",
+                "description": "Whether the task is currently due"
+              },
+              "nextDue": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When this task is next due (None if no interval or never performed with no interval)",
+                "nullable": true
+              }
+            }
+          }
+        ],
+        "description": "Computed view of a care task with due-date info for the frontend"
+      },
+      "CareTasksResponse": {
         "type": "object",
+        "required": [
+          "tasks"
+        ],
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareTaskWithStatus"
+            }
+          }
+        }
+      },
+      "CreateCareTaskRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
         "properties": {
           "amount": {
             "type": "number",
             "format": "double",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
             "nullable": true
           },
           "intervalDays": {
@@ -1472,8 +2071,21 @@
             "format": "int32",
             "nullable": true
           },
+          "lastPerformed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
           "notes": {
             "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           },
           "unit": {
@@ -1545,37 +2157,32 @@
           }
         }
       },
-      "CreatePlantRequest": {
+      "CreatePlantCareTaskInput": {
         "type": "object",
+        "description": "Inline care task definition used when creating a plant",
         "required": [
-          "name",
-          "genus"
+          "name"
         ],
         "properties": {
-          "customMetrics": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CreateCustomMetricRequest"
-            },
+          "amount": {
+            "type": "number",
+            "format": "double",
             "nullable": true
           },
-          "fertilizingSchedule": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CreateCareScheduleRequest"
-              }
-            ],
-            "nullable": true
-          },
-          "genus": {
-            "type": "string"
-          },
-          "lastFertilized": {
+          "color": {
             "type": "string",
-            "format": "date-time",
             "nullable": true
           },
-          "lastWatered": {
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "intervalDays": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lastPerformed": {
             "type": "string",
             "format": "date-time",
             "nullable": true
@@ -1583,29 +2190,67 @@
           "name": {
             "type": "string"
           },
-          "wateringSchedule": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CreateCareScheduleRequest"
-              }
-            ],
+          "notes": {
+            "type": "string",
             "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "CreatePlantRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "genus"
+        ],
+        "properties": {
+          "careTasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatePlantCareTaskInput"
+            },
+            "description": "Initial care tasks to create with the plant",
+            "nullable": true
+          },
+          "customMetrics": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateCustomMetricRequest"
+            },
+            "nullable": true
+          },
+          "genus": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
       "CreateTrackingEntryRequest": {
         "type": "object",
         "required": [
-          "entryType",
           "timestamp"
         ],
         "properties": {
-          "entryType": {
-            "$ref": "#/components/schemas/EntryType"
+          "careTaskIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Care tasks to mark as completed",
+            "nullable": true
           },
-          "metricId": {
-            "type": "string",
-            "format": "uuid",
+          "measurements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "description": "Measurements to record",
             "nullable": true
           },
           "notes": {
@@ -1618,14 +2263,12 @@
               "type": "string",
               "format": "uuid"
             },
+            "description": "Photo IDs to attach",
             "nullable": true
           },
           "timestamp": {
             "type": "string",
             "format": "date-time"
-          },
-          "value": {
-            "nullable": true
           }
         }
       },
@@ -1705,6 +2348,8 @@
         "required": [
           "plantId",
           "plantName",
+          "careTaskId",
+          "careTaskName",
           "reminderType",
           "dueAt",
           "dueDate",
@@ -1714,6 +2359,12 @@
         "properties": {
           "alreadySent": {
             "type": "boolean"
+          },
+          "careTaskId": {
+            "type": "string"
+          },
+          "careTaskName": {
+            "type": "string"
           },
           "daysOverdue": {
             "type": "integer",
@@ -1760,14 +2411,11 @@
           }
         }
       },
-      "EntryType": {
+      "FirstDayOfWeek": {
         "type": "string",
         "enum": [
-          "watering",
-          "fertilizing",
-          "customMetric",
-          "note",
-          "photo"
+          "sunday",
+          "monday"
         ]
       },
       "GoogleOAuthCallbackRequest": {
@@ -1946,6 +2594,47 @@
           }
         }
       },
+      "LogCareTaskRequest": {
+        "type": "object",
+        "description": "Request to log a care task completion (creates a tracking entry + updates last_performed)",
+        "properties": {
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "photoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "value": {
+            "nullable": true
+          }
+        }
+      },
+      "LogCareTaskResponse": {
+        "type": "object",
+        "required": [
+          "task",
+          "entry"
+        ],
+        "properties": {
+          "entry": {
+            "$ref": "#/components/schemas/TrackingEntry"
+          },
+          "task": {
+            "$ref": "#/components/schemas/CareTaskWithStatus"
+          }
+        }
+      },
       "LoginRequest": {
         "type": "object",
         "required": [
@@ -1959,6 +2648,21 @@
           "password": {
             "type": "string"
           }
+        }
+      },
+      "Measurement": {
+        "type": "object",
+        "description": "A single measurement within a tracking entry",
+        "required": [
+          "metricId",
+          "value"
+        ],
+        "properties": {
+          "metricId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "value": {}
         }
       },
       "MetricDataType": {
@@ -2043,9 +2747,8 @@
           "id",
           "name",
           "genus",
-          "wateringSchedule",
-          "fertilizingSchedule",
           "customMetrics",
+          "careTasks",
           "createdAt",
           "updatedAt",
           "userId"
@@ -2055,6 +2758,12 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "careTasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CareTaskWithStatus"
+            }
           },
           "createdAt": {
             "type": "string",
@@ -2066,25 +2775,12 @@
               "$ref": "#/components/schemas/CustomMetric"
             }
           },
-          "fertilizingSchedule": {
-            "$ref": "#/components/schemas/CareSchedule"
-          },
           "genus": {
             "type": "string"
           },
           "id": {
             "type": "string",
             "format": "uuid"
-          },
-          "lastFertilized": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "lastWatered": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
           },
           "name": {
             "type": "string"
@@ -2104,9 +2800,6 @@
           },
           "userId": {
             "type": "string"
-          },
-          "wateringSchedule": {
-            "$ref": "#/components/schemas/CareSchedule"
           }
         }
       },
@@ -2139,6 +2832,13 @@
           }
         }
       },
+      "PreferredUnits": {
+        "type": "string",
+        "enum": [
+          "metric",
+          "imperial"
+        ]
+      },
       "ReminderPreferences": {
         "type": "object",
         "required": [
@@ -2159,6 +2859,22 @@
           },
           "timezone": {
             "type": "string"
+          }
+        }
+      },
+      "ReorderCareTasksRequest": {
+        "type": "object",
+        "required": [
+          "taskIds"
+        ],
+        "properties": {
+          "taskIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Ordered list of care task IDs in desired order"
           }
         }
       },
@@ -2264,29 +2980,38 @@
       },
       "TrackingEntry": {
         "type": "object",
+        "description": "A tracking entry is a timestamped event on a plant that can combine any of:\n- Care task completions (which care tasks were performed)\n- Measurements (metric + value pairs)\n- Notes (free text)\n- Photos (attached images)",
         "required": [
           "id",
           "plantId",
-          "entryType",
           "timestamp",
           "createdAt",
           "updatedAt"
         ],
         "properties": {
+          "careTaskIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Care tasks completed in this entry",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "entryType": {
-            "$ref": "#/components/schemas/EntryType"
           },
           "id": {
             "type": "string",
             "format": "uuid"
           },
-          "metricId": {
-            "type": "string",
-            "format": "uuid",
+          "measurements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "description": "Measurements recorded in this entry",
             "nullable": true
           },
           "notes": {
@@ -2294,6 +3019,12 @@
             "nullable": true
           },
           "photoIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Photo IDs attached to this entry",
             "nullable": true
           },
           "plantId": {
@@ -2307,9 +3038,6 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "value": {
-            "nullable": true
           }
         }
       },
@@ -2332,7 +3060,7 @@
           }
         }
       },
-      "UpdateCareScheduleRequest": {
+      "UpdateCareTaskRequest": {
         "type": "object",
         "properties": {
           "amount": {
@@ -2340,13 +3068,35 @@
             "format": "double",
             "nullable": true
           },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
           "intervalDays": {
             "type": "integer",
             "format": "int32",
             "nullable": true
           },
+          "lastPerformed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
           "notes": {
             "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           },
           "unit": {
@@ -2389,28 +3139,12 @@
             },
             "nullable": true
           },
-          "fertilizingSchedule": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UpdateCareScheduleRequest"
-              }
-            ],
-            "nullable": true
-          },
           "genus": {
             "type": "string",
             "nullable": true
           },
           "name": {
             "type": "string",
-            "nullable": true
-          },
-          "wateringSchedule": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/UpdateCareScheduleRequest"
-              }
-            ],
             "nullable": true
           }
         }
@@ -2591,6 +3325,10 @@
     {
       "name": "plants",
       "description": "Plant management endpoints"
+    },
+    {
+      "name": "care_tasks",
+      "description": "Care task management endpoints"
     },
     {
       "name": "tracking",

@@ -202,6 +202,39 @@ class ApiClient {
     });
   }
 
+  async uploadProfilePicture(file: File): Promise<{ success: boolean; message: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseUrl}/auth/profile-picture`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.message || `HTTP ${response.status}`,
+        response.status,
+        errorData
+      );
+    }
+
+    return response.json();
+  }
+
+  async deleteProfilePicture(): Promise<void> {
+    await this.request('/auth/profile-picture', {
+      method: 'DELETE',
+    });
+  }
+
+  getProfilePictureUrl(cacheBust?: string): string {
+    const query = cacheBust ? `?v=${encodeURIComponent(cacheBust)}` : '';
+    return `${this.baseUrl}/auth/profile-picture${query}`;
+  }
+
   async logout(): Promise<void> {
     await this.request('/auth/logout', {
       method: 'POST',

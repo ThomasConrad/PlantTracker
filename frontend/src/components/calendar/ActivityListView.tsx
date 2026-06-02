@@ -7,6 +7,13 @@ import { EventDetailModal } from './EventDetailModal';
 
 type TrackingEntry = components['schemas']['TrackingEntry'];
 
+function deriveEntryType(entry: TrackingEntry): 'care' | 'measurement' | 'photo' | 'note' {
+  if (entry.careTaskIds && entry.careTaskIds.length > 0) return 'care';
+  if (entry.measurements && entry.measurements.length > 0) return 'measurement';
+  if (entry.photoIds && entry.photoIds.length > 0) return 'photo';
+  return 'note';
+}
+
 interface ActivityEvent {
   id: string;
   plant: Plant;
@@ -42,7 +49,7 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
     // Filter by selected types
     if (props.selectedTypes?.length) {
       filtered = filtered.filter(activity => 
-        props.selectedTypes!.includes(activity.entry.entryType)
+        props.selectedTypes!.includes(deriveEntryType(activity.entry))
       );
     }
 
@@ -58,7 +65,7 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
           comparison = a.plant.name.localeCompare(b.plant.name);
           break;
         case 'type':
-          comparison = a.entry.entryType.localeCompare(b.entry.entryType);
+          comparison = deriveEntryType(a.entry).localeCompare(deriveEntryType(b.entry));
           break;
       }
       
@@ -104,19 +111,19 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'watering':
+      case 'care':
         return (
           <div class="activity-icon-watering flex-shrink-0">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
         );
-      case 'fertilizing':
+      case 'measurement':
         return (
-          <div class="activity-icon-fertilizing flex-shrink-0">
+          <div class="activity-icon-custom flex-shrink-0">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
         );
@@ -128,11 +135,11 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
             </svg>
           </div>
         );
-      case 'customMetric':
+      case 'photo':
         return (
-          <div class="activity-icon-custom flex-shrink-0">
+          <div class="activity-icon-default flex-shrink-0">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v10" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             </svg>
           </div>
         );
@@ -149,10 +156,10 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
 
   const getActivityTypeLabel = (type: string) => {
     switch (type) {
-      case 'watering': return 'Watered';
-      case 'fertilizing': return 'Fertilized';
-      case 'customMetric': return 'Measurement';
+      case 'care': return 'Care';
+      case 'measurement': return 'Measurement';
       case 'note': return 'Note';
+      case 'photo': return 'Photo';
       default: return type;
     }
   };
@@ -301,13 +308,13 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
                 onClick={() => handleActivityClick(activity)}
               >
                 <div class={isMobile() ? 'activity-content-mobile' : 'activity-content-desktop'}>
-                  {getActivityIcon(activity.entry.entryType)}
+                  {getActivityIcon(deriveEntryType(activity.entry))}
                   
                   <div class="flex-1 min-w-0">
                     <div class={isMobile() ? 'activity-details-mobile' : 'activity-details-desktop'}>
                       <div class={isMobile() ? 'activity-meta-mobile' : 'activity-meta-desktop'}>
                         <h3 class="font-medium text-gray-900 text-sm">
-                          {getActivityTypeLabel(activity.entry.entryType)}
+                          {getActivityTypeLabel(deriveEntryType(activity.entry))}
                         </h3>
                         <span class={`text-gray-500 ${isMobile() ? 'text-xs' : 'text-sm'}`}>•</span>
                         <span class="font-medium text-blue-600 text-sm">
@@ -323,12 +330,9 @@ export const ActivityListView: Component<ActivityListViewProps> = (props) => {
                       <p class="mt-1 text-sm text-gray-600">{activity.entry.notes}</p>
                     </Show>
                     
-                    <Show when={activity.entry.entryType === 'customMetric' && activity.entry.value}>
+                    <Show when={deriveEntryType(activity.entry) === 'measurement' && activity.entry.measurements?.length}>
                       <p class="mt-1 text-sm text-gray-600">
-                        Value: {typeof activity.entry.value === 'string' 
-                          ? activity.entry.value 
-                          : JSON.stringify(activity.entry.value)
-                        }
+                        Value: {JSON.stringify(activity.entry.measurements![0].value)}
                       </p>
                     </Show>
                     

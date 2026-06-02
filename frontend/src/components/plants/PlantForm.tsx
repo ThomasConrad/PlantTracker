@@ -1,11 +1,12 @@
-import { Component, createSignal, For } from 'solid-js';
+import { Component, createEffect, createSignal, For } from 'solid-js';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PreviewUpload } from '@/components/plants/PreviewUpload';
-import type { PlantFormData, Photo } from '@/types';
+import type { PlantFormData, CareTaskFormData, Photo } from '@/types';
 
 interface PlantFormProps {
   initialData?: Partial<PlantFormData>;
+  isEditing?: boolean;
   existingPreviewUrl?: string | null;
   existingPhotos?: Photo[];
   onSubmit: (data: PlantFormData & { previewFile?: File }) => Promise<void>;
@@ -15,18 +16,59 @@ interface PlantFormProps {
   loading?: boolean;
 }
 
+const DEFAULT_CARE_TASKS: CareTaskFormData[] = [
+  { name: 'Water', icon: '💧', intervalDays: 7 },
+  { name: 'Fertilize', icon: '🌱', intervalDays: 14 },
+];
+
 export const PlantForm: Component<PlantFormProps> = (props) => {
   const [formData, setFormData] = createSignal<PlantFormData>({
     name: props.initialData?.name || '',
     genus: props.initialData?.genus || '',
-    wateringSchedule: props.initialData?.wateringSchedule || { intervalDays: 7 },
-    fertilizingSchedule: props.initialData?.fertilizingSchedule || { intervalDays: 14 },
+    careTasks: props.initialData?.careTasks || (props.isEditing ? [] : DEFAULT_CARE_TASKS),
     customMetrics: props.initialData?.customMetrics || [],
+  });
+
+  createEffect(() => {
+    if (!props.initialData) return;
+
+    setFormData({
+      name: props.initialData.name || '',
+      genus: props.initialData.genus || '',
+      careTasks: props.initialData.careTasks || (props.isEditing ? [] : DEFAULT_CARE_TASKS),
+      customMetrics: props.initialData.customMetrics || [],
+    });
   });
 
   const [errors, setErrors] = createSignal<Record<string, string>>({});
   const [previewFile, setThumbnailFile] = createSignal<File | null>(null);
   const [previewError, setThumbnailError] = createSignal<string>('');
+
+  const addCareTask = () => {
+    setFormData(prev => ({
+      ...prev,
+      careTasks: [
+        ...prev.careTasks,
+        { name: '', icon: '🌱' }
+      ]
+    }));
+  };
+
+  const removeCareTask = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      careTasks: prev.careTasks.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateCareTask = (index: number, field: keyof CareTaskFormData, value: string | number | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      careTasks: prev.careTasks.map((task, i) =>
+        i === index ? { ...task, [field]: value } : task
+      )
+    }));
+  };
 
   const addCustomMetric = () => {
     setFormData(prev => ({
@@ -54,7 +96,6 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     }));
   };
 
-
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -66,17 +107,15 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
       newErrors.genus = 'Genus is required';
     }
 
-    // Validate watering schedule if enabled
-    const wateringInterval = formData().wateringSchedule?.intervalDays;
-    if (wateringInterval && wateringInterval < 1) {
-      newErrors.wateringIntervalDays = 'Watering interval must be at least 1 day';
-    }
-
-    // Validate fertilizing schedule if enabled
-    const fertilizingInterval = formData().fertilizingSchedule?.intervalDays;
-    if (fertilizingInterval && fertilizingInterval < 1) {
-      newErrors.fertilizingIntervalDays = 'Fertilizing interval must be at least 1 day';
-    }
+    // Validate care tasks
+    formData().careTasks.forEach((task, index) => {
+      if (!task.name.trim()) {
+        newErrors[`careTask_${index}_name`] = 'Task name is required';
+      }
+      if (task.intervalDays !== undefined && task.intervalDays < 1) {
+        newErrors[`careTask_${index}_interval`] = 'Interval must be at least 1 day';
+      }
+    });
 
     formData().customMetrics.forEach((metric, index) => {
       if (metric.name && !metric.unit) {
@@ -101,6 +140,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     
     if (!validateForm()) return;
 
+    const validCareTasks = formData().careTasks.filter(task => task.name.trim());
     const validCustomMetrics = formData().customMetrics.filter(
       metric => metric.name.trim() && metric.unit.trim()
     );
@@ -109,6 +149,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
       ...formData(),
       name: formData().name.trim(),
       genus: formData().genus.trim(),
+      careTasks: validCareTasks,
       customMetrics: validCustomMetrics,
       previewFile: previewFile() || undefined,
     });
@@ -138,189 +179,83 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
         />
       </div>
 
-      {/* Watering Schedule */}
+      {/* Care Tasks */}
       <div class="space-y-4">
-        <h3 class="text-lg font-medium text-gray-900">Watering Schedule</h3>
-        <div class="space-y-4">
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              class="rounded border-gray-300 text-green-600 focus:ring-green-500"
-              checked={!!formData().wateringSchedule?.intervalDays}
-              onInput={(e) => {
-                const checked = e.currentTarget.checked;
-                setFormData(prev => ({
-                  ...prev,
-                  wateringSchedule: checked 
-                    ? { intervalDays: 7, amount: undefined, unit: 'ml', notes: '' }
-                    : {}
-                }));
-              }}
-            />
-            <span class="text-sm font-medium text-gray-700">Enable watering schedule</span>
-          </label>
-          
-          {formData().wateringSchedule?.intervalDays && (
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 ml-6">
-              <Input
-                label="Interval (days)"
-                type="number"
-                min="1"
-                max="365"
-value={formData().wateringSchedule?.intervalDays || 7}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  wateringSchedule: {
-                    ...prev.wateringSchedule!,
-                    intervalDays: parseInt(e.currentTarget.value) || 1
-                  }
-                }))}
-                error={errors().wateringIntervalDays}
-                required
-              />
-              
-              <Input
-                label="Amount (optional)"
-                type="number"
-                min="0.1"
-                step="0.1"
-value={formData().wateringSchedule?.amount || ''}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  wateringSchedule: {
-                    ...prev.wateringSchedule!,
-                    amount: parseFloat(e.currentTarget.value) || undefined
-                  }
-                }))}
-                placeholder="e.g., 250"
-              />
-              
-              <Input
-                label="Unit (optional)"
-                type="text"
-value={formData().wateringSchedule?.unit || ''}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  wateringSchedule: {
-                    ...prev.wateringSchedule!,
-                    unit: e.currentTarget.value || undefined
-                  }
-                }))}
-                placeholder="e.g., ml, cups"
-              />
-            </div>
-          )}
-          
-          {formData().wateringSchedule?.intervalDays && (
-            <div class="ml-6">
-              <Input
-                label="Notes (optional)"
-                type="text"
-value={formData().wateringSchedule?.notes || ''}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  wateringSchedule: {
-                    ...prev.wateringSchedule!,
-                    notes: e.currentTarget.value || undefined
-                  }
-                }))}
-                placeholder="e.g., Water when soil is dry"
-              />
-            </div>
-          )}
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-medium text-gray-900">Care Tasks</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addCareTask}
+          >
+            Add Task
+          </Button>
         </div>
-      </div>
 
-      {/* Fertilizing Schedule */}
-      <div class="space-y-4">
-        <h3 class="text-lg font-medium text-gray-900">Fertilizing Schedule</h3>
         <div class="space-y-4">
-          <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              class="rounded border-gray-300 text-green-600 focus:ring-green-500"
-              checked={!!formData().fertilizingSchedule?.intervalDays}
-              onInput={(e) => {
-                const checked = e.currentTarget.checked;
-                setFormData(prev => ({
-                  ...prev,
-                  fertilizingSchedule: checked 
-                    ? { intervalDays: 14, amount: undefined, unit: 'ml', notes: '' }
-                    : {}
-                }));
-              }}
-            />
-            <span class="text-sm font-medium text-gray-700">Enable fertilizing schedule</span>
-          </label>
-          
-          {formData().fertilizingSchedule?.intervalDays && (
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 ml-6">
-              <Input
-                label="Interval (days)"
-                type="number"
-                min="1"
-                max="365"
-value={formData().fertilizingSchedule?.intervalDays || 14}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  fertilizingSchedule: {
-                    ...prev.fertilizingSchedule!,
-                    intervalDays: parseInt(e.currentTarget.value) || 1
-                  }
-                }))}
-                error={errors().fertilizingIntervalDays}
-                required
-              />
-              
-              <Input
-                label="Amount (optional)"
-                type="number"
-                min="0.1"
-                step="0.1"
-value={formData().fertilizingSchedule?.amount || ''}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  fertilizingSchedule: {
-                    ...prev.fertilizingSchedule!,
-                    amount: parseFloat(e.currentTarget.value) || undefined
-                  }
-                }))}
-                placeholder="e.g., 5"
-              />
-              
-              <Input
-                label="Unit (optional)"
-                type="text"
-value={formData().fertilizingSchedule?.unit || ''}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  fertilizingSchedule: {
-                    ...prev.fertilizingSchedule!,
-                    unit: e.currentTarget.value || undefined
-                  }
-                }))}
-                placeholder="e.g., ml, drops"
-              />
-            </div>
-          )}
-          
-          {formData().fertilizingSchedule?.intervalDays && (
-            <div class="ml-6">
-              <Input
-                label="Notes (optional)"
-                type="text"
-value={formData().fertilizingSchedule?.notes || ''}
-                onInput={(e) => setFormData(prev => ({
-                  ...prev,
-                  fertilizingSchedule: {
-                    ...prev.fertilizingSchedule!,
-                    notes: e.currentTarget.value || undefined
-                  }
-                }))}
-                placeholder="e.g., Dilute 1:10 with water"
-              />
-            </div>
-          )}
+          <For each={formData().careTasks}>
+            {(task, index) => (
+              <div class="bg-gray-50 p-4 rounded-lg space-y-4">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-medium text-gray-700">
+                    <span class="mr-1">{task.icon ?? '🌱'}</span>
+                    {task.name || `Task ${index() + 1}`}
+                  </h4>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeCareTask(index())}
+                  >
+                    Remove
+                  </Button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Input
+                    label="Name"
+                    type="text"
+                    value={task.name}
+                    onInput={(e) => updateCareTask(index(), 'name', e.currentTarget.value)}
+                    error={errors()[`careTask_${index()}_name`]}
+                    placeholder="e.g., Water, Fertilize, Prune"
+                    required
+                  />
+
+                  <Input
+                    label="Icon"
+                    type="text"
+                    value={task.icon || ''}
+                    onInput={(e) => updateCareTask(index(), 'icon', e.currentTarget.value)}
+                    placeholder="e.g., 💧"
+                  />
+
+                  <Input
+                    label="Interval (days)"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={task.intervalDays || ''}
+                    onInput={(e) => {
+                      const val = parseInt(e.currentTarget.value);
+                      updateCareTask(index(), 'intervalDays', isNaN(val) ? undefined : val);
+                    }}
+                    error={errors()[`careTask_${index()}_interval`]}
+                    placeholder="Leave empty for no schedule"
+                  />
+
+                  <Input
+                    label="Notes"
+                    type="text"
+                    value={task.notes || ''}
+                    onInput={(e) => updateCareTask(index(), 'notes', e.currentTarget.value)}
+                    placeholder="Optional notes"
+                  />
+                </div>
+              </div>
+            )}
+          </For>
         </div>
       </div>
 

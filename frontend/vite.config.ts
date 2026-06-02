@@ -61,6 +61,7 @@ export default defineConfig({
   ],
   server: {
     host: '0.0.0.0',
+    allowedHosts: ['d13b-188-120-84-138.ngrok-free.app'],
     proxy: {
       '/api': {
         target: apiTarget,

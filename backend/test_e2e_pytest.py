@@ -1934,6 +1934,39 @@ class TestCoachSuggestions:
         photo = next(s for s in suggestions if s["suggestionType"] == "photo_request")
         assert photo["payload"] == {}
 
+    def test_accept_photo_request_creates_check_in_task(self, client, test_users):
+        """Accepting a photo_request creates a 'Photo check-in' care task"""
+        plant = self._setup(client, test_users)
+
+        # Get a photo_request suggestion
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Can you tell from a photo what's wrong?"
+        })
+        suggestions = response.json()["message"]["suggestions"]
+        photo_s = next(s for s in suggestions if s["suggestionType"] == "photo_request")
+
+        # Accept it
+        accept_resp = client.request("POST", f"/coach/suggestions/{photo_s['id']}/accept")
+        assert accept_resp.status_code == 200
+
+        # Verify a "Photo check-in" task was created
+        tasks_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks")
+        assert tasks_resp.status_code == 200
+        task_names = [t["name"] for t in tasks_resp.json()["tasks"]]
+        assert "Photo check-in" in task_names
+
+        # Accepting again should NOT create a duplicate
+        response2 = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Show me another photo request"
+        })
+        suggestions2 = response2.json()["message"]["suggestions"]
+        photo_s2 = next(s for s in suggestions2 if s["suggestionType"] == "photo_request")
+        client.request("POST", f"/coach/suggestions/{photo_s2['id']}/accept")
+
+        tasks_resp2 = client.request("GET", f"/plants/{plant['id']}/care-tasks")
+        photo_tasks = [t for t in tasks_resp2.json()["tasks"] if "photo" in t["name"].lower()]
+        assert len(photo_tasks) == 1  # No duplicate
+
 
 if __name__ == "__main__":
     # Run tests when script is executed directly

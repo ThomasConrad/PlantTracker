@@ -222,6 +222,27 @@ async fn upload_photo(
     let photo =
         db_photos::create_photo(&app_state.pool, &plant_id, &user.id, &upload_request).await?;
 
+    // Auto-log any "photo check-in" care task if one exists
+    if let Ok(tasks_resp) = crate::database::care_tasks::list_care_tasks_for_plant(
+        &app_state.pool, &plant_id, &user.id, false
+    ).await {
+        for task in &tasks_resp.tasks {
+            let name_lower = task.task.name.to_lowercase();
+            if name_lower.contains("photo") && (name_lower.contains("check") || name_lower.contains("update") || name_lower.contains("progress")) {
+                let log_req = crate::models::care_task::LogCareTaskRequest {
+                    timestamp: None,
+                    value: None,
+                    notes: Some("Auto-logged from photo upload".to_string()),
+                    photo_ids: Some(vec![photo.id]),
+                };
+                let _ = crate::database::care_tasks::log_care_task(
+                    &app_state.pool, &task.task.id, &user.id, &log_req
+                ).await;
+                break; // Only log the first matching task
+            }
+        }
+    }
+
     tracing::info!(
         "Photo uploaded with id: {} for plant: {}",
         photo.id,

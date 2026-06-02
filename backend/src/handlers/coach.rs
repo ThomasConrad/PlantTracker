@@ -375,7 +375,38 @@ pub async fn accept_suggestion(
                 }
             }
         }
-        // "photo_request" has no server-side action — the UI handles it
+        "photo_request" => {
+            // Create a "Photo check-in" care task if one doesn't already exist
+            let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                message: "Invalid plant_id".to_string(),
+            })?;
+            let tasks_resp = crate::database::care_tasks::list_care_tasks_for_plant(
+                &app_state.pool, &plant_uuid, &user.id, false
+            ).await.map_err(|e| AppError::Internal { message: e.to_string() })?;
+
+            let has_photo_task = tasks_resp.tasks.iter().any(|t| {
+                let name_lower = t.task.name.to_lowercase();
+                name_lower.contains("photo") && (name_lower.contains("check") || name_lower.contains("update") || name_lower.contains("progress"))
+            });
+
+            if !has_photo_task {
+                let interval = payload.get("intervalDays").and_then(|v| v.as_i64()).map(|d| d as i32).unwrap_or(14);
+                let create = crate::models::care_task::CreateCareTaskRequest {
+                    name: "Photo check-in".to_string(),
+                    icon: Some("📸".to_string()),
+                    color: None,
+                    interval_days: Some(interval),
+                    amount: None,
+                    unit: None,
+                    notes: Some("Take a photo to track growth progress".to_string()),
+                    last_performed: None,
+                    sort_order: None,
+                };
+                let _ = crate::database::care_tasks::create_care_task(
+                    &app_state.pool, &plant_uuid, &user.id, &create
+                ).await;
+            }
+        }
         _ => {}
     }
 

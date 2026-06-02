@@ -1,9 +1,11 @@
 import { Component, createSignal, createEffect, For, Show, onMount } from 'solid-js';
 import { coachApi, CoachMessage, CoachSuggestion } from '@/api/coach';
+import { apiClient } from '@/api/client';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { compressImage } from '@/utils/imageCompress';
 import { renderMarkdown } from '@/utils/markdown';
+import type { Photo } from '@/types/api';
 
 interface CoachChatProps {
   plantId: string;
@@ -17,6 +19,9 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
   const [loading, setLoading] = createSignal(true);
   const [sending, setSending] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const [showGallery, setShowGallery] = createSignal(false);
+  const [galleryPhotos, setGalleryPhotos] = createSignal<Photo[]>([]);
+  const [galleryLoading, setGalleryLoading] = createSignal(false);
 
   let messagesEndRef: HTMLDivElement | undefined;
   let fileInputRef: HTMLInputElement | undefined;
@@ -102,6 +107,37 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
       reader.readAsDataURL(file);
     }
     target.value = '';
+  };
+
+  const openGallery = async () => {
+    setShowGallery(true);
+    if (galleryPhotos().length === 0) {
+      setGalleryLoading(true);
+      try {
+        const response = await apiClient.getPlantPhotos(props.plantId, { limit: 50 });
+        setGalleryPhotos(response.photos);
+      } catch {
+        // silently fail — user can still use camera
+      } finally {
+        setGalleryLoading(false);
+      }
+    }
+  };
+
+  const selectGalleryPhoto = async (photo: Photo) => {
+    setShowGallery(false);
+    // Fetch the photo and convert to data URL for the coach API
+    try {
+      const response = await fetch(`/api/photos/${photo.id}/file`);
+      const blob = await response.blob();
+      // Compress it like a new upload
+      const file = new File([blob], photo.originalFilename, { type: photo.contentType });
+      const dataUrl = await compressImage(file, { maxDimension: 1024, quality: 0.8 });
+      setPendingImage(dataUrl);
+    } catch {
+      // Fallback: use thumbnail URL directly if fetch fails
+      setPendingImage(`/api/photos/${photo.id}/file`);
+    }
   };
 
   const handleAcceptSuggestion = async (suggestion: CoachSuggestion) => {
@@ -275,6 +311,46 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
         </div>
       </Show>
 
+      {/* Gallery picker overlay */}
+      <Show when={showGallery()}>
+        <div class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 max-h-48 overflow-y-auto">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Select from gallery</span>
+            <button
+              onClick={() => setShowGallery(false)}
+              class="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              Cancel
+            </button>
+          </div>
+          <Show when={galleryLoading()}>
+            <div class="flex justify-center py-4">
+              <LoadingSpinner size="sm" />
+            </div>
+          </Show>
+          <Show when={!galleryLoading() && galleryPhotos().length === 0}>
+            <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No photos yet</p>
+          </Show>
+          <div class="grid grid-cols-5 gap-1.5">
+            <For each={galleryPhotos()}>
+              {(photo) => (
+                <button
+                  onClick={() => selectGalleryPhoto(photo)}
+                  class="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-primary-500 transition-colors focus:outline-none focus:border-primary-500"
+                >
+                  <img
+                    src={`/api/photos/${photo.id}/thumbnail`}
+                    alt={photo.originalFilename}
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                </button>
+              )}
+            </For>
+          </div>
+        </div>
+      </Show>
+
       {/* Input area */}
       <div class="border-t border-gray-200 dark:border-gray-700 p-3 flex items-end gap-2">
         <input
@@ -287,11 +363,20 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
         <button
           onClick={() => fileInputRef?.click()}
           class="flex-shrink-0 p-2 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
-          title="Attach photo"
+          title="Take or upload photo"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+        <button
+          onClick={openGallery}
+          class="flex-shrink-0 p-2 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400 transition-colors"
+          title="Choose from gallery"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </button>
         <textarea

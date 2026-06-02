@@ -230,3 +230,33 @@ clean:
     rm -rf frontend/dist
     rm -rf backend/target
     rm -rf backend/venv-e2e
+
+# === DOCKER COMMANDS ===
+
+# Build Docker image
+docker-build:
+    @echo "🐳 Building Docker image..."
+    docker build -t planty .
+
+# Run with Docker Compose
+docker-up:
+    @echo "🐳 Starting Planty via Docker Compose..."
+    docker compose up -d
+
+# Stop Docker Compose
+docker-down:
+    docker compose down
+
+# View Docker logs
+docker-logs:
+    docker compose logs -f planty
+
+# Rebuild and restart
+docker-restart:
+    docker compose down
+    docker compose up -d --build
+
+# Build, run, and smoke-test the Docker image
+docker-test:
+    @echo "🧪 Running Docker smoke tests..."
+    ./test-docker.sh

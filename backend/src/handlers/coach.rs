@@ -39,7 +39,7 @@ pub fn routes() -> Router<AppState> {
     ),
     tag = "coach"
 )]
-async fn get_messages(
+pub async fn get_messages(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
@@ -123,7 +123,7 @@ async fn get_messages(
     ),
     tag = "coach"
 )]
-async fn send_message(
+pub async fn send_message(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
@@ -275,7 +275,7 @@ async fn send_message(
     ),
     tag = "coach"
 )]
-async fn accept_suggestion(
+pub async fn accept_suggestion(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
     Path(suggestion_id): Path<String>,
@@ -405,7 +405,7 @@ async fn accept_suggestion(
     ),
     tag = "coach"
 )]
-async fn dismiss_suggestion(
+pub async fn dismiss_suggestion(
     auth_session: AuthSession,
     State(app_state): State<AppState>,
     Path(suggestion_id): Path<String>,

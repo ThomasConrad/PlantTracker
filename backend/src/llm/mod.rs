@@ -1,4 +1,5 @@
 pub mod anthropic;
+pub mod ollama;
 pub mod openai;
 
 use anyhow::Result;
@@ -48,6 +49,7 @@ pub fn create_coach() -> Result<Box<dyn PlantCoach>> {
         std::env::var("PLANT_COACH_PROVIDER").unwrap_or_else(|_| "openai".to_string());
     match provider.as_str() {
         "anthropic" => Ok(Box::new(anthropic::AnthropicCoach::new()?)),
+        "ollama" => Ok(Box::new(ollama::OllamaCoach::new()?)),
         _ => Ok(Box::new(openai::OpenAICoach::new()?)),
     }
 }

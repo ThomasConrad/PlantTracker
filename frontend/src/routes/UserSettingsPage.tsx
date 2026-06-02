@@ -24,12 +24,22 @@ export const UserSettingsPage: Component = () => {
   const [avatarLoadError, setAvatarLoadError] = createSignal(false);
   const [pictureVersion, setPictureVersion] = createSignal<string>(Date.now().toString());
 
+  // LLM settings
+  const [llmSaving, setLlmSaving] = createSignal(false);
+  const [llmBaseUrl, setLlmBaseUrl] = createSignal('');
+  const [llmApiKey, setLlmApiKey] = createSignal('');
+  const [llmApiKeySet, setLlmApiKeySet] = createSignal(false);
+  const [llmModel, setLlmModel] = createSignal('');
+
   onMount(() => {
     if (authStore.user) {
       setName(authStore.user.name || '');
       setEmail(authStore.user.email || '');
       setFirstDayOfWeek(authStore.user.firstDayOfWeek || 'sunday');
       setPreferredUnits(authStore.user.preferredUnits || 'metric');
+      setLlmBaseUrl((authStore.user as any).llmBaseUrl || '');
+      setLlmApiKeySet((authStore.user as any).llmApiKeySet || false);
+      setLlmModel((authStore.user as any).llmModel || '');
     }
   });
 
@@ -122,6 +132,28 @@ export const UserSettingsPage: Component = () => {
       setError(err instanceof Error ? err.message : 'Failed to change password');
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleLlmSettingsSave = async (e: Event) => {
+    e.preventDefault();
+    setError(null);
+
+    try {
+      setLlmSaving(true);
+      await apiClient.updateLlmSettings({
+        baseUrl: llmBaseUrl().trim() || null,
+        apiKey: llmApiKey().trim() || null,
+        model: llmModel().trim() || null,
+      });
+      await authStore.initializeAuth();
+      setLlmApiKey(''); // Clear from memory after save
+      setLlmApiKeySet(!!(llmBaseUrl().trim()));
+      showSuccess('AI coach settings saved.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save AI settings');
+    } finally {
+      setLlmSaving(false);
     }
   };
 
@@ -331,6 +363,68 @@ export const UserSettingsPage: Component = () => {
             class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
           >
             {passwordSaving() ? 'Updating...' : 'Change Password'}
+          </button>
+        </div>
+      </form>
+
+      <form onSubmit={handleLlmSettingsSave} class="bg-white dark:bg-gray-800 shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">AI Coach</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+            Connect any OpenAI-compatible API. Works with OpenAI, OpenRouter, Ollama, LiteLLM, and more.
+          </p>
+          <div class="space-y-4">
+            <div>
+              <label for="llm-base-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Base URL</label>
+              <input
+                id="llm-base-url"
+                type="url"
+                value={llmBaseUrl()}
+                onInput={(e) => setLlmBaseUrl(e.currentTarget.value)}
+                placeholder="https://openrouter.ai/api/v1"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+              />
+              <p class="mt-1 text-xs text-gray-400">
+                OpenAI: https://api.openai.com/v1 &middot; OpenRouter: https://openrouter.ai/api/v1 &middot; Ollama: http://localhost:11434/v1
+              </p>
+            </div>
+            <div>
+              <label for="llm-api-key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key</label>
+              <input
+                id="llm-api-key"
+                type="password"
+                value={llmApiKey()}
+                onInput={(e) => setLlmApiKey(e.currentTarget.value)}
+                placeholder={llmApiKeySet() ? '••••••••••••••••' : 'sk-...'}
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+              />
+              <Show when={llmApiKeySet()}>
+                <p class="mt-1 text-xs text-green-600 dark:text-green-400">Key is saved. Leave blank to keep current key.</p>
+              </Show>
+            </div>
+            <div>
+              <label for="llm-model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model</label>
+              <input
+                id="llm-model"
+                type="text"
+                value={llmModel()}
+                onInput={(e) => setLlmModel(e.currentTarget.value)}
+                placeholder="gpt-4o"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+              />
+              <p class="mt-1 text-xs text-gray-400">
+                e.g. gpt-4o, anthropic/claude-sonnet-4-20250514, llama3.2-vision
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 dark:bg-gray-700/50 text-right sm:px-6 rounded-b-lg">
+          <button
+            type="submit"
+            disabled={llmSaving()}
+            class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+          >
+            {llmSaving() ? 'Saving...' : 'Save AI Settings'}
           </button>
         </div>
       </form>

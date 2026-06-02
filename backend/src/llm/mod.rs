@@ -56,6 +56,25 @@ pub fn create_coach() -> Result<Box<dyn PlantCoach>> {
     }
 }
 
+/// Create a coach from per-user LLM settings (OpenAI-compatible endpoint).
+/// Falls back to the global coach if user has no settings configured.
+pub fn create_coach_for_user(
+    base_url: Option<&str>,
+    api_key: Option<&str>,
+    model: Option<&str>,
+) -> Option<Result<Box<dyn PlantCoach>>> {
+    // Need at least a base_url to create a user-specific coach
+    let base_url = base_url?;
+    if base_url.is_empty() {
+        return None;
+    }
+    Some(openai::OpenAICoach::new_with_config(
+        base_url.to_string(),
+        api_key.unwrap_or("").to_string(),
+        model.unwrap_or("gpt-4o").to_string(),
+    ).map(|c| Box::new(c) as Box<dyn PlantCoach>))
+}
+
 // ─── Shared prompt & schema ─────────────────────────────────────────────────
 
 /// The base system prompt instructing the LLM how to behave and what JSON to return.

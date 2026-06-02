@@ -284,6 +284,29 @@ pub async fn update_user_profile(
     get_user_by_id(pool, user_id).await
 }
 
+pub async fn update_user_llm_settings(
+    pool: &DatabasePool,
+    user_id: &str,
+    base_url: Option<&str>,
+    api_key: Option<&str>,
+    model: Option<&str>,
+) -> Result<User, AppError> {
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        "UPDATE users SET llm_base_url = ?, llm_api_key = ?, llm_model = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(base_url)
+    .bind(api_key)
+    .bind(model)
+    .bind(&now)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    get_user_by_id(pool, user_id).await
+}
+
 pub async fn set_user_profile_picture(
     pool: &DatabasePool,
     user_id: &str,

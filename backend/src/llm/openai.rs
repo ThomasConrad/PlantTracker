@@ -11,6 +11,7 @@ pub struct OpenAICoach {
     client: Client,
     api_key: String,
     model: String,
+    base_url: String,
 }
 
 impl OpenAICoach {
@@ -19,6 +20,8 @@ impl OpenAICoach {
             std::env::var("OPENAI_API_KEY").context("OPENAI_API_KEY environment variable not set")?;
         let model =
             std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o".to_string());
+        let base_url =
+            std::env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
         let client = Client::builder()
             .timeout(Duration::from_secs(60))
             .build()
@@ -28,6 +31,21 @@ impl OpenAICoach {
             client,
             api_key,
             model,
+            base_url,
+        })
+    }
+
+    pub fn new_with_config(base_url: String, api_key: String, model: String) -> Result<Self> {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(60))
+            .build()
+            .context("Failed to build reqwest client")?;
+
+        Ok(Self {
+            client,
+            api_key,
+            model,
+            base_url,
         })
     }
 }
@@ -106,12 +124,12 @@ impl PlantCoach for OpenAICoach {
 
         let response = self
             .client
-            .post("https://api.openai.com/v1/chat/completions")
+            .post(format!("{}/chat/completions", self.base_url.trim_end_matches('/')))
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&request)
             .send()
             .await
-            .context("Failed to send request to OpenAI")?;
+            .context("Failed to send request to LLM provider")?;
 
         if !response.status().is_success() {
             let status = response.status();

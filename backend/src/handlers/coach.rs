@@ -141,9 +141,28 @@ pub async fn send_message(
         });
     }
 
-    let coach = app_state.coach.as_ref().ok_or(AppError::External {
-        message: "Plant coach is not configured. Set PLANT_COACH_PROVIDER and API key environment variables.".to_string(),
-    })?;
+    // Resolve coach: per-user LLM settings take priority over global config
+    let user_coach: Option<Box<dyn crate::llm::PlantCoach>> =
+        match crate::llm::create_coach_for_user(
+            user.llm_base_url.as_deref(),
+            user.llm_api_key.as_deref(),
+            user.llm_model.as_deref(),
+        ) {
+            Some(Ok(c)) => Some(c),
+            Some(Err(e)) => {
+                return Err(AppError::External {
+                    message: format!("Failed to initialize your LLM settings: {e}"),
+                });
+            }
+            None => None,
+        };
+
+    let coach_ref: &dyn crate::llm::PlantCoach = match &user_coach {
+        Some(c) => c.as_ref(),
+        None => app_state.coach.as_ref().ok_or(AppError::External {
+            message: "No AI coach configured. Set up your LLM provider in Settings, or ask the admin to configure a default.".to_string(),
+        })?.as_ref(),
+    };
 
     let conversation =
         db_coach::get_or_create_conversation(&app_state.pool, &plant_id.to_string(), &user.id)
@@ -214,7 +233,7 @@ pub async fn send_message(
     }
 
     // Call the LLM
-    let response = coach
+    let response = coach_ref
         .chat(llm_messages)
         .await
         .map_err(|e| AppError::External {

@@ -79,9 +79,7 @@ async fn test_dispatch_reminders_is_idempotent_for_same_due_date() {
         .json(&json!({
             "name": "Aloe",
             "genus": "Aloe",
-            "wateringSchedule": { "intervalDays": 1 },
-            "fertilizingSchedule": { "intervalDays": 30 },
-            "lastWatered": "2020-01-01T00:00:00Z",
+            "careTasks": [{ "name": "Water", "icon": "💧", "intervalDays": 1 }],
             "customMetrics": []
         }))
         .send()

@@ -1,6 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # Planty — Multi-stage Docker build
-# Produces a minimal image (~100MB) with the compiled Rust binary + frontend assets
+# Produces a minimal distroless image (~30MB + binary) with no shell or package manager
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # ─── Stage 1: Build frontend ──────────────────────────────────────────────────
@@ -45,14 +45,7 @@ RUN touch src/main.rs src/lib.rs
 RUN cargo build --release
 
 # ─── Stage 3: Runtime ─────────────────────────────────────────────────────────
-FROM debian:bookworm-slim AS runtime
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN useradd -ms /bin/sh planty
+FROM gcr.io/distroless/cc-debian12 AS runtime
 
 WORKDIR /app
 
@@ -62,10 +55,7 @@ COPY --from=backend-builder /app/backend/target/release/planty-api ./planty-api
 # Copy frontend assets
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data && chown planty:planty /app/data
-
-USER planty
+USER nonroot
 
 # Environment defaults
 ENV PORT=3000 \
@@ -74,9 +64,5 @@ ENV PORT=3000 \
     RUST_LOG=info
 
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:3000/api/health || exit 1
 
 ENTRYPOINT ["./planty-api"]

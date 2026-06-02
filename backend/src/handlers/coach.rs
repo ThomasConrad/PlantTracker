@@ -165,7 +165,11 @@ async fn send_message(
     })?;
 
     // Build LLM context
-    let system_prompt = build_system_prompt(&plant);
+    let system_prompt = format!(
+        "{}{}",
+        crate::llm::COACH_SYSTEM_PROMPT,
+        crate::llm::build_plant_context(&plant)
+    );
     let mut llm_messages = vec![ChatMessage {
         role: "system".to_string(),
         content: vec![ContentPart::Text {
@@ -286,10 +290,96 @@ async fn accept_suggestion(
             resource: format!("Suggestion with id {suggestion_id}"),
         })?;
 
+    // Apply the suggestion based on type
+    let payload: serde_json::Value = serde_json::from_str(&row.payload).unwrap_or_default();
+    let plant_id = &row.plant_id;
+
+    match row.suggestion_type.as_str() {
+        "schedule_change" => {
+            // Update an existing care task's interval
+            if let (Some(task_name), Some(interval_days)) = (
+                payload.get("careTaskName").and_then(|v| v.as_str()),
+                payload.get("intervalDays").and_then(|v| v.as_i64()),
+            ) {
+                let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                    message: "Invalid plant_id".to_string(),
+                })?;
+                // Find the care task by name
+                let tasks_resp = crate::database::care_tasks::list_care_tasks_for_plant(
+                    &app_state.pool, &plant_uuid, &user.id, false
+                ).await.map_err(|e| AppError::Internal { message: e.to_string() })?;
+
+                if let Some(task) = tasks_resp.tasks.iter().find(|t| t.task.name.eq_ignore_ascii_case(task_name)) {
+                    let update = crate::models::care_task::UpdateCareTaskRequest {
+                        name: None,
+                        icon: None,
+                        color: None,
+                        interval_days: Some(Some(interval_days as i32)),
+                        amount: None,
+                        unit: None,
+                        notes: None,
+                        last_performed: None,
+                        sort_order: None,
+                    };
+                    let _ = crate::database::care_tasks::update_care_task(
+                        &app_state.pool, &task.task.id, &user.id, &update
+                    ).await;
+                }
+            }
+        }
+        "new_task" => {
+            // Create a new care task
+            if let Some(name) = payload.get("name").and_then(|v| v.as_str()) {
+                let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                    message: "Invalid plant_id".to_string(),
+                })?;
+                let create = crate::models::care_task::CreateCareTaskRequest {
+                    name: name.to_string(),
+                    icon: payload.get("icon").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                    color: None,
+                    interval_days: payload.get("intervalDays").and_then(|v| v.as_i64()).map(|d| d as i32),
+                    amount: None,
+                    unit: None,
+                    notes: None,
+                    last_performed: None,
+                    sort_order: None,
+                };
+                let _ = crate::database::care_tasks::create_care_task(
+                    &app_state.pool, &plant_uuid, &user.id, &create
+                ).await;
+            }
+        }
+        "care_action" => {
+            // Log a care task completion
+            if let Some(task_name) = payload.get("careTaskName").and_then(|v| v.as_str()) {
+                let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                    message: "Invalid plant_id".to_string(),
+                })?;
+                let tasks_resp = crate::database::care_tasks::list_care_tasks_for_plant(
+                    &app_state.pool, &plant_uuid, &user.id, false
+                ).await.map_err(|e| AppError::Internal { message: e.to_string() })?;
+
+                if let Some(task) = tasks_resp.tasks.iter().find(|t| t.task.name.eq_ignore_ascii_case(task_name)) {
+                    let log_req = crate::models::care_task::LogCareTaskRequest {
+                        timestamp: None,
+                        value: None,
+                        notes: Some("Logged via coach suggestion".to_string()),
+                        photo_ids: None,
+                    };
+                    let _ = crate::database::care_tasks::log_care_task(
+                        &app_state.pool, &task.task.id, &user.id, &log_req
+                    ).await;
+                }
+            }
+        }
+        // "photo_request" has no server-side action — the UI handles it
+        _ => {}
+    }
+
     Ok(Json(CoachSuggestion {
         id: row.id,
         suggestion_type: row.suggestion_type,
-        payload: serde_json::from_str(&row.payload).unwrap_or_default(),
+        payload,
         status: row.status,
         applied_at: row.applied_at,
     }))
@@ -338,46 +428,4 @@ async fn dismiss_suggestion(
     }))
 }
 
-fn build_system_prompt(plant: &crate::models::PlantResponse) -> String {
-    let care_tasks_info = if plant.care_tasks.is_empty() {
-        "No care tasks configured yet.".to_string()
-    } else {
-        plant
-            .care_tasks
-            .iter()
-            .map(|t| {
-                let schedule = t.task.interval_days
-                    .map(|d| format!("every {} days", d))
-                    .unwrap_or_else(|| "manual/one-off".to_string());
-                let last = t.task.last_performed
-                    .map(|d| d.to_rfc3339())
-                    .unwrap_or_else(|| "never".to_string());
-                let due_info = if t.is_due {
-                    format!(" [OVERDUE by {} days]", t.days_overdue.unwrap_or(0))
-                } else if let Some(days) = t.days_overdue {
-                    format!(" [due in {} days]", -days)
-                } else {
-                    String::new()
-                };
-                format!("  - {} ({}): schedule={}, last={}{}", 
-                    t.task.name, 
-                    t.task.icon.as_deref().unwrap_or(""),
-                    schedule, last, due_info)
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
 
-    format!(
-        "You are an expert plant care coach. You help users take care of their plants by analyzing photos, \
-         diagnosing issues, and suggesting care plan adjustments. Always respond with JSON containing 'text' \
-         (your natural language response) and 'suggestions' (array of actionable suggestions). Each suggestion \
-         has 'suggestion_type' (one of: schedule_change, reminder, care_action, photo_request), 'description' \
-         (human-readable), and 'payload' (structured data).\n\n\
-         Plant context:\n\
-         - Name: {}\n\
-         - Genus: {}\n\
-         - Care tasks:\n{}",
-        plant.name, plant.genus, care_tasks_info
-    )
-}

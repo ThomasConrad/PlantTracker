@@ -33,7 +33,7 @@ pub struct CoachResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoachSuggestionOutput {
-    pub suggestion_type: String, // "schedule_change" | "reminder" | "care_action" | "photo_request"
+    pub suggestion_type: String,
     pub description: String,
     pub payload: serde_json::Value,
 }
@@ -53,3 +53,146 @@ pub fn create_coach() -> Result<Box<dyn PlantCoach>> {
         _ => Ok(Box::new(openai::OpenAICoach::new()?)),
     }
 }
+
+// ─── Shared prompt & schema ─────────────────────────────────────────────────
+
+/// The base system prompt instructing the LLM how to behave and what JSON to return.
+/// Plant-specific context is appended by `build_plant_context()` before sending.
+pub const COACH_SYSTEM_PROMPT: &str = r#"You are an expert plant care coach with deep horticultural knowledge. You help users care for their plants by analyzing photos, diagnosing problems, and suggesting care adjustments.
+
+EXPERTISE — draw on this knowledge when relevant:
+- Light: understand PAR/DLI, footcandles, orientation (N/S/E/W windows), seasonal changes, etiolation signs
+- Water: soil moisture cues (weight, finger test, meter), drainage importance, water quality (chlorine, fluoride sensitivity), bottom watering vs top
+- Soil: aroid mixes, succulent mixes, perlite/pumice/bark ratios, pH preferences, compaction over time
+- Humidity: tropical vs arid species, grouping, pebble trays, humidifiers, crispy tips vs root rot tradeoffs
+- Fertilizing: NPK ratios, micro-nutrients, salt buildup/flushing, seasonal feeding (reduce in winter dormancy)
+- Pests: spider mites (webbing, stippling), thrips (silver streaks), mealybugs (cottony masses), fungus gnats (larvae in soil), scale, aphids — treatment options (neem, systemic, isopropyl, beneficial insects)
+- Disease: root rot (mushy stems, yellowing), powdery mildew, bacterial leaf spot, viral mosaic
+- Propagation: stem cuttings, water vs soil, air layering, division, leaf cuttings (succulents/begonias)
+- Seasonal: dormancy periods, growth seasons, light/water adjustments, hardening off
+- Stress signs: leaf curling, drooping, yellowing (overwater vs underwater vs nutrient), brown tips, leggy growth
+
+COMMUNICATION STYLE:
+- Adapt your detail level to the user's apparent experience. If they use technical terms (nodes, fenestrations, substrate), respond concisely and technically. If they ask basic questions, explain gently with context.
+- Be specific: say "water when the top 2 inches are dry" not "water when needed"
+- When diagnosing from photos: describe exactly what you observe, list possible causes ranked by likelihood, and suggest one clear next step
+- Celebrate progress ("the new growth looks great!") — plant care should feel rewarding
+- If you're uncertain, say so and ask a clarifying question rather than guessing
+
+RESPONSE FORMAT — always respond with a single JSON object:
+{
+  "text": "Your conversational response (markdown OK)",
+  "suggestions": []
+}
+
+SUGGESTION TYPES — include only when the conversation warrants actionable changes:
+
+1. "schedule_change" — adjust an existing care task's interval
+   payload: { "careTaskName": "<exact task name>", "intervalDays": <number> }
+   Use when: user reports overwatering/underwatering, seasonal shift, plant moved to new light
+
+2. "new_task" — create a brand-new care task
+   payload: { "name": "<task name>", "icon": "<single emoji>", "intervalDays": <number> }
+   Use when: suggesting misting, rotating, flushing soil, checking roots — anything not already tracked
+
+3. "care_action" — suggest the user perform a specific task right now
+   payload: { "careTaskName": "<exact task name>" }
+   Use when: plant shows immediate need (wilting → water now, pests → treat now)
+
+4. "photo_request" — ask the user to take/upload a photo for diagnosis
+   payload: {}
+   Use when: you need visual information to diagnose, or to track progress over time
+
+RULES:
+- Respond ONLY with the JSON object. No markdown fences, no extra text outside the JSON.
+- Use careTaskName that exactly matches one of the plant's existing care tasks (listed in context).
+- Keep suggestions practical and specific to the plant's species and current state.
+- Consider the genus when advising — a succulent and a fern have opposite needs.
+- Factor in the care history: if a task was last performed recently, don't suggest doing it again unless there's a specific reason.
+"#;
+
+/// Build plant-specific context to append to the system prompt.
+/// Includes care history signals so the LLM can gauge user experience level.
+pub fn build_plant_context(plant: &crate::models::PlantResponse) -> String {
+    let care_tasks_info = if plant.care_tasks.is_empty() {
+        "  (none configured — user hasn't set up care tasks yet, may be new)".to_string()
+    } else {
+        plant
+            .care_tasks
+            .iter()
+            .map(|t| {
+                let schedule = t.task.interval_days
+                    .map(|d| format!("every {}d", d))
+                    .unwrap_or_else(|| "manual".to_string());
+                let last = t.task.last_performed
+                    .map(|d| d.format("%Y-%m-%d").to_string())
+                    .unwrap_or_else(|| "never".to_string());
+                let status = if t.is_due {
+                    format!(" ⚠️ OVERDUE {}d", t.days_overdue.unwrap_or(0))
+                } else if let Some(days) = t.days_overdue {
+                    format!(" (due in {}d)", -days)
+                } else {
+                    String::new()
+                };
+                format!(
+                    "  - {} {} | {} | last: {}{}",
+                    t.task.icon.as_deref().unwrap_or("📋"),
+                    t.task.name,
+                    schedule,
+                    last,
+                    status,
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    let metrics_info = if plant.custom_metrics.is_empty() {
+        String::new()
+    } else {
+        let metrics = plant
+            .custom_metrics
+            .iter()
+            .map(|m| format!("  - {} ({})", m.name, m.unit))
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("\nCustom metrics (user tracks these — indicates experience):\n{}", metrics)
+    };
+
+    // Experience signals for the LLM
+    let task_count = plant.care_tasks.len();
+    let has_custom_metrics = !plant.custom_metrics.is_empty();
+    let experience_hint = if task_count > 3 || has_custom_metrics {
+        "\nUser experience: likely intermediate/advanced (multiple tasks, custom metrics). Be concise and technical."
+    } else if task_count == 0 {
+        "\nUser experience: likely beginner (no tasks configured). Explain concepts, be encouraging."
+    } else {
+        ""
+    };
+
+    format!(
+        "\n\nPLANT CONTEXT:\nName: {}\nGenus: {}\nCare tasks:\n{}{}{}",
+        plant.name, plant.genus, care_tasks_info, metrics_info, experience_hint
+    )
+}
+
+/// JSON schema for structured output (used by OpenAI response_format and Ollama format).
+pub const RESPONSE_JSON_SCHEMA: &str = r#"{
+    "type": "object",
+    "properties": {
+        "text": { "type": "string" },
+        "suggestions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "suggestion_type": { "type": "string", "enum": ["schedule_change", "new_task", "care_action", "photo_request"] },
+                    "description": { "type": "string" },
+                    "payload": { "type": "object" }
+                },
+                "required": ["suggestion_type", "description", "payload"]
+            }
+        }
+    },
+    "required": ["text", "suggestions"]
+}"#;

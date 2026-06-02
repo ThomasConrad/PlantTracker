@@ -2,6 +2,7 @@ import { Component, createEffect, createSignal, For, Show } from 'solid-js';
 import { A } from '@solidjs/router';
 import { plantsStore } from '@/stores/plants';
 import { PlantCard } from '@/components/plants/PlantCard';
+import { NeedsAttention } from '@/components/plants/NeedsAttention';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export const PlantsPage: Component = () => {
@@ -83,6 +84,11 @@ export const PlantsPage: Component = () => {
           </div>
         }
       >
+        {/* Needs Attention Section */}
+        <Show when={plantsStore.plants.length > 0}>
+          <NeedsAttention plants={plantsStore.plants} />
+        </Show>
+
         <Show
           when={plantsStore.plants.length > 0}
           fallback={

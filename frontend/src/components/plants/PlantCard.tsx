@@ -1,4 +1,4 @@
-import { Component, Show } from 'solid-js';
+import { Component, Show, For, createMemo } from 'solid-js';
 import { A } from '@solidjs/router';
 import type { Plant } from '@/types';
 
@@ -7,6 +7,12 @@ interface PlantCardProps {
 }
 
 export const PlantCard: Component<PlantCardProps> = (props) => {
+  const overdueTasks = createMemo(() =>
+    (props.plant.careTasks || []).filter((t) => t.isDue)
+  );
+
+  const overdueCount = createMemo(() => overdueTasks().length);
+
   return (
     <A href={`/plants/${props.plant.id}`} class="plant-card-full-image group">
       <div class="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-sm">
@@ -35,6 +41,16 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
         
         {/* Gradient overlay for better text contrast */}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+        {/* Overdue badge */}
+        <Show when={overdueCount() > 0}>
+          <div class="absolute top-3 right-3 flex items-center gap-1 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow-lg">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01" />
+            </svg>
+            {overdueCount()}
+          </div>
+        </Show>
         
         {/* Plant name and genus overlay */}
         <div class="absolute bottom-0 left-0 right-0 p-5">
@@ -49,6 +65,29 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
           <p class="text-white/95 text-base italic drop-shadow-md font-medium">
             {props.plant.genus}
           </p>
+          {/* Overdue task icons */}
+          <Show when={overdueCount() > 0}>
+            <div class="flex gap-1.5 mt-2">
+              <For each={overdueTasks().slice(0, 4)}>
+                {(task) => (
+                  <span
+                    class="bg-red-500/80 backdrop-blur-sm text-white text-xs rounded-full px-2 py-0.5 flex items-center gap-1"
+                    title={`${task.name} overdue${task.daysOverdue ? ` by ${task.daysOverdue}d` : ''}`}
+                  >
+                    <Show when={task.icon} fallback={<span class="w-3 h-3">!</span>}>
+                      <span class="text-xs">{task.icon}</span>
+                    </Show>
+                    <Show when={task.daysOverdue && task.daysOverdue > 0}>
+                      <span class="text-[10px] font-medium">{task.daysOverdue}d</span>
+                    </Show>
+                  </span>
+                )}
+              </For>
+              <Show when={overdueCount() > 4}>
+                <span class="text-white/80 text-xs self-center">+{overdueCount() - 4}</span>
+              </Show>
+            </div>
+          </Show>
         </div>
       </div>
     </A>

@@ -259,14 +259,10 @@ pub async fn get_calendar_subscription_info(
 
     // Get base URL from request headers or environment
     let base_url =
-        std::env::var("BASE_URL").unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
+         std::env::var("BASE_URL").unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
 
-    // Determine API prefix from current request URI
-    let api_path = if uri.path().starts_with("/api/v1/") {
-        "/api/v1/calendar" // Frontend serving mode
-    } else {
-        "/v1/calendar" // API-only mode
-    };
+    // Note: axum strips the nest prefix, so the handler always sees paths without /api/v1
+    let api_path = "/api/v1/calendar";
     let feed_url = format!(
         "{}{}/{}.ics?token={}",
         base_url, api_path, user.id, calendar_token
@@ -329,12 +325,8 @@ pub async fn regenerate_calendar_token(
     let base_url =
         std::env::var("BASE_URL").unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
 
-    // Determine API prefix from current request URI
-    let api_path = if uri.path().starts_with("/api/v1/") {
-        "/api/v1/calendar" // Frontend serving mode
-    } else {
-        "/v1/calendar" // API-only mode
-    };
+    // Note: axum strips the nest prefix, so always use /api/v1
+    let api_path = "/api/v1/calendar";
     let feed_url = format!(
         "{}{}/{}.ics?token={}",
         base_url, api_path, user.id, calendar_token

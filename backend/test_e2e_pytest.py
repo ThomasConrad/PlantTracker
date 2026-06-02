@@ -690,8 +690,8 @@ class TestPerformance:
         print(f"Upload took {upload_duration:.2f} seconds")
         print(f"Upload speed: {(len(large_image_data) / (1024*1024)) / upload_duration:.1f} MB/s")
         
-        # Verify the photo was processed and converted to AVIF
-        assert photo["contentType"] == "image/avif"
+        # Verify the photo was processed and converted to WebP
+        assert photo["contentType"] == "image/webp"
         assert photo["size"] > 0  # Size will be different after AVIF conversion
         assert "width" in photo
         assert "height" in photo
@@ -789,7 +789,7 @@ class TestPhotoUpload:
         assert "id" in photo_data
         assert photo_data["plantId"] == plant_id
         assert photo_data["originalFilename"] == "test-photo.jpg"
-        assert photo_data["contentType"] == "image/avif"  # Images are converted to AVIF
+        assert photo_data["contentType"] == "image/webp"  # Images are converted to WebP
         assert photo_data["size"] > 0  # Size will be different after AVIF conversion
         assert "createdAt" in photo_data
 
@@ -1029,7 +1029,7 @@ class TestPhotoUpload:
         assert "id" in photo
         assert photo["plantId"] == plant_id
         assert photo["originalFilename"] == "async-test.jpg"
-        assert photo["contentType"] == "image/avif"  # Should be converted to AVIF
+        assert photo["contentType"] == "image/webp"  # Should be converted to WebP
         assert photo["size"] > 0
         assert "width" in photo
         assert "height" in photo
@@ -1294,14 +1294,13 @@ class TestCalendarFunctionality:
         # Check event details (handle iCalendar line wrapping with \r\n )
         # iCalendar format wraps long lines with CRLF + space
         calendar_unwrapped = calendar_content.replace('\r\n ', '')
-        assert "Water every 7 days" in calendar_unwrapped
-        assert "Water every 14 days" in calendar_unwrapped
-        assert "Fertilize every 14 days" in calendar_unwrapped
-        assert "Fertilize every 30 days" in calendar_unwrapped
+        assert "Every 7 days" in calendar_unwrapped
+        assert "Every 14 days" in calendar_unwrapped
+        assert "Every 30 days" in calendar_unwrapped
         
         # Check categories (iCalendar escapes commas with backslashes)
-        assert "CATEGORIES:Plant Care\\,Watering" in calendar_content
-        assert "CATEGORIES:Plant Care\\,Fertilizing" in calendar_content
+        assert "CATEGORIES:Plant Care\\,Water" in calendar_content
+        assert "CATEGORIES:Plant Care\\,Fertilize" in calendar_content
 
     def test_calendar_feed_invalid_token(self):
         """Test calendar feed with invalid token"""

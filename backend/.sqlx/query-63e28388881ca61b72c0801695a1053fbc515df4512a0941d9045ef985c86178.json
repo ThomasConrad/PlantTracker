@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT id, email, name, role, can_create_invites, max_invites, invites_created, created_at, updated_at\n        FROM users \n        ORDER BY created_at DESC \n        LIMIT 10\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "role",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "can_create_invites",
+        "ordinal": 4,
+        "type_info": "Bool"
+      },
+      {
+        "name": "max_invites",
+        "ordinal": 5,
+        "type_info": "Int64"
+      },
+      {
+        "name": "invites_created",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "63e28388881ca61b72c0801695a1053fbc515df4512a0941d9045ef985c86178"
+}

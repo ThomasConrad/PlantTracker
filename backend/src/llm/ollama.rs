@@ -18,10 +18,9 @@ pub struct OllamaCoach {
 
 impl OllamaCoach {
     pub fn new() -> Result<Self> {
-        let base_url = std::env::var("OLLAMA_URL")
-            .unwrap_or_else(|_| "http://localhost:11434".to_string());
-        let model = std::env::var("OLLAMA_MODEL")
-            .unwrap_or_else(|_| "llama3.2-vision".to_string());
+        let base_url =
+            std::env::var("OLLAMA_URL").unwrap_or_else(|_| "http://localhost:11434".to_string());
+        let model = std::env::var("OLLAMA_MODEL").unwrap_or_else(|_| "llama3.2-vision".to_string());
         let client = Client::builder()
             .timeout(Duration::from_secs(120)) // local models can be slower
             .build()
@@ -97,8 +96,8 @@ fn convert_messages(messages: Vec<ChatMessage>) -> Vec<OllamaMessage> {
 #[async_trait::async_trait]
 impl PlantCoach for OllamaCoach {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse> {
-        let format: serde_json::Value =
-            serde_json::from_str(RESPONSE_JSON_SCHEMA).context("Failed to parse response schema")?;
+        let format: serde_json::Value = serde_json::from_str(RESPONSE_JSON_SCHEMA)
+            .context("Failed to parse response schema")?;
 
         let ollama_messages = convert_messages(messages);
 
@@ -136,8 +135,8 @@ impl PlantCoach for OllamaCoach {
             .and_then(|m| m.content)
             .context("No content in Ollama response")?;
 
-        let coach_response: CoachResponse =
-            serde_json::from_str(&content).context("Failed to parse coach response JSON from Ollama")?;
+        let coach_response: CoachResponse = serde_json::from_str(&content)
+            .context("Failed to parse coach response JSON from Ollama")?;
 
         Ok(coach_response)
     }

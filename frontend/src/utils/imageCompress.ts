@@ -17,7 +17,7 @@ export interface CompressOptions {
 const DEFAULT_OPTIONS: Required<CompressOptions> = {
   maxDimension: 1024,
   quality: 0.8,
-  mimeType: 'image/webp',
+  mimeType: "image/webp",
 };
 
 /**
@@ -28,7 +28,7 @@ const DEFAULT_OPTIONS: Required<CompressOptions> = {
  */
 export async function compressImage(
   file: File,
-  opts?: CompressOptions
+  opts?: CompressOptions,
 ): Promise<string> {
   const { maxDimension, quality, mimeType } = { ...DEFAULT_OPTIONS, ...opts };
 
@@ -46,33 +46,33 @@ export async function compressImage(
   }
 
   // Use OffscreenCanvas if available (worker-safe, faster)
-  if (typeof OffscreenCanvas !== 'undefined') {
+  if (typeof OffscreenCanvas !== "undefined") {
     const canvas = new OffscreenCanvas(targetWidth, targetHeight);
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext("2d")!;
     ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
     bitmap.close();
 
     // Try preferred mime type, fall back to jpeg
     let blob = await canvas.convertToBlob({ type: mimeType, quality });
-    if (blob.type !== mimeType && mimeType !== 'image/jpeg') {
-      blob = await canvas.convertToBlob({ type: 'image/jpeg', quality });
+    if (blob.type !== mimeType && mimeType !== "image/jpeg") {
+      blob = await canvas.convertToBlob({ type: "image/jpeg", quality });
     }
     return blobToDataUrl(blob);
   }
 
   // Fallback: regular canvas
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = targetWidth;
   canvas.height = targetHeight;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
   bitmap.close();
 
   // Try preferred format
   let dataUrl = canvas.toDataURL(mimeType, quality);
   // If browser doesn't support webp, it returns png — detect and retry as jpeg
-  if (mimeType === 'image/webp' && dataUrl.startsWith('data:image/png')) {
-    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  if (mimeType === "image/webp" && dataUrl.startsWith("data:image/png")) {
+    dataUrl = canvas.toDataURL("image/jpeg", quality);
   }
   return dataUrl;
 }

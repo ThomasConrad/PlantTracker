@@ -22,7 +22,8 @@ fn row_to_care_task(row: &sqlx::sqlite::SqliteRow) -> Result<CareTask, AppError>
     let user_id_str: String = row.try_get("user_id").map_err(AppError::Database)?;
     let created_at_str: String = row.try_get("created_at").map_err(AppError::Database)?;
     let updated_at_str: String = row.try_get("updated_at").map_err(AppError::Database)?;
-    let last_performed_str: Option<String> = row.try_get("last_performed").map_err(AppError::Database)?;
+    let last_performed_str: Option<String> =
+        row.try_get("last_performed").map_err(AppError::Database)?;
     let archived_at_str: Option<String> = row.try_get("archived_at").map_err(AppError::Database)?;
 
     Ok(CareTask {
@@ -255,36 +256,42 @@ pub async fn update_care_task(
 
     // For interval_days, amount, sort_order we need separate queries if provided
     if let Some(interval) = &request.interval_days {
-        sqlx::query("UPDATE care_tasks SET interval_days = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-            .bind(*interval)
-            .bind(&now)
-            .bind(task_id.to_string())
-            .bind(user_id)
-            .execute(pool)
-            .await
-            .map_err(AppError::Database)?;
+        sqlx::query(
+            "UPDATE care_tasks SET interval_days = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        )
+        .bind(*interval)
+        .bind(&now)
+        .bind(task_id.to_string())
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
     }
 
     if let Some(amount) = &request.amount {
-        sqlx::query("UPDATE care_tasks SET amount = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-            .bind(*amount)
-            .bind(&now)
-            .bind(task_id.to_string())
-            .bind(user_id)
-            .execute(pool)
-            .await
-            .map_err(AppError::Database)?;
+        sqlx::query(
+            "UPDATE care_tasks SET amount = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        )
+        .bind(*amount)
+        .bind(&now)
+        .bind(task_id.to_string())
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
     }
 
     if let Some(sort_order) = request.sort_order {
-        sqlx::query("UPDATE care_tasks SET sort_order = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-            .bind(sort_order)
-            .bind(&now)
-            .bind(task_id.to_string())
-            .bind(user_id)
-            .execute(pool)
-            .await
-            .map_err(AppError::Database)?;
+        sqlx::query(
+            "UPDATE care_tasks SET sort_order = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        )
+        .bind(sort_order)
+        .bind(&now)
+        .bind(task_id.to_string())
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
     }
 
     // Execute the string-fields query
@@ -351,7 +358,7 @@ pub async fn unarchive_care_task(
 ) -> Result<CareTaskWithStatus, AppError> {
     let now = Utc::now().to_rfc3339();
     let result = sqlx::query(
-        "UPDATE care_tasks SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?"
+        "UPDATE care_tasks SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?",
     )
     .bind(&now)
     .bind(task_id.to_string())
@@ -411,10 +418,10 @@ pub async fn log_care_task(
 
     let care_task_ids_json = serde_json::to_string(&vec![task_id.to_string()]).unwrap_or_default();
 
-    let photo_ids_json = request
-        .photo_ids
-        .as_ref()
-        .map(|ids| serde_json::to_string(&ids.iter().map(|id| id.to_string()).collect::<Vec<_>>()).unwrap_or_default());
+    let photo_ids_json = request.photo_ids.as_ref().map(|ids| {
+        serde_json::to_string(&ids.iter().map(|id| id.to_string()).collect::<Vec<_>>())
+            .unwrap_or_default()
+    });
 
     // Create tracking entry
     sqlx::query(

@@ -1,11 +1,11 @@
-import { Component, createEffect, createSignal, Show } from 'solid-js';
-import { A, useNavigate, useParams } from '@solidjs/router';
-import { plantsStore } from '@/stores/plants';
-import { PlantForm } from '@/components/plants/PlantForm';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Button } from '@/components/ui/Button';
-import { apiClient } from '@/api/client';
-import type { PlantFormData, Photo } from '@/types';
+import { Component, createEffect, createSignal, Show } from "solid-js";
+import { A, useNavigate, useParams } from "@solidjs/router";
+import { plantsStore } from "@/stores/plants";
+import { PlantForm } from "@/components/plants/PlantForm";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { Button } from "@/components/ui/Button";
+import { apiClient } from "@/api/client";
+import type { PlantFormData, Photo } from "@/types";
 
 export const PlantFormPage: Component = () => {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ export const PlantFormPage: Component = () => {
       const photosResponse = await apiClient.getPlantPhotos(plantId);
       setExistingPhotos(photosResponse.photos || []);
     } catch (error) {
-      console.error('Failed to load existing photos:', error);
+      console.error("Failed to load existing photos:", error);
       setExistingPhotos([]);
     }
   };
@@ -45,7 +45,7 @@ export const PlantFormPage: Component = () => {
       // Reload plant data to get updated preview
       await plantsStore.loadPlant(params.id);
     } catch (error) {
-      console.error('Failed to set preview:', error);
+      console.error("Failed to set preview:", error);
     }
   };
 
@@ -57,28 +57,31 @@ export const PlantFormPage: Component = () => {
       // Reload plant data to get updated preview
       await plantsStore.loadPlant(params.id);
     } catch (error) {
-      console.error('Failed to clear preview:', error);
+      console.error("Failed to clear preview:", error);
     }
   };
 
   const handleSubmit = async (data: PlantFormData & { previewFile?: File }) => {
     try {
       setLoading(true);
-      
+
       if (isEditing()) {
         // Update existing plant
         await plantsStore.updatePlant(params.id, data);
-        
+
         // If a preview file was provided, upload it and set as preview
         if (data.previewFile) {
           try {
-            const photo = await plantsStore.uploadPhoto(params.id, data.previewFile);
+            const photo = await plantsStore.uploadPhoto(
+              params.id,
+              data.previewFile,
+            );
             await plantsStore.setPlantPreview(params.id, photo.id);
           } catch (previewError) {
-            console.warn('Failed to upload preview:', previewError);
+            console.warn("Failed to upload preview:", previewError);
           }
         }
-        
+
         navigate(`/plants/${params.id}`);
       } else {
         // Create new plant
@@ -86,7 +89,10 @@ export const PlantFormPage: Component = () => {
         navigate(`/plants/${plant.id}`);
       }
     } catch (error) {
-      console.error(`Failed to ${isEditing() ? 'update' : 'create'} plant:`, error);
+      console.error(
+        `Failed to ${isEditing() ? "update" : "create"} plant:`,
+        error,
+      );
     } finally {
       setLoading(false);
     }
@@ -96,15 +102,15 @@ export const PlantFormPage: Component = () => {
     if (isEditing()) {
       return `/plants/${params.id}`;
     }
-    return '/plants';
+    return "/plants";
   };
 
-  const getTitle = () => isEditing() ? 'Edit Plant' : 'Add New Plant';
-  const getDescription = () => 
-    isEditing() 
+  const getTitle = () => (isEditing() ? "Edit Plant" : "Add New Plant");
+  const getDescription = () =>
+    isEditing()
       ? "Update your plant's information and care settings."
       : "Track your plant's care and growth over time.";
-  const getSubmitText = () => isEditing() ? 'Update Plant' : 'Create Plant';
+  const getSubmitText = () => (isEditing() ? "Update Plant" : "Create Plant");
 
   const handleDelete = async () => {
     if (!params.id) return;
@@ -112,9 +118,9 @@ export const PlantFormPage: Component = () => {
     try {
       setDeleting(true);
       await plantsStore.deletePlant(params.id);
-      navigate('/plants');
+      navigate("/plants");
     } catch (error) {
-      console.error('Failed to delete plant:', error);
+      console.error("Failed to delete plant:", error);
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);
@@ -134,8 +140,18 @@ export const PlantFormPage: Component = () => {
                   class="flex-shrink-0 p-2 -ml-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
                   aria-label="Back"
                 >
-                  <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
+                  <svg
+                    class="h-5 w-5 sm:h-6 sm:w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M15 19l-7-7 7-7"
+                    />
                   </svg>
                 </A>
                 <div class="min-w-0 flex-1">
@@ -148,13 +164,23 @@ export const PlantFormPage: Component = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Status indicator for edit mode */}
             <Show when={isEditing()}>
               <div class="flex-shrink-0">
                 <div class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  <svg class="mr-1.5 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  <svg
+                    class="mr-1.5 h-3 w-3"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
                   </svg>
                   Editing
                 </div>
@@ -168,7 +194,9 @@ export const PlantFormPage: Component = () => {
       <div class="px-4 sm:px-6">
         <div class="max-w-4xl mx-auto">
           <Show
-            when={!isEditing() || (isCurrentPlantLoaded() && !plantsStore.loading)}
+            when={
+              !isEditing() || (isCurrentPlantLoaded() && !plantsStore.loading)
+            }
             fallback={
               <div class="flex justify-center py-16 sm:py-20">
                 <div class="flex flex-col items-center gap-4">
@@ -192,14 +220,29 @@ export const PlantFormPage: Component = () => {
                 <div class="flex items-center space-x-3">
                   <div class="flex-shrink-0">
                     <div class="w-8 h-8 sm:w-10 sm:h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-                      <svg class="h-4 w-4 sm:h-5 sm:w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <Show 
+                      <svg
+                        class="h-4 w-4 sm:h-5 sm:w-5 text-primary-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <Show
                           when={isEditing()}
                           fallback={
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width={2}
+                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                            />
                           }
                         >
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
                         </Show>
                       </svg>
                     </div>
@@ -209,7 +252,9 @@ export const PlantFormPage: Component = () => {
                       Plant Details
                     </h2>
                     <p class="text-xs sm:text-sm text-gray-500">
-                      {isEditing() ? 'Update the information below' : 'Fill in the details for your new plant'}
+                      {isEditing()
+                        ? "Update the information below"
+                        : "Fill in the details for your new plant"}
                     </p>
                   </div>
                 </div>
@@ -218,27 +263,41 @@ export const PlantFormPage: Component = () => {
               {/* Form Content */}
               <div class="p-4 sm:p-6 lg:p-8">
                 <PlantForm
-                  initialData={isEditing() && plantsStore.selectedPlant ? {
-                    name: plantsStore.selectedPlant.name,
-                    genus: plantsStore.selectedPlant.genus,
-                    careTasks: (plantsStore.selectedPlant.careTasks || [])
-                      .filter(t => !t.archivedAt)
-                      .map(t => ({
-                        name: t.name,
-                        icon: t.icon || undefined,
-                        intervalDays: t.intervalDays ?? undefined,
-                        amount: t.amount ?? undefined,
-                        unit: t.unit || undefined,
-                        notes: t.notes || undefined,
-                      })),
-                    customMetrics: plantsStore.selectedPlant.customMetrics?.map(m => ({
-                      name: m.name,
-                      unit: m.unit,
-                      dataType: m.dataType as 'Number' | 'Text' | 'Boolean'
-                    })) || []
-                  } : undefined}
+                  initialData={
+                    isEditing() && plantsStore.selectedPlant
+                      ? {
+                          name: plantsStore.selectedPlant.name,
+                          genus: plantsStore.selectedPlant.genus,
+                          careTasks: (plantsStore.selectedPlant.careTasks || [])
+                            .filter((t) => !t.archivedAt)
+                            .map((t) => ({
+                              name: t.name,
+                              icon: t.icon || undefined,
+                              intervalDays: t.intervalDays ?? undefined,
+                              amount: t.amount ?? undefined,
+                              unit: t.unit || undefined,
+                              notes: t.notes || undefined,
+                            })),
+                          customMetrics:
+                            plantsStore.selectedPlant.customMetrics?.map(
+                              (m) => ({
+                                name: m.name,
+                                unit: m.unit,
+                                dataType: m.dataType as
+                                  | "Number"
+                                  | "Text"
+                                  | "Boolean",
+                              }),
+                            ) || [],
+                        }
+                      : undefined
+                  }
                   isEditing={isEditing()}
-                  existingPreviewUrl={isEditing() && plantsStore.selectedPlant?.previewUrl ? plantsStore.selectedPlant.previewUrl : null}
+                  existingPreviewUrl={
+                    isEditing() && plantsStore.selectedPlant?.previewUrl
+                      ? plantsStore.selectedPlant.previewUrl
+                      : null
+                  }
                   existingPhotos={existingPhotos()}
                   onSubmit={handleSubmit}
                   onPhotoSelect={handlePhotoSelect}
@@ -255,17 +314,25 @@ export const PlantFormPage: Component = () => {
             <div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-4">
               <div class="flex items-start gap-3">
                 <div class="flex-shrink-0">
-                  <svg class="h-5 w-5 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    class="h-5 w-5 text-red-500 mt-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
                 <div class="flex-1 min-w-0">
                   <h3 class="text-sm font-medium text-red-800">
                     Something went wrong
                   </h3>
-                  <p class="text-sm text-red-700 mt-1">
-                    {plantsStore.error}
-                  </p>
+                  <p class="text-sm text-red-700 mt-1">{plantsStore.error}</p>
                 </div>
               </div>
             </div>
@@ -275,7 +342,9 @@ export const PlantFormPage: Component = () => {
             <div class="mt-6 border border-red-200 bg-red-50 rounded-xl p-5">
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h3 class="text-sm font-semibold text-red-900">Delete Plant</h3>
+                  <h3 class="text-sm font-semibold text-red-900">
+                    Delete Plant
+                  </h3>
                   <p class="text-sm text-red-700 mt-1">
                     Permanently remove this plant and all associated data.
                   </p>
@@ -303,7 +372,8 @@ export const PlantFormPage: Component = () => {
             </div>
             <div class="px-6 py-4">
               <p class="text-sm text-gray-600 leading-relaxed">
-                Are you sure you want to delete this plant? This removes photos, tracking history, and schedules permanently.
+                Are you sure you want to delete this plant? This removes photos,
+                tracking history, and schedules permanently.
               </p>
             </div>
             <div class="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">

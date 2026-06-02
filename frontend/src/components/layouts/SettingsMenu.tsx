@@ -1,7 +1,7 @@
-import { Component, Show } from 'solid-js';
-import { A } from '@solidjs/router';
-import { authStore } from '@/stores/auth';
-import { remindersStore } from '@/stores/reminders';
+import { Component, Show } from "solid-js";
+import { A } from "@solidjs/router";
+import { authStore } from "@/stores/auth";
+import { remindersStore } from "@/stores/reminders";
 
 interface SettingsMenuProps {
   isOpen: boolean;
@@ -10,70 +10,138 @@ interface SettingsMenuProps {
 
 export const SettingsMenu: Component<SettingsMenuProps> = (props) => {
   const menuItems = [
-    ...(authStore.user?.role === 'admin' ? [{
-      label: 'Admin Dashboard',
-      href: '/admin/dashboard',
-      icon: (
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
-    }] : []),
-    ...(authStore.user?.canCreateInvites ? [{
-      label: 'Manage Invites',
-      href: '/invites',
-      icon: (
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 4v16m8-8H4" />
-        </svg>
-      )
-    }] : []),
+    ...(authStore.user?.role === "admin"
+      ? [
+          {
+            label: "Admin Dashboard",
+            href: "/admin/dashboard",
+            icon: (
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            ),
+          },
+        ]
+      : []),
+    ...(authStore.user?.canCreateInvites
+      ? [
+          {
+            label: "Manage Invites",
+            href: "/invites",
+            icon: (
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+            ),
+          },
+        ]
+      : []),
     {
-      label: 'Reminders',
-      href: '/reminders',
+      label: "Reminders",
+      href: "/reminders",
       icon: (
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+        <svg
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={2}
+            d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5m6 0a3 3 0 11-6 0m6 0H9"
+          />
         </svg>
-      )
+      ),
     },
     {
-      label: 'Calendar Settings',
-      href: '/calendar/settings',
+      label: "Calendar Settings",
+      href: "/calendar/settings",
       icon: (
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        <svg
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={2}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
         </svg>
-      )
+      ),
     },
     {
-      label: 'User Settings',
-      href: '/settings',
+      label: "User Settings",
+      href: "/settings",
       icon: (
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        <svg
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={2}
+            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+          />
         </svg>
-      )
+      ),
     },
     {
-      label: 'Logout',
-      href: '/logout',
+      label: "Logout",
+      href: "/logout",
       icon: (
-        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        <svg
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={2}
+            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          />
         </svg>
-      )
-    }
+      ),
+    },
   ];
 
   return (
     <Show when={props.isOpen}>
       {/* Backdrop */}
-      <div 
+      <div
         class="fixed inset-0 bg-black bg-opacity-25 z-40 sm:hidden"
         onClick={props.onClose}
       />
-      
+
       {/* Settings Menu */}
       <div class="fixed bottom-16 right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-50 sm:hidden min-w-[200px]">
         <div class="py-2">
@@ -85,7 +153,9 @@ export const SettingsMenu: Component<SettingsMenuProps> = (props) => {
             >
               <span class="text-gray-400">{item.icon}</span>
               <span class="text-sm font-medium">{item.label}</span>
-              <Show when={item.href === '/reminders' && remindersStore.dueCount > 0}>
+              <Show
+                when={item.href === "/reminders" && remindersStore.dueCount > 0}
+              >
                 <span class="ml-auto inline-flex items-center justify-center rounded-full bg-red-600 px-2 py-0.5 text-xs text-white">
                   {remindersStore.dueCount}
                 </span>

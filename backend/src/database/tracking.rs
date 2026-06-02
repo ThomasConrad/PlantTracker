@@ -19,18 +19,22 @@ fn row_to_entry(row: &sqlx::sqlite::SqliteRow) -> TrackingEntry {
     let photo_ids_str: Option<String> = row.get("photo_ids");
 
     let care_task_ids: Option<Vec<Uuid>> = care_task_ids_str.and_then(|s| {
-        serde_json::from_str::<Vec<String>>(&s)
-            .ok()
-            .map(|ids| ids.iter().filter_map(|id| Uuid::parse_str(id).ok()).collect())
+        serde_json::from_str::<Vec<String>>(&s).ok().map(|ids| {
+            ids.iter()
+                .filter_map(|id| Uuid::parse_str(id).ok())
+                .collect()
+        })
     });
 
     let measurements: Option<Vec<Measurement>> =
         measurements_str.and_then(|s| serde_json::from_str(&s).ok());
 
     let photo_ids: Option<Vec<Uuid>> = photo_ids_str.and_then(|s| {
-        serde_json::from_str::<Vec<String>>(&s)
-            .ok()
-            .map(|ids| ids.iter().filter_map(|id| Uuid::parse_str(id).ok()).collect())
+        serde_json::from_str::<Vec<String>>(&s).ok().map(|ids| {
+            ids.iter()
+                .filter_map(|id| Uuid::parse_str(id).ok())
+                .collect()
+        })
     });
 
     TrackingEntry {
@@ -296,8 +300,13 @@ pub async fn update_tracking_entry(
     if let Some(care_task_ids) = &request.care_task_ids {
         update_parts.push("care_task_ids = ?");
         values.push(
-            serde_json::to_string(&care_task_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>())
-                .unwrap_or_default(),
+            serde_json::to_string(
+                &care_task_ids
+                    .iter()
+                    .map(|id| id.to_string())
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap_or_default(),
         );
     }
 
@@ -314,8 +323,13 @@ pub async fn update_tracking_entry(
     if let Some(photo_ids) = &request.photo_ids {
         update_parts.push("photo_ids = ?");
         values.push(
-            serde_json::to_string(&photo_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>())
-                .unwrap_or_default(),
+            serde_json::to_string(
+                &photo_ids
+                    .iter()
+                    .map(|id| id.to_string())
+                    .collect::<Vec<_>>(),
+            )
+            .unwrap_or_default(),
         );
     }
 

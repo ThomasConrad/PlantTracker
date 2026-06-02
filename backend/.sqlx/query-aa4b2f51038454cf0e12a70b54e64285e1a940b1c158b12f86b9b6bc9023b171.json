@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET can_create_invites = TRUE, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "aa4b2f51038454cf0e12a70b54e64285e1a940b1c158b12f86b9b6bc9023b171"
+}

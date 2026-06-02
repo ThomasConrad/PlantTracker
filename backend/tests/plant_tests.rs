@@ -36,7 +36,10 @@ async fn test_create_plant_authenticated() {
     let care_tasks = body["careTasks"].as_array().unwrap();
     let water_task = care_tasks.iter().find(|t| t["name"] == "Water").unwrap();
     assert_eq!(water_task["intervalDays"], 7);
-    let fertilize_task = care_tasks.iter().find(|t| t["name"] == "Fertilize").unwrap();
+    let fertilize_task = care_tasks
+        .iter()
+        .find(|t| t["name"] == "Fertilize")
+        .unwrap();
     assert_eq!(fertilize_task["intervalDays"], 14);
     assert!(body["id"].is_string());
     assert!(body["userId"].is_string());

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE admin_settings SET value = ?, updated_at = ? WHERE key = 'registration_enabled'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "38869932cd8c4042ac06c087ce03b1a429bbcc0238988067ad60970d4401c02c"
+}

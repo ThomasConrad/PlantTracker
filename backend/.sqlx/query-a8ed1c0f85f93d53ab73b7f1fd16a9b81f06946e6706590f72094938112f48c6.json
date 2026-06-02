@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE admin_settings SET value = ?, updated_at = ? WHERE key = 'default_user_invite_limit'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "a8ed1c0f85f93d53ab73b7f1fd16a9b81f06946e6706590f72094938112f48c6"
+}

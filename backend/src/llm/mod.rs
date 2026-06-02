@@ -1,7 +1,7 @@
 pub mod anthropic;
+pub mod mock;
 pub mod ollama;
 pub mod openai;
-pub mod mock;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -46,8 +46,7 @@ pub trait PlantCoach: Send + Sync {
 
 /// Factory: create the coach from environment config
 pub fn create_coach() -> Result<Box<dyn PlantCoach>> {
-    let provider =
-        std::env::var("PLANT_COACH_PROVIDER").unwrap_or_else(|_| "openai".to_string());
+    let provider = std::env::var("PLANT_COACH_PROVIDER").unwrap_or_else(|_| "openai".to_string());
     match provider.as_str() {
         "anthropic" => Ok(Box::new(anthropic::AnthropicCoach::new()?)),
         "ollama" => Ok(Box::new(ollama::OllamaCoach::new()?)),
@@ -68,11 +67,14 @@ pub fn create_coach_for_user(
     if base_url.is_empty() {
         return None;
     }
-    Some(openai::OpenAICoach::new_with_config(
-        base_url.to_string(),
-        api_key.unwrap_or("").to_string(),
-        model.unwrap_or("gpt-4o").to_string(),
-    ).map(|c| Box::new(c) as Box<dyn PlantCoach>))
+    Some(
+        openai::OpenAICoach::new_with_config(
+            base_url.to_string(),
+            api_key.unwrap_or("").to_string(),
+            model.unwrap_or("gpt-4o").to_string(),
+        )
+        .map(|c| Box::new(c) as Box<dyn PlantCoach>),
+    )
 }
 
 // ─── Shared prompt & schema ─────────────────────────────────────────────────
@@ -143,10 +145,14 @@ pub fn build_plant_context(plant: &crate::models::PlantResponse) -> String {
             .care_tasks
             .iter()
             .map(|t| {
-                let schedule = t.task.interval_days
+                let schedule = t
+                    .task
+                    .interval_days
                     .map(|d| format!("every {}d", d))
                     .unwrap_or_else(|| "manual".to_string());
-                let last = t.task.last_performed
+                let last = t
+                    .task
+                    .last_performed
                     .map(|d| d.format("%Y-%m-%d").to_string())
                     .unwrap_or_else(|| "never".to_string());
                 let status = if t.is_due {
@@ -178,7 +184,10 @@ pub fn build_plant_context(plant: &crate::models::PlantResponse) -> String {
             .map(|m| format!("  - {} ({})", m.name, m.unit))
             .collect::<Vec<_>>()
             .join("\n");
-        format!("\nCustom metrics (user tracks these — indicates experience):\n{}", metrics)
+        format!(
+            "\nCustom metrics (user tracks these — indicates experience):\n{}",
+            metrics
+        )
     };
 
     // Experience signals for the LLM

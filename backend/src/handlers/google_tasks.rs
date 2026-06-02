@@ -369,15 +369,8 @@ pub async fn sync_plant_tasks(
 
             let mut next = last + chrono::Duration::days(interval as i64);
             while next <= end_date && next >= now {
-                match create_plant_care_task(
-                    &token,
-                    plant,
-                    ct,
-                    next,
-                    &base_url,
-                    &task_list_id,
-                )
-                .await
+                match create_plant_care_task(&token, plant, ct, next, &base_url, &task_list_id)
+                    .await
                 {
                     Ok(_task_id) => created_tasks += 1,
                     Err(e) => {

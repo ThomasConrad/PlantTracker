@@ -1,8 +1,8 @@
-import { Component, createEffect, Show } from 'solid-js';
-import { A, useParams } from '@solidjs/router';
-import { plantsStore } from '@/stores/plants';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { CoachChat } from '@/components/plants/CoachChat';
+import { Component, createEffect, Show } from "solid-js";
+import { A, useParams } from "@solidjs/router";
+import { plantsStore } from "@/stores/plants";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { CoachChat } from "@/components/plants/CoachChat";
 
 export const PlantCoachPage: Component = () => {
   const params = useParams();
@@ -23,8 +23,18 @@ export const PlantCoachPage: Component = () => {
           href={`/plants/${params.id}`}
           class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
         >
-          <svg class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          <svg
+            class="w-5 h-5 text-gray-600 dark:text-gray-400"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
         </A>
         <div class="flex-1 min-w-0">
@@ -32,7 +42,9 @@ export const PlantCoachPage: Component = () => {
             Plant Coach
           </h1>
           <Show when={plant()}>
-            <p class="text-sm text-gray-500 dark:text-gray-400 truncate">{plant()!.name}</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
+              {plant()!.name}
+            </p>
           </Show>
         </div>
       </div>

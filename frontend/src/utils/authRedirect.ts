@@ -1,14 +1,14 @@
-const AUTH_PAGE_PATHS = new Set(['/login', '/signup', '/register', '/invite']);
+const AUTH_PAGE_PATHS = new Set(["/login", "/signup", "/register", "/invite"]);
 
-export const DEFAULT_POST_LOGIN_PATH = '/plants';
+export const DEFAULT_POST_LOGIN_PATH = "/plants";
 
 export function isSafeRedirectPath(path: string): boolean {
-  if (!path || !path.startsWith('/')) {
+  if (!path || !path.startsWith("/")) {
     return false;
   }
 
   // Prevent protocol-relative redirects (e.g. //example.com).
-  if (path.startsWith('//')) {
+  if (path.startsWith("//")) {
     return false;
   }
 
@@ -16,10 +16,14 @@ export function isSafeRedirectPath(path: string): boolean {
   return !AUTH_PAGE_PATHS.has(pathname);
 }
 
-export function buildLoginRedirectPath(pathname: string, search = '', hash = ''): string {
+export function buildLoginRedirectPath(
+  pathname: string,
+  search = "",
+  hash = "",
+): string {
   const attemptedPath = `${pathname}${search}${hash}`;
   if (!isSafeRedirectPath(attemptedPath)) {
-    return '/login';
+    return "/login";
   }
 
   const redirectParam = encodeURIComponent(attemptedPath);
@@ -28,10 +32,10 @@ export function buildLoginRedirectPath(pathname: string, search = '', hash = '')
 
 export function resolvePostLoginPath(
   search: string,
-  fallback = DEFAULT_POST_LOGIN_PATH
+  fallback = DEFAULT_POST_LOGIN_PATH,
 ): string {
   const params = new URLSearchParams(search);
-  const redirect = params.get('redirect');
+  const redirect = params.get("redirect");
   if (redirect && isSafeRedirectPath(redirect)) {
     return redirect;
   }

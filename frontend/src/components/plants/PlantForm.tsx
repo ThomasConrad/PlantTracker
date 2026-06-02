@@ -1,8 +1,8 @@
-import { Component, createEffect, createSignal, For } from 'solid-js';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { PreviewUpload } from '@/components/plants/PreviewUpload';
-import type { PlantFormData, CareTaskFormData, Photo } from '@/types';
+import { Component, createEffect, createSignal, For } from "solid-js";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { PreviewUpload } from "@/components/plants/PreviewUpload";
+import type { PlantFormData, CareTaskFormData, Photo } from "@/types";
 
 interface PlantFormProps {
   initialData?: Partial<PlantFormData>;
@@ -17,15 +17,17 @@ interface PlantFormProps {
 }
 
 const DEFAULT_CARE_TASKS: CareTaskFormData[] = [
-  { name: 'Water', icon: '💧', intervalDays: 7 },
-  { name: 'Fertilize', icon: '🌱', intervalDays: 14 },
+  { name: "Water", icon: "💧", intervalDays: 7 },
+  { name: "Fertilize", icon: "🌱", intervalDays: 14 },
 ];
 
 export const PlantForm: Component<PlantFormProps> = (props) => {
   const [formData, setFormData] = createSignal<PlantFormData>({
-    name: props.initialData?.name || '',
-    genus: props.initialData?.genus || '',
-    careTasks: props.initialData?.careTasks || (props.isEditing ? [] : DEFAULT_CARE_TASKS),
+    name: props.initialData?.name || "",
+    genus: props.initialData?.genus || "",
+    careTasks:
+      props.initialData?.careTasks ||
+      (props.isEditing ? [] : DEFAULT_CARE_TASKS),
     customMetrics: props.initialData?.customMetrics || [],
   });
 
@@ -33,66 +35,69 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     if (!props.initialData) return;
 
     setFormData({
-      name: props.initialData.name || '',
-      genus: props.initialData.genus || '',
-      careTasks: props.initialData.careTasks || (props.isEditing ? [] : DEFAULT_CARE_TASKS),
+      name: props.initialData.name || "",
+      genus: props.initialData.genus || "",
+      careTasks:
+        props.initialData.careTasks ||
+        (props.isEditing ? [] : DEFAULT_CARE_TASKS),
       customMetrics: props.initialData.customMetrics || [],
     });
   });
 
   const [errors, setErrors] = createSignal<Record<string, string>>({});
   const [previewFile, setThumbnailFile] = createSignal<File | null>(null);
-  const [previewError, setThumbnailError] = createSignal<string>('');
+  const [previewError, setThumbnailError] = createSignal<string>("");
 
   const addCareTask = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      careTasks: [
-        ...prev.careTasks,
-        { name: '', icon: '🌱' }
-      ]
+      careTasks: [...prev.careTasks, { name: "", icon: "🌱" }],
     }));
   };
 
   const removeCareTask = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      careTasks: prev.careTasks.filter((_, i) => i !== index)
+      careTasks: prev.careTasks.filter((_, i) => i !== index),
     }));
   };
 
-  const updateCareTask = (index: number, field: keyof CareTaskFormData, value: string | number | undefined) => {
-    setFormData(prev => ({
+  const updateCareTask = (
+    index: number,
+    field: keyof CareTaskFormData,
+    value: string | number | undefined,
+  ) => {
+    setFormData((prev) => ({
       ...prev,
       careTasks: prev.careTasks.map((task, i) =>
-        i === index ? { ...task, [field]: value } : task
-      )
+        i === index ? { ...task, [field]: value } : task,
+      ),
     }));
   };
 
   const addCustomMetric = () => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       customMetrics: [
         ...prev.customMetrics,
-        { name: '', unit: '', dataType: 'Number' as const }
-      ]
+        { name: "", unit: "", dataType: "Number" as const },
+      ],
     }));
   };
 
   const removeCustomMetric = (index: number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      customMetrics: prev.customMetrics.filter((_, i) => i !== index)
+      customMetrics: prev.customMetrics.filter((_, i) => i !== index),
     }));
   };
 
   const updateCustomMetric = (index: number, field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       customMetrics: prev.customMetrics.map((metric, i) =>
-        i === index ? { ...metric, [field]: value } : metric
-      )
+        i === index ? { ...metric, [field]: value } : metric,
+      ),
     }));
   };
 
@@ -100,29 +105,30 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
     const newErrors: Record<string, string> = {};
 
     if (!formData().name.trim()) {
-      newErrors.name = 'Plant name is required';
+      newErrors.name = "Plant name is required";
     }
 
     if (!formData().genus.trim()) {
-      newErrors.genus = 'Genus is required';
+      newErrors.genus = "Genus is required";
     }
 
     // Validate care tasks
     formData().careTasks.forEach((task, index) => {
       if (!task.name.trim()) {
-        newErrors[`careTask_${index}_name`] = 'Task name is required';
+        newErrors[`careTask_${index}_name`] = "Task name is required";
       }
       if (task.intervalDays !== undefined && task.intervalDays < 1) {
-        newErrors[`careTask_${index}_interval`] = 'Interval must be at least 1 day';
+        newErrors[`careTask_${index}_interval`] =
+          "Interval must be at least 1 day";
       }
     });
 
     formData().customMetrics.forEach((metric, index) => {
       if (metric.name && !metric.unit) {
-        newErrors[`customMetric_${index}_unit`] = 'Unit is required';
+        newErrors[`customMetric_${index}_unit`] = "Unit is required";
       }
       if (metric.unit && !metric.name) {
-        newErrors[`customMetric_${index}_name`] = 'Name is required';
+        newErrors[`customMetric_${index}_name`] = "Name is required";
       }
     });
 
@@ -132,17 +138,19 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
 
   const handlePreviewSelect = (file: File) => {
     setThumbnailFile(file);
-    setThumbnailError('');
+    setThumbnailError("");
   };
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
-    const validCareTasks = formData().careTasks.filter(task => task.name.trim());
+    const validCareTasks = formData().careTasks.filter((task) =>
+      task.name.trim(),
+    );
     const validCustomMetrics = formData().customMetrics.filter(
-      metric => metric.name.trim() && metric.unit.trim()
+      (metric) => metric.name.trim() && metric.unit.trim(),
     );
 
     await props.onSubmit({
@@ -162,7 +170,9 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
           label="Plant Name"
           type="text"
           value={formData().name}
-          onInput={(e) => setFormData(prev => ({ ...prev, name: e.currentTarget.value }))}
+          onInput={(e) =>
+            setFormData((prev) => ({ ...prev, name: e.currentTarget.value }))
+          }
           error={errors().name}
           placeholder="e.g., My Fiddle Leaf Fig"
           required
@@ -172,7 +182,9 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
           label="Genus"
           type="text"
           value={formData().genus}
-          onInput={(e) => setFormData(prev => ({ ...prev, genus: e.currentTarget.value }))}
+          onInput={(e) =>
+            setFormData((prev) => ({ ...prev, genus: e.currentTarget.value }))
+          }
           error={errors().genus}
           placeholder="e.g., Ficus lyrata"
           required
@@ -199,7 +211,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
               <div class="bg-gray-50 p-4 rounded-lg space-y-4">
                 <div class="flex items-center justify-between">
                   <h4 class="text-sm font-medium text-gray-700">
-                    <span class="mr-1">{task.icon ?? '🌱'}</span>
+                    <span class="mr-1">{task.icon ?? "🌱"}</span>
                     {task.name || `Task ${index() + 1}`}
                   </h4>
                   <Button
@@ -211,13 +223,15 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                     Remove
                   </Button>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <Input
                     label="Name"
                     type="text"
                     value={task.name}
-                    onInput={(e) => updateCareTask(index(), 'name', e.currentTarget.value)}
+                    onInput={(e) =>
+                      updateCareTask(index(), "name", e.currentTarget.value)
+                    }
                     error={errors()[`careTask_${index()}_name`]}
                     placeholder="e.g., Water, Fertilize, Prune"
                     required
@@ -226,8 +240,10 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                   <Input
                     label="Icon"
                     type="text"
-                    value={task.icon || ''}
-                    onInput={(e) => updateCareTask(index(), 'icon', e.currentTarget.value)}
+                    value={task.icon || ""}
+                    onInput={(e) =>
+                      updateCareTask(index(), "icon", e.currentTarget.value)
+                    }
                     placeholder="e.g., 💧"
                   />
 
@@ -236,10 +252,14 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                     type="number"
                     min="1"
                     max="365"
-                    value={task.intervalDays || ''}
+                    value={task.intervalDays || ""}
                     onInput={(e) => {
                       const val = parseInt(e.currentTarget.value);
-                      updateCareTask(index(), 'intervalDays', isNaN(val) ? undefined : val);
+                      updateCareTask(
+                        index(),
+                        "intervalDays",
+                        isNaN(val) ? undefined : val,
+                      );
                     }}
                     error={errors()[`careTask_${index()}_interval`]}
                     placeholder="Leave empty for no schedule"
@@ -248,8 +268,10 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                   <Input
                     label="Notes"
                     type="text"
-                    value={task.notes || ''}
-                    onInput={(e) => updateCareTask(index(), 'notes', e.currentTarget.value)}
+                    value={task.notes || ""}
+                    onInput={(e) =>
+                      updateCareTask(index(), "notes", e.currentTarget.value)
+                    }
                     placeholder="Optional notes"
                   />
                 </div>
@@ -288,7 +310,9 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
             {(metric, index) => (
               <div class="bg-gray-50 p-4 rounded-lg space-y-4">
                 <div class="flex items-center justify-between">
-                  <h4 class="text-sm font-medium text-gray-700">Metric {index() + 1}</h4>
+                  <h4 class="text-sm font-medium text-gray-700">
+                    Metric {index() + 1}
+                  </h4>
                   <Button
                     type="button"
                     variant="outline"
@@ -298,13 +322,15 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                     Remove
                   </Button>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input
                     label="Name"
                     type="text"
                     value={metric.name}
-                    onInput={(e) => updateCustomMetric(index(), 'name', e.currentTarget.value)}
+                    onInput={(e) =>
+                      updateCustomMetric(index(), "name", e.currentTarget.value)
+                    }
                     error={errors()[`customMetric_${index()}_name`]}
                     placeholder="e.g., Height"
                   />
@@ -313,7 +339,9 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                     label="Unit"
                     type="text"
                     value={metric.unit}
-                    onInput={(e) => updateCustomMetric(index(), 'unit', e.currentTarget.value)}
+                    onInput={(e) =>
+                      updateCustomMetric(index(), "unit", e.currentTarget.value)
+                    }
                     error={errors()[`customMetric_${index()}_unit`]}
                     placeholder="e.g., cm"
                   />
@@ -323,7 +351,13 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
                     <select
                       class="input"
                       value={metric.dataType}
-                      onChange={(e) => updateCustomMetric(index(), 'dataType', e.currentTarget.value)}
+                      onChange={(e) =>
+                        updateCustomMetric(
+                          index(),
+                          "dataType",
+                          e.currentTarget.value,
+                        )
+                      }
                     >
                       <option value="Number">Number</option>
                       <option value="Text">Text</option>
@@ -343,7 +377,7 @@ export const PlantForm: Component<PlantFormProps> = (props) => {
           loading={props.loading}
           disabled={!formData().name.trim() || !formData().genus.trim()}
         >
-          {props.submitText || 'Save Plant'}
+          {props.submitText || "Save Plant"}
         </Button>
       </div>
     </form>

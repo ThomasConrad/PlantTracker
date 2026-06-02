@@ -99,7 +99,7 @@ pub async fn create_user_internal(
     let result = sqlx::query(
         r#"
         INSERT INTO users (id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
-        VALUES (?, ?, ?, 'sunday', 'metric', ?, ?, ?, ?, 0, ?, ?)
+        VALUES (?, ?, ?, 'monday', 'metric', ?, ?, ?, ?, 0, ?, ?)
         "#,
     )
     .bind(&user_id)
@@ -153,7 +153,7 @@ async fn get_max_total_users(pool: &DatabasePool) -> Result<i32, AppError> {
 
 pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, AppError> {
     let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?"
+        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, llm_base_url, llm_api_key, llm_model, created_at, updated_at FROM users WHERE id = ?"
     )
         .bind(user_id)
         .fetch_optional(pool)
@@ -175,7 +175,7 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, 
 
 pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User, AppError> {
     let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE email = ?"
+        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, llm_base_url, llm_api_key, llm_model, created_at, updated_at FROM users WHERE email = ?"
     )
         .bind(email)
         .fetch_optional(pool)

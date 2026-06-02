@@ -1,27 +1,39 @@
-import { Component, For, Show, createMemo, createSignal, onCleanup, onMount, splitProps } from 'solid-js';
-import { cn } from '@/utils/cn';
-import type { SelectProps } from './types';
+import {
+  Component,
+  For,
+  Show,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+  splitProps,
+} from "solid-js";
+import { cn } from "@/utils/cn";
+import type { SelectProps } from "./types";
 
 export const Select: Component<SelectProps> = (props) => {
   const [local, rest] = splitProps(props, [
-    'label',
-    'error',
-    'class',
-    'id',
-    'options',
-    'placeholder',
-    'value',
-    'onValueChange',
-    'disabled',
+    "label",
+    "error",
+    "class",
+    "id",
+    "options",
+    "placeholder",
+    "value",
+    "onValueChange",
+    "disabled",
   ]);
 
-  const selectId = local.id || `select-${Math.random().toString(36).slice(2, 11)}`;
+  const selectId =
+    local.id || `select-${Math.random().toString(36).slice(2, 11)}`;
   let rootRef: HTMLDivElement | undefined;
   const [isOpen, setIsOpen] = createSignal(false);
 
   const selectedLabel = createMemo(() => {
-    const selected = local.options.find((option) => option.value === local.value);
-    return selected?.label || local.placeholder || 'Select...';
+    const selected = local.options.find(
+      (option) => option.value === local.value,
+    );
+    return selected?.label || local.placeholder || "Select...";
   });
 
   const closeMenu = () => setIsOpen(false);
@@ -34,7 +46,7 @@ export const Select: Component<SelectProps> = (props) => {
   };
 
   const handleEscape = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
+    if (event.key === "Escape") {
       closeMenu();
     }
   };
@@ -46,13 +58,13 @@ export const Select: Component<SelectProps> = (props) => {
   };
 
   onMount(() => {
-    document.addEventListener('pointerdown', handleOutsideClick);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener("pointerdown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
   });
 
   onCleanup(() => {
-    document.removeEventListener('pointerdown', handleOutsideClick);
-    document.removeEventListener('keydown', handleEscape);
+    document.removeEventListener("pointerdown", handleOutsideClick);
+    document.removeEventListener("keydown", handleEscape);
   });
 
   return (
@@ -72,9 +84,10 @@ export const Select: Component<SelectProps> = (props) => {
           aria-expanded={isOpen()}
           onClick={() => setIsOpen((open) => !open)}
           class={cn(
-            'input w-full appearance-none pr-10 text-left text-base sm:text-sm',
-            local.error && 'border-red-500 focus:border-red-500 focus:ring-red-500',
-            local.class
+            "input w-full appearance-none pr-10 text-left text-base sm:text-sm",
+            local.error &&
+              "border-red-500 focus:border-red-500 focus:ring-red-500",
+            local.class,
           )}
         >
           {selectedLabel()}
@@ -86,7 +99,12 @@ export const Select: Component<SelectProps> = (props) => {
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M19 9l-7 7-7-7" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={2}
+            d="M19 9l-7 7-7-7"
+          />
         </svg>
 
         <Show when={isOpen()}>
@@ -97,8 +115,9 @@ export const Select: Component<SelectProps> = (props) => {
                   <button
                     type="button"
                     class={cn(
-                      'w-full px-3 py-2 text-left text-sm hover:bg-gray-50',
-                      option.value === local.value && 'bg-green-50 text-green-700'
+                      "w-full px-3 py-2 text-left text-sm hover:bg-gray-50",
+                      option.value === local.value &&
+                        "bg-green-50 text-green-700",
                     )}
                     onClick={() => handleSelect(option.value)}
                   >
@@ -110,7 +129,11 @@ export const Select: Component<SelectProps> = (props) => {
           </div>
         </Show>
 
-        <input type="hidden" name={rest.name} value={local.value as string | undefined} />
+        <input
+          type="hidden"
+          name={rest.name}
+          value={local.value as string | undefined}
+        />
       </div>
 
       <Show when={local.error}>

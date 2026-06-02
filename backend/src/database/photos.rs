@@ -359,7 +359,7 @@ mod tests {
         // Create plant
         sqlx::query(
             "INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?)",
         )
         .bind(plant_id.to_string())
         .bind(&user_id)

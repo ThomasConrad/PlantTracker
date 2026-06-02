@@ -1,9 +1,9 @@
-import { createSignal, createEffect } from 'solid-js';
-import { apiClient } from '@/api/client';
-import type { User, components } from '@/types';
+import { createSignal, createEffect } from "solid-js";
+import { apiClient } from "@/api/client";
+import type { User, components } from "@/types";
 
-type LoginRequest = components['schemas']['LoginRequest'];
-type RegisterRequest = components['schemas']['CreateUserRequest'];
+type LoginRequest = components["schemas"]["LoginRequest"];
+type RegisterRequest = components["schemas"]["CreateUserRequest"];
 
 const [isAuthenticated, setIsAuthenticated] = createSignal(false);
 const [user, setUser] = createSignal<User | null>(null);
@@ -32,7 +32,7 @@ const authStore = {
       setUser(response.user);
       setIsAuthenticated(true);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      const errorMessage = err instanceof Error ? err.message : "Login failed";
       setError(errorMessage);
       throw err;
     } finally {
@@ -48,7 +48,8 @@ const authStore = {
       setUser(response.user);
       setIsAuthenticated(true);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      const errorMessage =
+        err instanceof Error ? err.message : "Registration failed";
       setError(errorMessage);
       throw err;
     } finally {
@@ -63,7 +64,7 @@ const authStore = {
       setIsAuthenticated(false);
       setError(null);
     } catch (err: unknown) {
-      console.error('Logout error:', err);
+      console.error("Logout error:", err);
     }
   },
 

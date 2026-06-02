@@ -4,10 +4,10 @@ use uuid::Uuid;
 
 use crate::database::care_tasks as db_care_tasks;
 use crate::database::DatabasePool;
+use crate::models::care_task::CreateCareTaskRequest;
 use crate::models::{
     CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, UpdatePlantRequest,
 };
-use crate::models::care_task::CreateCareTaskRequest;
 use crate::utils::errors::AppError;
 
 #[derive(Debug, FromRow)]
@@ -561,15 +561,13 @@ pub async fn clear_plant_preview(
     }
 
     let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE plants SET preview_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?",
-    )
-    .bind(&now)
-    .bind(&plant_id_str)
-    .bind(user_id)
-    .execute(pool)
-    .await
-    .map_err(AppError::Database)?;
+    sqlx::query("UPDATE plants SET preview_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?")
+        .bind(&now)
+        .bind(&plant_id_str)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
 
     get_plant_by_id(pool, plant_id).await
 }

@@ -23,10 +23,7 @@ pub struct MockCoach;
 impl PlantCoach for MockCoach {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse> {
         // Find the last user message
-        let last_user = messages
-            .iter()
-            .rev()
-            .find(|m| m.role == "user");
+        let last_user = messages.iter().rev().find(|m| m.role == "user");
 
         let last_user_text = last_user
             .and_then(|m| {
@@ -38,7 +35,11 @@ impl PlantCoach for MockCoach {
             .unwrap_or("");
 
         let has_image = last_user
-            .map(|m| m.content.iter().any(|part| matches!(part, ContentPart::ImageUrl { .. })))
+            .map(|m| {
+                m.content
+                    .iter()
+                    .any(|part| matches!(part, ContentPart::ImageUrl { .. }))
+            })
             .unwrap_or(false);
 
         let lower = last_user_text.to_lowercase();

@@ -1,6 +1,13 @@
-import { Component, createSignal, Show, onMount, onCleanup, For } from 'solid-js';
-import { Button } from '@/components/ui/Button';
-import type { Photo } from '@/types/api';
+import {
+  Component,
+  createSignal,
+  Show,
+  onMount,
+  onCleanup,
+  For,
+} from "solid-js";
+import { Button } from "@/components/ui/Button";
+import type { Photo } from "@/types/api";
 
 interface PreviewUploadProps {
   onFileSelect: (file: File) => void;
@@ -20,7 +27,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   const [showPhotoSelection, setShowPhotoSelection] = createSignal(false);
   const [stream, setStream] = createSignal<MediaStream | null>(null);
   const [compressing, setCompressing] = createSignal(false);
-  
+
   let fileInputRef: HTMLInputElement | undefined;
   let videoRef: HTMLVideoElement | undefined;
   let canvasRef: HTMLCanvasElement | undefined;
@@ -29,20 +36,23 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   // Detect if device is mobile
   onMount(() => {
     const checkMobile = () => {
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+      const isMobileDevice =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        ) ||
         (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
       setIsMobile(!!isMobileDevice);
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
+    window.addEventListener("resize", checkMobile);
+
     onCleanup(() => {
       if (previewObjectUrl) {
         URL.revokeObjectURL(previewObjectUrl);
         previewObjectUrl = null;
       }
-      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener("resize", checkMobile);
       stopCamera();
     });
   });
@@ -60,7 +70,9 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve) => {
       // Skip compression for smaller files. Mobile devices are slower at canvas work.
-      const skipCompressionThreshold = isMobile() ? 4 * 1024 * 1024 : 3 * 1024 * 1024;
+      const skipCompressionThreshold = isMobile()
+        ? 4 * 1024 * 1024
+        : 3 * 1024 * 1024;
       if (file.size < skipCompressionThreshold) {
         resolve(file);
         return;
@@ -68,16 +80,20 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
 
       setCompressing(true);
 
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       const objectUrl = URL.createObjectURL(file);
 
-      const finishCompression = (source: CanvasImageSource, sourceWidth: number, sourceHeight: number) => {
+      const finishCompression = (
+        source: CanvasImageSource,
+        sourceWidth: number,
+        sourceHeight: number,
+      ) => {
         // Keep enough detail for plant previews while reducing processing time.
         const maxDimension = isMobile() ? 1920 : 2560;
         let width = sourceWidth;
         let height = sourceHeight;
-        
+
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
             height = (height * maxDimension) / width;
@@ -87,32 +103,41 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
             height = maxDimension;
           }
         }
-        
+
         canvas.width = width;
         canvas.height = height;
-        
+
         // Draw and compress
         ctx?.drawImage(source, 0, 0, width, height);
-        
-        canvas.toBlob((blob) => {
-          URL.revokeObjectURL(objectUrl);
-          setCompressing(false);
-          if (blob) {
-            const compressedFile = new File([blob], file.name, {
-              type: 'image/jpeg',
-              lastModified: Date.now(),
-            });
-            // Compressed file successfully
-            resolve(compressedFile);
-          } else {
-            resolve(file);
-          }
-        }, 'image/jpeg', 0.82);
+
+        canvas.toBlob(
+          (blob) => {
+            URL.revokeObjectURL(objectUrl);
+            setCompressing(false);
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              // Compressed file successfully
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.82,
+        );
       };
 
       const img = new Image();
 
-      img.onload = () => finishCompression(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
+      img.onload = () =>
+        finishCompression(
+          img,
+          img.naturalWidth || img.width,
+          img.naturalHeight || img.height,
+        );
       img.onerror = () => {
         // Some mobile formats fail in <img>; fall back to original file.
         URL.revokeObjectURL(objectUrl);
@@ -121,8 +146,8 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
       };
 
       // Use EXIF orientation when available to avoid rotated camera uploads.
-      if ('createImageBitmap' in window) {
-        createImageBitmap(file, { imageOrientation: 'from-image' })
+      if ("createImageBitmap" in window) {
+        createImageBitmap(file, { imageOrientation: "from-image" })
           .then((bitmap) => {
             finishCompression(bitmap, bitmap.width, bitmap.height);
             bitmap.close();
@@ -141,7 +166,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   const handleFileChange = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
-    if (file && (!file.type || file.type.startsWith('image/'))) {
+    if (file && (!file.type || file.type.startsWith("image/"))) {
       createPreview(file);
       try {
         const compressedFile = await compressImage(file);
@@ -150,45 +175,51 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
         }
         props.onFileSelect(compressedFile);
       } catch (error) {
-        console.error('Failed to process image:', error);
+        console.error("Failed to process image:", error);
         props.onFileSelect(file);
       }
     } else if (file) {
-      alert('Please select an image file.');
+      alert("Please select an image file.");
     }
   };
 
   // Start camera
   const startCamera = async () => {
     if (!window.isSecureContext) {
-      alert('Camera requires HTTPS (or localhost). On phone, use https:// for this dev server, or use "Choose File" to take a photo.');
+      alert(
+        'Camera requires HTTPS (or localhost). On phone, use https:// for this dev server, or use "Choose File" to take a photo.',
+      );
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      alert('Camera is not supported in this browser. Please use "Choose File" instead.');
+      alert(
+        'Camera is not supported in this browser. Please use "Choose File" instead.',
+      );
       return;
     }
 
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: 'environment', // Use back camera on mobile
+        video: {
+          facingMode: "environment", // Use back camera on mobile
           width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          height: { ideal: 720 },
+        },
       });
-      
+
       setStream(mediaStream);
       setShowCamera(true);
-      
+
       if (videoRef) {
         videoRef.srcObject = mediaStream;
         videoRef.play();
       }
     } catch (error) {
-      console.error('Error accessing camera:', error);
-      alert('Unable to access camera. Check browser camera permission for this site, or use "Choose File" instead.');
+      console.error("Error accessing camera:", error);
+      alert(
+        'Unable to access camera. Check browser camera permission for this site, or use "Choose File" instead.',
+      );
     }
   };
 
@@ -196,7 +227,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
   const stopCamera = () => {
     const currentStream = stream();
     if (currentStream) {
-      currentStream.getTracks().forEach(track => track.stop());
+      currentStream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
     setShowCamera(false);
@@ -208,41 +239,45 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
 
     const video = videoRef;
     const canvas = canvasRef;
-    const context = canvas.getContext('2d');
-    
+    const context = canvas.getContext("2d");
+
     if (!context) return;
 
     // Set canvas size to video size
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
+
     // Draw video frame to canvas
     context.drawImage(video, 0, 0);
-    
+
     // Convert canvas to blob
-    canvas.toBlob(async (blob) => {
-      if (blob) {
-        const file = new File([blob], `plant-preview-${Date.now()}.jpg`, { 
-          type: 'image/jpeg' 
-        });
-        try {
-          const compressedFile = await compressImage(file);
-          createPreview(compressedFile);
-          props.onFileSelect(compressedFile);
-        } catch (error) {
-          console.error('Failed to compress camera image:', error);
-          createPreview(file);
-          props.onFileSelect(file);
+    canvas.toBlob(
+      async (blob) => {
+        if (blob) {
+          const file = new File([blob], `plant-preview-${Date.now()}.jpg`, {
+            type: "image/jpeg",
+          });
+          try {
+            const compressedFile = await compressImage(file);
+            createPreview(compressedFile);
+            props.onFileSelect(compressedFile);
+          } catch (error) {
+            console.error("Failed to compress camera image:", error);
+            createPreview(file);
+            props.onFileSelect(file);
+          }
+          stopCamera();
         }
-        stopCamera();
-      }
-    }, 'image/jpeg', 0.8);
+      },
+      "image/jpeg",
+      0.8,
+    );
   };
 
   const removePhoto = () => {
     setPreview(null);
     if (fileInputRef) {
-      fileInputRef.value = '';
+      fileInputRef.value = "";
     }
     props.onClearPreview?.();
   };
@@ -303,12 +338,22 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
                   onClick={stopCamera}
                   class="text-gray-400 hover:text-gray-600"
                 >
-                  <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
-              
+
               <div class="relative">
                 <video
                   ref={videoRef}
@@ -319,15 +364,30 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
                 />
                 <canvas ref={canvasRef} class="hidden" />
               </div>
-              
+
               <div class="flex justify-center mt-4">
                 <Button
                   onClick={capturePhoto}
                   class="bg-blue-600 hover:bg-blue-700"
                 >
-                  <svg class="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    class="mr-2 h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                   Capture
                 </Button>
@@ -342,14 +402,24 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
         when={hasCurrentPreview()}
         fallback={
           <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-            <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width={2} stroke-linecap="round" stroke-linejoin="round" />
+            <svg
+              class="mx-auto h-12 w-12 text-gray-400"
+              stroke="currentColor"
+              fill="none"
+              viewBox="0 0 48 48"
+            >
+              <path
+                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                stroke-width={2}
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
             </svg>
             <div class="mt-4">
               <p class="text-sm text-gray-600 mb-4">
                 Add a preview photo for your plant
               </p>
-              
+
               <div class="flex flex-col sm:flex-row gap-2 justify-center">
                 <Show when={isMobile()}>
                   <Button
@@ -360,14 +430,29 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
                     disabled={compressing() || props.loading}
                     class="flex items-center"
                   >
-                    <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <svg
+                      class="mr-2 h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
                     </svg>
                     Take Photo
                   </Button>
                 </Show>
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -376,16 +461,24 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
                   disabled={compressing() || props.loading}
                   class="flex items-center"
                 >
-                  <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  <svg
+                    class="mr-2 h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
                   </svg>
-                  {isMobile() ? 'Choose File' : 'Upload Photo'}
+                  {isMobile() ? "Choose File" : "Upload Photo"}
                 </Button>
               </div>
-              
-              <p class="text-xs text-gray-500 mt-2">
-                PNG, JPG up to 10MB
-              </p>
+
+              <p class="text-xs text-gray-500 mt-2">PNG, JPG up to 10MB</p>
             </div>
           </div>
         }
@@ -423,15 +516,25 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
                   onClick={() => setShowPhotoSelection(false)}
                   class="text-gray-400 hover:text-gray-600"
                 >
-                  <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    class="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
             </div>
-            
+
             <div class="p-4">
-              <Show 
+              <Show
                 when={props.existingPhotos && props.existingPhotos.length > 0}
                 fallback={
                   <div class="text-center py-8 text-gray-500">
@@ -454,8 +557,18 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
                         />
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity flex items-center justify-center">
                           <div class="bg-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M5 13l4 4L19 7" />
+                            <svg
+                              class="h-4 w-4 text-blue-600"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width={2}
+                                d="M5 13l4 4L19 7"
+                              />
                             </svg>
                           </div>
                         </div>
@@ -474,7 +587,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        capture={isMobile() ? 'environment' : undefined}
+        capture={isMobile() ? "environment" : undefined}
         onChange={handleFileChange}
         class="hidden"
       />
@@ -484,10 +597,7 @@ export const PreviewUpload: Component<PreviewUploadProps> = (props) => {
         <div class="text-center py-4">
           <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           <p class="mt-2 text-sm text-gray-600">
-            <Show 
-              when={compressing()} 
-              fallback="Processing photo..."
-            >
+            <Show when={compressing()} fallback="Processing photo...">
               Compressing image...
             </Show>
           </p>

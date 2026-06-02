@@ -48,11 +48,7 @@ pub fn generate_plant_calendar(
             let mut event_count = 0;
             while next <= end_date && event_count < 100 {
                 let amount_info = ct.amount.map_or(String::new(), |amt| {
-                    format!(
-                        " Amount: {}{}",
-                        amt,
-                        ct.unit.as_deref().unwrap_or("")
-                    )
+                    format!(" Amount: {}{}", amt, ct.unit.as_deref().unwrap_or(""))
                 });
 
                 let event = Event::new()

@@ -1,9 +1,9 @@
-import { Component, createSignal, createEffect, Show, For } from 'solid-js';
-import { A } from '@solidjs/router';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { authStore } from '@/stores/auth';
-import { apiClient } from '@/api/client';
+import { Component, createSignal, createEffect, Show, For } from "solid-js";
+import { A } from "@solidjs/router";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { authStore } from "@/stores/auth";
+import { apiClient } from "@/api/client";
 
 interface InviteCode {
   id: string;
@@ -24,20 +24,22 @@ interface WaitlistEntry {
 }
 
 export const InviteManagementPage: Component = () => {
-  const waitlistEnabled = import.meta.env.VITE_WAITLIST_ENABLED === 'true';
+  const waitlistEnabled = import.meta.env.VITE_WAITLIST_ENABLED === "true";
   const [invites, setInvites] = createSignal<InviteCode[]>([]);
   const [waitlist, setWaitlist] = createSignal<WaitlistEntry[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [waitlistLoading, setWaitlistLoading] = createSignal(false);
-  const [invitingWaitlistId, setInvitingWaitlistId] = createSignal<string | null>(null);
+  const [invitingWaitlistId, setInvitingWaitlistId] = createSignal<
+    string | null
+  >(null);
   const [createLoading, setCreateLoading] = createSignal(false);
-  const [error, setError] = createSignal('');
+  const [error, setError] = createSignal("");
   const [maxUses, setMaxUses] = createSignal(1);
   const [expiresInDays, setExpiresInDays] = createSignal<number>();
 
   createEffect(() => {
     loadInvites();
-    if (waitlistEnabled && authStore.user?.role === 'admin') {
+    if (waitlistEnabled && authStore.user?.role === "admin") {
       loadWaitlist();
     }
   });
@@ -45,12 +47,14 @@ export const InviteManagementPage: Component = () => {
   const loadInvites = async () => {
     try {
       setLoading(true);
-      setError('');
-      const response = await apiClient.request<{ invites: InviteCode[] }>('/invites/list');
+      setError("");
+      const response = await apiClient.request<{ invites: InviteCode[] }>(
+        "/invites/list",
+      );
       setInvites(response.invites || []);
     } catch (err: unknown) {
-      setError('Failed to load invites');
-      console.error('Failed to load invites:', err);
+      setError("Failed to load invites");
+      console.error("Failed to load invites:", err);
     } finally {
       setLoading(false);
     }
@@ -59,11 +63,13 @@ export const InviteManagementPage: Component = () => {
   const loadWaitlist = async () => {
     try {
       setWaitlistLoading(true);
-      const response = await apiClient.request<WaitlistEntry[]>('/invites/waitlist/list');
+      const response = await apiClient.request<WaitlistEntry[]>(
+        "/invites/waitlist/list",
+      );
       setWaitlist(response || []);
     } catch (err: unknown) {
-      console.error('Failed to load waitlist:', err);
-      setError('Failed to load waitlist');
+      console.error("Failed to load waitlist:", err);
+      setError("Failed to load waitlist");
     } finally {
       setWaitlistLoading(false);
     }
@@ -72,17 +78,22 @@ export const InviteManagementPage: Component = () => {
   const inviteWaitlistEntry = async (entry: WaitlistEntry) => {
     try {
       setInvitingWaitlistId(entry.id);
-      setError('');
-      const response = await apiClient.request<{ invite_code: string }>(`/invites/waitlist/${entry.id}/invite`, {
-        method: 'POST',
-        body: JSON.stringify({ max_uses: 1 }),
-      });
+      setError("");
+      const response = await apiClient.request<{ invite_code: string }>(
+        `/invites/waitlist/${entry.id}/invite`,
+        {
+          method: "POST",
+          body: JSON.stringify({ max_uses: 1 }),
+        },
+      );
 
       await Promise.all([loadWaitlist(), loadInvites()]);
-      await navigator.clipboard.writeText(`${window.location.origin}/signup?code=${response.invite_code}`);
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/signup?code=${response.invite_code}`,
+      );
     } catch (err: unknown) {
-      console.error('Failed to invite waitlist entry:', err);
-      setError('Failed to create invite for waitlist entry');
+      console.error("Failed to invite waitlist entry:", err);
+      setError("Failed to create invite for waitlist entry");
     } finally {
       setInvitingWaitlistId(null);
     }
@@ -90,17 +101,19 @@ export const InviteManagementPage: Component = () => {
 
   const createInvite = async (e: Event) => {
     e.preventDefault();
-    
+
     try {
       setCreateLoading(true);
-      setError('');
-      
-      const expiresAt = expiresInDays() ? 
-        new Date(Date.now() + expiresInDays()! * 24 * 60 * 60 * 1000).toISOString() : 
-        undefined;
+      setError("");
 
-      const newInvite = await apiClient.request<InviteCode>('/invites/create', {
-        method: 'POST',
+      const expiresAt = expiresInDays()
+        ? new Date(
+            Date.now() + expiresInDays()! * 24 * 60 * 60 * 1000,
+          ).toISOString()
+        : undefined;
+
+      const newInvite = await apiClient.request<InviteCode>("/invites/create", {
+        method: "POST",
         body: JSON.stringify({
           max_uses: maxUses(),
           expires_at: expiresAt,
@@ -111,8 +124,8 @@ export const InviteManagementPage: Component = () => {
       setMaxUses(1);
       setExpiresInDays(undefined);
     } catch (err: unknown) {
-      setError('Failed to create invite');
-      console.error('Failed to create invite:', err);
+      setError("Failed to create invite");
+      console.error("Failed to create invite:", err);
     } finally {
       setCreateLoading(false);
     }
@@ -136,19 +149,23 @@ export const InviteManagementPage: Component = () => {
       <Show when={!authStore.user?.canCreateInvites}>
         <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
           <p class="text-sm text-yellow-800">
-            You don't have permission to create invite codes. Contact an administrator for access.
+            You don't have permission to create invite codes. Contact an
+            administrator for access.
           </p>
         </div>
       </Show>
 
       <Show when={authStore.user?.canCreateInvites}>
         <div class="bg-white shadow rounded-lg p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-4">Create New Invite</h2>
-          
+          <h2 class="text-lg font-medium text-gray-900 mb-4">
+            Create New Invite
+          </h2>
+
           <Show when={authStore.user?.maxInvites !== null}>
             <div class="mb-4 p-4 bg-blue-50 rounded-md">
               <p class="text-sm text-blue-700">
-                Invites remaining: {authStore.user?.invitesRemaining ?? 0} / {authStore.user?.maxInvites ?? 0}
+                Invites remaining: {authStore.user?.invitesRemaining ?? 0} /{" "}
+                {authStore.user?.maxInvites ?? 0}
               </p>
             </div>
           </Show>
@@ -162,16 +179,18 @@ export const InviteManagementPage: Component = () => {
                   min="1"
                   max="100"
                   value={maxUses()}
-                  onInput={(e) => setMaxUses(parseInt(e.currentTarget.value) || 1)}
+                  onInput={(e) =>
+                    setMaxUses(parseInt(e.currentTarget.value) || 1)
+                  }
                   required
                 />
-                
+
                 <Input
                   label="Expires in Days (optional)"
                   type="number"
                   min="1"
                   max="365"
-                  value={expiresInDays() || ''}
+                  value={expiresInDays() || ""}
                   onInput={(e) => {
                     const val = e.currentTarget.value;
                     setExpiresInDays(val ? parseInt(val) : undefined);
@@ -199,7 +218,8 @@ export const InviteManagementPage: Component = () => {
           <Show when={(authStore.user?.invitesRemaining ?? 0) <= 0}>
             <div class="bg-orange-50 border border-orange-200 rounded-md p-4">
               <p class="text-sm text-orange-800">
-                You have reached your invite creation limit. Contact an administrator to increase your limit.
+                You have reached your invite creation limit. Contact an
+                administrator to increase your limit.
               </p>
             </div>
           </Show>
@@ -207,8 +227,10 @@ export const InviteManagementPage: Component = () => {
       </Show>
 
       <div class="bg-white shadow rounded-lg p-6">
-        <h2 class="text-lg font-medium text-gray-900 mb-4">Your Invite Codes</h2>
-        
+        <h2 class="text-lg font-medium text-gray-900 mb-4">
+          Your Invite Codes
+        </h2>
+
         <Show when={loading()}>
           <p class="text-gray-500">Loading invites...</p>
         </Show>
@@ -228,22 +250,34 @@ export const InviteManagementPage: Component = () => {
                         <code class="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
                           {invite.code}
                         </code>
-                        <span class={`px-2 py-1 rounded-full text-xs font-medium ${
-                          invite.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {invite.is_active ? 'Active' : 'Inactive'}
+                        <span
+                          class={`px-2 py-1 rounded-full text-xs font-medium ${
+                            invite.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {invite.is_active ? "Active" : "Inactive"}
                         </span>
                       </div>
-                      
+
                       <div class="mt-2 text-sm text-gray-600 space-x-4">
-                        <span>Uses: {invite.current_uses} / {invite.max_uses}</span>
-                        <span>Created: {new Date(invite.created_at).toLocaleDateString()}</span>
+                        <span>
+                          Uses: {invite.current_uses} / {invite.max_uses}
+                        </span>
+                        <span>
+                          Created:{" "}
+                          {new Date(invite.created_at).toLocaleDateString()}
+                        </span>
                         {invite.expires_at && (
-                          <span>Expires: {new Date(invite.expires_at).toLocaleDateString()}</span>
+                          <span>
+                            Expires:{" "}
+                            {new Date(invite.expires_at).toLocaleDateString()}
+                          </span>
                         )}
                       </div>
                     </div>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -259,11 +293,16 @@ export const InviteManagementPage: Component = () => {
         </Show>
       </div>
 
-      <Show when={waitlistEnabled && authStore.user?.role === 'admin'}>
+      <Show when={waitlistEnabled && authStore.user?.role === "admin"}>
         <div class="bg-white shadow rounded-lg p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-medium text-gray-900">Waitlist</h2>
-            <Button variant="outline" size="sm" onClick={loadWaitlist} loading={waitlistLoading()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadWaitlist}
+              loading={waitlistLoading()}
+            >
               Refresh
             </Button>
           </div>
@@ -281,19 +320,33 @@ export const InviteManagementPage: Component = () => {
               <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                   <tr>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Action</th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Email
+                    </th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Name
+                    </th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Status
+                    </th>
+                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      Joined
+                    </th>
+                    <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                   <For each={waitlist()}>
                     {(entry) => (
                       <tr>
-                        <td class="px-4 py-2 text-sm text-gray-900">{entry.email}</td>
-                        <td class="px-4 py-2 text-sm text-gray-600">{entry.name || '-'}</td>
+                        <td class="px-4 py-2 text-sm text-gray-900">
+                          {entry.email}
+                        </td>
+                        <td class="px-4 py-2 text-sm text-gray-600">
+                          {entry.name || "-"}
+                        </td>
                         <td class="px-4 py-2 text-sm">
                           <span class="px-2 py-1 rounded-full bg-gray-100 text-gray-800 text-xs capitalize">
                             {entry.status}
@@ -304,8 +357,10 @@ export const InviteManagementPage: Component = () => {
                         </td>
                         <td class="px-4 py-2 text-right">
                           <Show
-                            when={entry.status === 'pending'}
-                            fallback={<span class="text-xs text-gray-400">-</span>}
+                            when={entry.status === "pending"}
+                            fallback={
+                              <span class="text-xs text-gray-400">-</span>
+                            }
                           >
                             <Button
                               size="sm"

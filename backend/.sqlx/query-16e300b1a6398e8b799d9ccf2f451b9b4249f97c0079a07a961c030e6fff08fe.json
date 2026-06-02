@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT \n            ic.id, ic.code, ic.created_by, ic.max_uses, ic.current_uses, \n            ic.is_active, ic.expires_at, ic.created_at,\n            u.name as created_by_name\n        FROM invite_codes ic\n        LEFT JOIN users u ON ic.created_by = u.id\n        ORDER BY ic.created_at DESC \n        LIMIT 10\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "code",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_by",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "max_uses",
+        "ordinal": 3,
+        "type_info": "Int64"
+      },
+      {
+        "name": "current_uses",
+        "ordinal": 4,
+        "type_info": "Int64"
+      },
+      {
+        "name": "is_active",
+        "ordinal": 5,
+        "type_info": "Bool"
+      },
+      {
+        "name": "expires_at",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_by_name",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "16e300b1a6398e8b799d9ccf2f451b9b4249f97c0079a07a961c030e6fff08fe"
+}

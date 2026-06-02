@@ -1,12 +1,13 @@
-import { Component, createSignal, Show, For } from 'solid-js';
-import { plantsStore } from '@/stores/plants';
-import { Button } from '@/components/ui/Button';
-import { TrackingEntryForm } from './TrackingEntryForm';
-import type { Plant } from '@/types';
-import type { components } from '@/types/api-generated';
+import { Component, createSignal, Show, For } from "solid-js";
+import { plantsStore } from "@/stores/plants";
+import { Button } from "@/components/ui/Button";
+import { TrackingEntryForm } from "./TrackingEntryForm";
+import type { Plant } from "@/types";
+import type { components } from "@/types/api-generated";
 
-type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
-type CareTaskWithStatus = components['schemas']['CareTaskWithStatus'];
+type CreateTrackingEntryRequest =
+  components["schemas"]["CreateTrackingEntryRequest"];
+type CareTaskWithStatus = components["schemas"]["CareTaskWithStatus"];
 
 interface TrackingSectionProps {
   plant: Plant;
@@ -16,7 +17,8 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
   const [submitting, setSubmitting] = createSignal<string | null>(null);
   const [showDetailedForm, setShowDetailedForm] = createSignal(false);
 
-  const careTasks = () => (props.plant.careTasks ?? []).filter(t => !t.archivedAt);
+  const careTasks = () =>
+    (props.plant.careTasks ?? []).filter((t) => !t.archivedAt);
 
   const handleQuickCareTask = async (task: CareTaskWithStatus) => {
     try {
@@ -27,7 +29,7 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
       };
       await plantsStore.createTrackingEntry(props.plant.id, payload);
     } catch (error) {
-      console.error('Failed to log care task:', error);
+      console.error("Failed to log care task:", error);
     } finally {
       setSubmitting(null);
     }
@@ -63,7 +65,7 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
                     onClick={() => handleQuickCareTask(task)}
                     loading={submitting() === task.id}
                   >
-                    <span class="mr-1">{task.icon ?? '🌱'}</span>
+                    <span class="mr-1">{task.icon ?? "🌱"}</span>
                     {task.name}
                   </Button>
                 )}
@@ -79,8 +81,18 @@ export const TrackingSection: Component<TrackingSectionProps> = (props) => {
               onClick={openDetailedForm}
               class="w-full flex items-center justify-center"
             >
-              <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 4v16m8-8H4" />
+              <svg
+                class="mr-2 h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Create Detailed Entry
             </Button>

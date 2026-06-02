@@ -423,6 +423,9 @@ mod tests {
             can_create_invites: false,
             max_invites: Some(5),
             invites_created: 0,
+            llm_base_url: None,
+            llm_api_key: None,
+            llm_model: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -445,6 +448,9 @@ mod tests {
             can_create_invites: false,
             max_invites: Some(5),
             invites_created: 0,
+            llm_base_url: None,
+            llm_api_key: None,
+            llm_model: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -471,6 +477,9 @@ mod tests {
             max_invites: Some(5),
             invites_created: 0,
             invites_remaining: Some(5),
+            llm_base_url: None,
+            llm_api_key_set: false,
+            llm_model: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -499,6 +508,9 @@ mod tests {
             can_create_invites: false,
             max_invites: Some(5),
             invites_created: 0,
+            llm_base_url: None,
+            llm_api_key: None,
+            llm_model: None,
             created_at: "2024-01-01T12:00:00Z".to_string(),
             updated_at: "2024-01-01T12:00:00Z".to_string(),
         };
@@ -524,6 +536,9 @@ mod tests {
             can_create_invites: false,
             max_invites: Some(5),
             invites_created: 0,
+            llm_base_url: None,
+            llm_api_key: None,
+            llm_model: None,
             created_at: "invalid-datetime".to_string(),
             updated_at: "2024-01-01T12:00:00Z".to_string(),
         };
@@ -551,6 +566,9 @@ mod tests {
             can_create_invites: false,
             max_invites: Some(5),
             invites_created: 0,
+            llm_base_url: None,
+            llm_api_key: None,
+            llm_model: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };
@@ -575,6 +593,9 @@ mod tests {
             can_create_invites: false,
             max_invites: Some(5),
             invites_created: 0,
+            llm_base_url: None,
+            llm_api_key: None,
+            llm_model: None,
             created_at: Utc::now(),
             updated_at: Utc::now(),
         };

@@ -25,17 +25,22 @@ pub fn routes() -> Router<AppState> {
             "/:plant_id/care-tasks",
             get(list_care_tasks).post(create_care_task),
         )
-        .route(
-            "/:plant_id/care-tasks/reorder",
-            put(reorder_care_tasks),
-        )
+        .route("/:plant_id/care-tasks/reorder", put(reorder_care_tasks))
         .route(
             "/:plant_id/care-tasks/:task_id",
-            get(get_care_task).put(update_care_task).delete(delete_care_task),
+            get(get_care_task)
+                .put(update_care_task)
+                .delete(delete_care_task),
         )
         .route("/:plant_id/care-tasks/:task_id/log", post(log_care_task))
-        .route("/:plant_id/care-tasks/:task_id/archive", post(archive_care_task))
-        .route("/:plant_id/care-tasks/:task_id/unarchive", post(unarchive_care_task))
+        .route(
+            "/:plant_id/care-tasks/:task_id/archive",
+            post(archive_care_task),
+        )
+        .route(
+            "/:plant_id/care-tasks/:task_id/unarchive",
+            post(unarchive_care_task),
+        )
 }
 
 #[derive(Debug, Deserialize)]
@@ -221,7 +226,10 @@ async fn log_care_task(
     })?;
 
     let (task, entry) = db::log_care_task(&app_state.pool, &task_id, &user.id, &payload).await?;
-    Ok((StatusCode::CREATED, Json(LogCareTaskResponse { task, entry })))
+    Ok((
+        StatusCode::CREATED,
+        Json(LogCareTaskResponse { task, entry }),
+    ))
 }
 
 #[derive(Debug, serde::Serialize, utoipa::ToSchema)]

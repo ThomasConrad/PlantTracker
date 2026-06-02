@@ -194,8 +194,15 @@ pub async fn get_calendar_feed(
     );
 
     for plant in &plants {
-        let task_summary: Vec<String> = plant.care_tasks.iter()
-            .map(|t| format!("{}: every {:?} days, last: {:?}", t.task.name, t.task.interval_days, t.task.last_performed))
+        let task_summary: Vec<String> = plant
+            .care_tasks
+            .iter()
+            .map(|t| {
+                format!(
+                    "{}: every {:?} days, last: {:?}",
+                    t.task.name, t.task.interval_days, t.task.last_performed
+                )
+            })
             .collect();
         tracing::info!("Plant: {} - care tasks: {:?}", plant.name, task_summary);
     }
@@ -259,7 +266,7 @@ pub async fn get_calendar_subscription_info(
 
     // Get base URL from request headers or environment
     let base_url =
-         std::env::var("BASE_URL").unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
+        std::env::var("BASE_URL").unwrap_or_else(|_| get_base_url_from_headers(&headers, &uri));
 
     // Note: axum strips the nest prefix, so the handler always sees paths without /api/v1
     let api_path = "/api/v1/calendar";

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE google_oauth_tokens \n        SET access_token = ?, expires_at = ?, updated_at = ?\n        WHERE user_id = ?\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "82e293d1736ca8399b9de7588348c0a4e8c00eb173a63911e660dfff2e9ca4d3"
+}

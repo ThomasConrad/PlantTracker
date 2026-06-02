@@ -16,12 +16,11 @@ pub struct OpenAICoach {
 
 impl OpenAICoach {
     pub fn new() -> Result<Self> {
-        let api_key =
-            std::env::var("OPENAI_API_KEY").context("OPENAI_API_KEY environment variable not set")?;
-        let model =
-            std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o".to_string());
-        let base_url =
-            std::env::var("OPENAI_BASE_URL").unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
+        let api_key = std::env::var("OPENAI_API_KEY")
+            .context("OPENAI_API_KEY environment variable not set")?;
+        let model = std::env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4o".to_string());
+        let base_url = std::env::var("OPENAI_BASE_URL")
+            .unwrap_or_else(|_| "https://api.openai.com/v1".to_string());
         let client = Client::builder()
             .timeout(Duration::from_secs(60))
             .build()
@@ -124,7 +123,10 @@ impl PlantCoach for OpenAICoach {
 
         let response = self
             .client
-            .post(format!("{}/chat/completions", self.base_url.trim_end_matches('/')))
+            .post(format!(
+                "{}/chat/completions",
+                self.base_url.trim_end_matches('/')
+            ))
             .header("Authorization", format!("Bearer {}", self.api_key))
             .json(&request)
             .send()

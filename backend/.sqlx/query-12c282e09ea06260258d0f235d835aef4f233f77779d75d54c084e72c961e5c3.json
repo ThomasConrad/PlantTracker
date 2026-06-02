@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT \n            user_id,\n            access_token,\n            refresh_token,\n            expires_at,\n            scope,\n            token_type,\n            created_at,\n            updated_at\n        FROM google_oauth_tokens \n        WHERE refresh_token IS NOT NULL \n        AND expires_at IS NOT NULL \n        AND expires_at <= ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "user_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "access_token",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "refresh_token",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "expires_at",
+        "ordinal": 3,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "scope",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "token_type",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 6,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 7,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "12c282e09ea06260258d0f235d835aef4f233f77779d75d54c084e72c961e5c3"
+}

@@ -65,8 +65,8 @@ export function translateY(el: HTMLElement, y: number) {
 }
 
 /** Standard easing curve for snap animations */
-export const SNAP_EASING = 'cubic-bezier(0.32, 0.72, 0, 1)';
-export const SNAP_DURATION = '0.35s';
+export const SNAP_EASING = "cubic-bezier(0.32, 0.72, 0, 1)";
+export const SNAP_DURATION = "0.35s";
 export const SNAP_TRANSITION = `transform ${SNAP_DURATION} ${SNAP_EASING}`;
 
 /** Fling velocity threshold (px/ms) */
@@ -84,8 +84,16 @@ export function getSwipeDirection(
   displacement: number,
   containerWidth: number,
 ): -1 | 0 | 1 {
-  if (velocity > FLING_THRESHOLD || displacement > containerWidth * SWIPE_FRACTION) return -1;
-  if (velocity < -FLING_THRESHOLD || displacement < -containerWidth * SWIPE_FRACTION) return 1;
+  if (
+    velocity > FLING_THRESHOLD ||
+    displacement > containerWidth * SWIPE_FRACTION
+  )
+    return -1;
+  if (
+    velocity < -FLING_THRESHOLD ||
+    displacement < -containerWidth * SWIPE_FRACTION
+  )
+    return 1;
   return 0;
 }
 
@@ -96,9 +104,9 @@ export function detectDirection(
   dx: number,
   dy: number,
   threshold = 8,
-): 'horizontal' | 'vertical' | null {
+): "horizontal" | "vertical" | null {
   if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
-    return Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+    return Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
   }
   return null;
 }

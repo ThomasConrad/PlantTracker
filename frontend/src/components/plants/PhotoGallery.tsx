@@ -12,7 +12,7 @@ interface PhotoGalleryProps {
   fullTimelineHref?: string;
 }
 
-type GalleryView = 'timeline' | 'grid';
+type GalleryView = 'timeline' | 'grid' | 'compare';
 
 const IMAGE_FALLBACK =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgMTZMOC41ODYgMTEuNDE0QzguOTYxIDExLjAzOSA5LjQ1OSAxMC44MjkgMTAgMTAuODI5QzEwLjU0MSAxMC44MjkgMTEuMDM5IDExLjAzOSAxMS40MTQgMTEuNDE0TDE2IDE2TTE0IDE0TDE1LjU4NiAxMi40MTRDMTUuOTYxIDEyLjAzOSAxNi40NTkgMTEuODI5IDE3IDExLjgyOUMxNy41NDEgMTEuODI5IDE4LjAzOSAxMi4wMzkgMTguNDE0IDEyLjQxNEwyMCAxNE0xOCA4VjhNNiAyMEgxOEMxOC41MzA0IDIwIDE5LjAzOTEgMTkuNzg5MyAxOS40MTQyIDE5LjQxNDJDMTkuNzg5MyAxOS4wMzkxIDIwIDE4LjUzMDQgMjAgMThWNkMyMCA1LjQ2OTU3IDE5Ljc4OTMgNC45NjA4NiAxOS40MTQyIDQuNTg1NzlDMTkuMDM5MSA0LjIxMDcxIDE4LjUzMDQgNCA4IDRINkM1LjQ2OTU3IDQgNC45NjA4NiA0LjIxMDcxIDQuNTg1NzkgNC41ODU3OUM0LjIxMDcxIDQuOTYwODYgNCA1LjQ2OTU3IDQgNlYxOEM0IDE4LjUzMDQgNC4yMTA3MSAxOS4wMzkxIDQuNTg1NzkgMTkuNDE0MkM0Ljk2MDg2IDE5Ljc4OTMgNS40Njk1NyAyMCA2IDIwWiIgc3Ryb2tlPSJjdXJyZW50Q29sb3IiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
@@ -95,6 +95,8 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = createSignal<number | null>(null);
   const [showPhotoModal, setShowPhotoModal] = createSignal(false);
   const [modalActionLoading, setModalActionLoading] = createSignal<'preview' | 'delete' | null>(null);
+  const [compareLeft, setCompareLeft] = createSignal<number>(0);
+  const [compareRight, setCompareRight] = createSignal<number>(0);
 
   let fileInputRef: HTMLInputElement | undefined;
 
@@ -104,6 +106,15 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
 
   const previewPhotos = createMemo(() => photosByNewest().slice(0, 6));
   const photosByOldest = createMemo(() => [...photosByNewest()].reverse());
+
+  // Initialize compare indices when photos change
+  createEffect(() => {
+    const all = photosByOldest();
+    if (all.length >= 2) {
+      setCompareLeft(0);
+      setCompareRight(all.length - 1);
+    }
+  });
 
   const timelinePhotos = createMemo(() => {
     let lastDate: string | null = null;
@@ -328,6 +339,17 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
                 >
                   Grid
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setView('compare')}
+                  class={`px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors ${
+                    view() === 'compare'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Compare
+                </button>
               </div>
             </Show>
 
@@ -398,36 +420,75 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
             <Show
               when={mode() === 'preview'}
               fallback={
-                <Show
-                  when={view() === 'timeline'}
-                  fallback={
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      <For each={photosByNewest()}>
-                        {(photo, index) => (
-                          <button
-                            type="button"
-                            class="relative group overflow-hidden rounded-lg border border-gray-200 bg-gray-100 text-left"
-                            onClick={() => openPhotoModal(index())}
-                          >
+                <>
+                  <Show when={view() === 'compare' && photosByOldest().length >= 2}>
+                    <div class="space-y-4">
+                      <div class="grid grid-cols-2 gap-4">
+                        {/* Left (older) photo */}
+                        <div>
+                          <p class="text-xs font-medium text-gray-500 mb-2 text-center">Before</p>
+                          <div class="relative rounded-xl overflow-hidden border border-gray-200">
                             <img
-                              src={apiClient.getPhotoUrl(props.plantId, photo.id)}
-                              alt={`Plant photo from ${formatFullDate(photo.createdAt)}`}
-                              class="w-full h-36 sm:h-40 object-cover cursor-pointer group-hover:scale-[1.02] transition-transform"
+                              src={apiClient.getPhotoUrl(props.plantId, photosByOldest()[compareLeft()].id)}
+                              alt="Before"
+                              class="w-full aspect-square object-cover"
                               loading="lazy"
-                              onError={(e) => {
-                                e.currentTarget.src = IMAGE_FALLBACK;
-                              }}
+                              onError={(e) => { e.currentTarget.src = IMAGE_FALLBACK; }}
                             />
-                            <div class="absolute left-2 bottom-2 bg-black/55 text-white text-xs px-2 py-1 rounded-full">
-                              {formatTimelineDate(photo.createdAt)}
+                            <div class="absolute bottom-2 left-2 bg-black/55 text-white text-xs px-2 py-1 rounded-full">
+                              {formatTimelineDate(photosByOldest()[compareLeft()].createdAt)}
                             </div>
-                          </button>
-                        )}
-                      </For>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={photosByOldest().length - 1}
+                            value={compareLeft()}
+                            onInput={(e) => setCompareLeft(Math.min(parseInt(e.currentTarget.value), compareRight() - 1))}
+                            class="w-full mt-2 accent-emerald-600"
+                          />
+                        </div>
+                        {/* Right (newer) photo */}
+                        <div>
+                          <p class="text-xs font-medium text-gray-500 mb-2 text-center">After</p>
+                          <div class="relative rounded-xl overflow-hidden border border-gray-200">
+                            <img
+                              src={apiClient.getPhotoUrl(props.plantId, photosByOldest()[compareRight()].id)}
+                              alt="After"
+                              class="w-full aspect-square object-cover"
+                              loading="lazy"
+                              onError={(e) => { e.currentTarget.src = IMAGE_FALLBACK; }}
+                            />
+                            <div class="absolute bottom-2 left-2 bg-black/55 text-white text-xs px-2 py-1 rounded-full">
+                              {formatTimelineDate(photosByOldest()[compareRight()].createdAt)}
+                            </div>
+                          </div>
+                          <input
+                            type="range"
+                            min={0}
+                            max={photosByOldest().length - 1}
+                            value={compareRight()}
+                            onInput={(e) => setCompareRight(Math.max(parseInt(e.currentTarget.value), compareLeft() + 1))}
+                            class="w-full mt-2 accent-emerald-600"
+                          />
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <span class="inline-flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-full">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                          {formatGap(getDaysBetween(
+                            photosByOldest()[compareLeft()].createdAt,
+                            photosByOldest()[compareRight()].createdAt
+                          ))}
+                        </span>
+                      </div>
                     </div>
-                  }
-                >
-                  <div class="relative pl-4 sm:pl-6">
+                  </Show>
+
+                  <Show when={view() === 'timeline'}>
+                    <div class="relative pl-4 sm:pl-6">
                     <div class="absolute left-[7px] sm:left-[11px] top-0 bottom-0 w-px bg-emerald-200" />
                     <For each={timelinePhotos()}>
                       {(item, index) => {
@@ -483,6 +544,34 @@ export const PhotoGallery: Component<PhotoGalleryProps> = (props) => {
                     </For>
                   </div>
                 </Show>
+
+                  <Show when={view() === 'grid'}>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <For each={photosByNewest()}>
+                        {(photo, index) => (
+                          <button
+                            type="button"
+                            class="relative group overflow-hidden rounded-lg border border-gray-200 bg-gray-100 text-left"
+                            onClick={() => openPhotoModal(index())}
+                          >
+                            <img
+                              src={apiClient.getPhotoUrl(props.plantId, photo.id)}
+                              alt={`Plant photo from ${formatFullDate(photo.createdAt)}`}
+                              class="w-full h-36 sm:h-40 object-cover cursor-pointer group-hover:scale-[1.02] transition-transform"
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.src = IMAGE_FALLBACK;
+                              }}
+                            />
+                            <div class="absolute left-2 bottom-2 bg-black/55 text-white text-xs px-2 py-1 rounded-full">
+                              {formatTimelineDate(photo.createdAt)}
+                            </div>
+                          </button>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                </>
               }
             >
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">

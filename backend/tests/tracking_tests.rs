@@ -58,14 +58,15 @@ async fn test_create_tracking_entry() {
     // Create a plant
     let plant = common::create_test_plant(&app, "Create Tracking Plant", "Createicus").await;
     let plant_id = plant["id"].as_str().unwrap();
+    let care_task_id = plant["careTasks"][0]["id"].as_str().unwrap();
 
-    // Create tracking entry
+    // Create tracking entry with a care task
     let response = app
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "watering",
             "timestamp": "2024-01-01T12:00:00Z",
+            "careTaskIds": [care_task_id],
             "notes": "Watered the plant"
         }))
         .send()
@@ -76,12 +77,11 @@ async fn test_create_tracking_entry() {
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert!(body["id"].is_string());
-    assert_eq!(body["entryType"], "watering");
     assert_eq!(body["plantId"], plant_id);
 }
 
 #[tokio::test]
-async fn test_watering_updates_plant_last_watered() {
+async fn test_care_task_updates_last_performed() {
     let app = TestApp::new().await;
 
     // Register and login user
@@ -90,8 +90,9 @@ async fn test_watering_updates_plant_last_watered() {
     // Create a plant
     let plant = common::create_test_plant(&app, "Watering Plant", "Watericus").await;
     let plant_id = plant["id"].as_str().unwrap();
+    let care_task_id = plant["careTasks"][0]["id"].as_str().unwrap();
 
-    // Verify plant initially has no last_watered date
+    // Verify care task initially has no lastPerformed
     let get_response = app
         .client
         .get(app.url(&format!("/plants/{}", plant_id)))
@@ -102,16 +103,16 @@ async fn test_watering_updates_plant_last_watered() {
     assert_eq!(get_response.status(), 200);
     let initial_plant: serde_json::Value =
         get_response.json().await.expect("Failed to parse plant");
-    assert!(initial_plant["lastWatered"].is_null());
+    assert!(initial_plant["careTasks"][0]["lastPerformed"].is_null());
 
-    // Create watering tracking entry
+    // Create tracking entry logging the care task
     let watering_time = "2024-01-01T12:00:00Z";
     let response = app
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "watering",
             "timestamp": watering_time,
+            "careTaskIds": [care_task_id],
             "notes": "Test watering"
         }))
         .send()
@@ -120,7 +121,7 @@ async fn test_watering_updates_plant_last_watered() {
 
     assert_eq!(response.status(), 201);
 
-    // Get plant again and verify last_watered is updated
+    // Get plant again and verify care task lastPerformed is updated
     let get_response = app
         .client
         .get(app.url(&format!("/plants/{}", plant_id)))
@@ -133,11 +134,11 @@ async fn test_watering_updates_plant_last_watered() {
         .json()
         .await
         .expect("Failed to parse updated plant");
-    assert_eq!(updated_plant["lastWatered"], watering_time);
+    assert_eq!(updated_plant["careTasks"][0]["lastPerformed"], watering_time);
 }
 
 #[tokio::test]
-async fn test_fertilizing_updates_plant_last_fertilized() {
+async fn test_multiple_care_tasks_in_single_entry() {
     let app = TestApp::new().await;
 
     // Register and login user
@@ -149,40 +150,42 @@ async fn test_fertilizing_updates_plant_last_fertilized() {
     )
     .await;
 
-    // Create a plant
-    let plant = common::create_test_plant(&app, "Fertilizing Plant", "Fertilicus").await;
+    // Create a plant (has Water and Fertilize care tasks)
+    let plant = common::create_test_plant(&app, "Multi Task Plant", "Fertilicus").await;
     let plant_id = plant["id"].as_str().unwrap();
+    let water_task_id = plant["careTasks"][0]["id"].as_str().unwrap();
+    let fertilize_task_id = plant["careTasks"][1]["id"].as_str().unwrap();
 
-    // Create fertilizing tracking entry
-    let fertilizing_time = "2024-01-01T14:00:00Z";
+    // Create entry logging both care tasks
+    let timestamp = "2024-01-01T14:00:00Z";
     let response = app
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "fertilizing",
-            "timestamp": fertilizing_time,
-            "notes": "Test fertilizing"
+            "timestamp": timestamp,
+            "careTaskIds": [water_task_id, fertilize_task_id]
         }))
         .send()
         .await
-        .expect("Failed to send fertilizing entry request");
+        .expect("Failed to send entry request");
 
     assert_eq!(response.status(), 201);
 
-    // Get plant and verify last_fertilized is updated
+    // Get plant and verify both care tasks have lastPerformed updated
     let get_response = app
         .client
         .get(app.url(&format!("/plants/{}", plant_id)))
         .send()
         .await
-        .expect("Failed to get plant after fertilizing");
+        .expect("Failed to get plant");
 
     assert_eq!(get_response.status(), 200);
     let updated_plant: serde_json::Value = get_response
         .json()
         .await
         .expect("Failed to parse updated plant");
-    assert_eq!(updated_plant["lastFertilized"], fertilizing_time);
+    assert_eq!(updated_plant["careTasks"][0]["lastPerformed"], timestamp);
+    assert_eq!(updated_plant["careTasks"][1]["lastPerformed"], timestamp);
 }
 
 #[tokio::test]
@@ -196,12 +199,11 @@ async fn test_create_note_entry() {
     let plant = common::create_test_plant(&app, "Note Plant", "Noticus").await;
     let plant_id = plant["id"].as_str().unwrap();
 
-    // Create note tracking entry
+    // Create note tracking entry (no careTaskIds, just notes)
     let response = app
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "note",
             "timestamp": "2024-01-01T16:00:00Z",
             "notes": "Plant is looking healthy with new growth"
         }))
@@ -213,13 +215,12 @@ async fn test_create_note_entry() {
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert!(body["id"].is_string());
-    assert_eq!(body["entryType"], "note");
     assert_eq!(body["plantId"], plant_id);
     assert_eq!(body["notes"], "Plant is looking healthy with new growth");
 }
 
 #[tokio::test]
-async fn test_create_note_entry_with_photo_ids() {
+async fn test_create_entry_with_photo_ids() {
     let app = TestApp::new().await;
 
     // Register and login user
@@ -235,27 +236,25 @@ async fn test_create_note_entry_with_photo_ids() {
     let plant = common::create_test_plant(&app, "Note Photo Plant", "Photicus").await;
     let plant_id = plant["id"].as_str().unwrap();
 
-    // Create note tracking entry with photo IDs
+    // Create tracking entry with photo IDs
     let photo_id1 = uuid::Uuid::new_v4();
     let photo_id2 = uuid::Uuid::new_v4();
     let response = app
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "note",
             "timestamp": "2024-01-01T16:00:00Z",
             "notes": "Growth documentation with photos",
             "photoIds": [photo_id1, photo_id2]
         }))
         .send()
         .await
-        .expect("Failed to send note entry request");
+        .expect("Failed to send entry request");
 
     assert_eq!(response.status(), 201);
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert!(body["id"].is_string());
-    assert_eq!(body["entryType"], "note");
     assert_eq!(body["plantId"], plant_id);
     assert_eq!(body["notes"], "Growth documentation with photos");
 
@@ -274,14 +273,15 @@ async fn test_get_tracking_entry() {
     // Create a plant
     let plant = common::create_test_plant(&app, "Get Plant", "Geticus").await;
     let plant_id = plant["id"].as_str().unwrap();
+    let care_task_id = plant["careTasks"][0]["id"].as_str().unwrap();
 
     // Create tracking entry
     let create_response = app
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "watering",
             "timestamp": "2024-01-01T12:00:00Z",
+            "careTaskIds": [care_task_id],
             "notes": "Test watering for get"
         }))
         .send()
@@ -310,7 +310,6 @@ async fn test_get_tracking_entry() {
         .await
         .expect("Failed to parse get response");
     assert_eq!(retrieved_entry["id"], entry_id);
-    assert_eq!(retrieved_entry["entryType"], "watering");
     assert_eq!(retrieved_entry["plantId"], plant_id);
     assert_eq!(retrieved_entry["notes"], "Test watering for get");
 }
@@ -360,7 +359,6 @@ async fn test_update_tracking_entry() {
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "note",
             "timestamp": "2024-01-01T12:00:00Z",
             "notes": "Original note"
         }))
@@ -418,7 +416,6 @@ async fn test_delete_tracking_entry() {
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "watering",
             "timestamp": "2024-01-01T12:00:00Z",
             "notes": "To be deleted"
         }))
@@ -465,13 +462,12 @@ async fn test_create_photo_entry() {
     let plant = common::create_test_plant(&app, "Photo Plant", "Photicus").await;
     let plant_id = plant["id"].as_str().unwrap();
 
-    // Create photo tracking entry
+    // Create tracking entry with photos
     let photo_id = uuid::Uuid::new_v4();
     let response = app
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "photo",
             "timestamp": "2024-01-01T16:00:00Z",
             "photoIds": [photo_id]
         }))
@@ -483,7 +479,6 @@ async fn test_create_photo_entry() {
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
     assert!(body["id"].is_string());
-    assert_eq!(body["entryType"], "photo");
     assert_eq!(body["plantId"], plant_id);
 
     // Verify photo IDs are stored
@@ -502,26 +497,26 @@ async fn test_list_tracking_entries_with_various_types() {
     // Create a plant
     let plant = common::create_test_plant(&app, "List All Plant", "Listicus").await;
     let plant_id = plant["id"].as_str().unwrap();
+    let water_task_id = plant["careTasks"][0]["id"].as_str().unwrap();
+    let fertilize_task_id = plant["careTasks"][1]["id"].as_str().unwrap();
 
     // Create various types of tracking entries
     let entries = vec![
         serde_json::json!({
-            "entryType": "watering",
             "timestamp": "2024-01-01T12:00:00Z",
+            "careTaskIds": [water_task_id],
             "notes": "Morning watering"
         }),
         serde_json::json!({
-            "entryType": "fertilizing",
             "timestamp": "2024-01-02T13:00:00Z",
+            "careTaskIds": [fertilize_task_id],
             "notes": "Weekly fertilizer"
         }),
         serde_json::json!({
-            "entryType": "note",
             "timestamp": "2024-01-03T14:00:00Z",
             "notes": "New leaf spotted!"
         }),
         serde_json::json!({
-            "entryType": "photo",
             "timestamp": "2024-01-04T15:00:00Z",
             "photoIds": [uuid::Uuid::new_v4()]
         }),
@@ -564,8 +559,8 @@ async fn test_list_tracking_entries_with_various_types() {
         .collect();
 
     // Should be in descending order (newest first)
-    assert_eq!(timestamps[0], "2024-01-04T15:00:00Z"); // photo
-    assert_eq!(timestamps[1], "2024-01-03T14:00:00Z"); // note
-    assert_eq!(timestamps[2], "2024-01-02T13:00:00Z"); // fertilizing
-    assert_eq!(timestamps[3], "2024-01-01T12:00:00Z"); // watering
+    assert_eq!(timestamps[0], "2024-01-04T15:00:00Z");
+    assert_eq!(timestamps[1], "2024-01-03T14:00:00Z");
+    assert_eq!(timestamps[2], "2024-01-02T13:00:00Z");
+    assert_eq!(timestamps[3], "2024-01-01T12:00:00Z");
 }

@@ -320,7 +320,6 @@ async fn test_delete_photo_removes_references_from_tracking_entries() {
         .client
         .post(app.url(&format!("/plants/{}/entries", plant_id)))
         .json(&serde_json::json!({
-            "entryType": "note",
             "timestamp": "2024-01-01T16:00:00Z",
             "notes": "Entry with photo",
             "photoIds": [photo_id]

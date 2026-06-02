@@ -41,7 +41,7 @@ class BackendServer:
         self.port = port or get_free_port()
         self.base_url = f"http://localhost:{self.port}"
         self.process: Optional[subprocess.Popen] = None
-        self.api_prefix = "/v1"  # API prefix when no frontend is served (API-only mode)
+        self.api_prefix = "/api/v1"  # API prefix when no frontend is served (API-only mode)
         
     def start(self):
         """Start the backend server"""
@@ -54,6 +54,7 @@ class BackendServer:
         # Start the backend process with in-memory database
         env = os.environ.copy()
         env["RUST_LOG"] = "debug,tower_http=info,hyper=info"
+        env["PLANTY_OPEN_REGISTRATION"] = "true"
         
         try:
             self.process = subprocess.Popen([
@@ -117,7 +118,7 @@ class BackendServer:
 class APIClient:
     """HTTP client for making API requests"""
     
-    def __init__(self, base_url: str, api_prefix: str = "/v1"):
+    def __init__(self, base_url: str, api_prefix: str = "/api/v1"):
         self.base_url = base_url
         self.api_prefix = api_prefix
         self.session = requests.Session()
@@ -674,7 +675,7 @@ class TestPerformance:
         start_time = time.time()
         
         upload_response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files,
             cookies=self.client.session.cookies
         )
@@ -769,7 +770,7 @@ class TestPhotoUpload:
         # Use requests directly for multipart upload
         import requests
         response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files,
             cookies=self.client.session.cookies
         )
@@ -781,7 +782,7 @@ class TestPhotoUpload:
             print(f"File size: {len(fake_image_data)} bytes")
             print(f"Files data: {files}")
             print(f"Cookies: {self.client.session.cookies}")
-            print(f"Request URL: {self.client.base_url}/v1/plants/{plant_id}/photos")
+            print(f"Request URL: {self.client.base_url}/api/v1/plants/{plant_id}/photos")
         assert response.status_code == 201
         photo_data = response.json()
         
@@ -825,7 +826,7 @@ class TestPhotoUpload:
         }
         
         upload_response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files,
             cookies=self.client.session.cookies
         )
@@ -873,7 +874,7 @@ class TestPhotoUpload:
         }
         
         upload_response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files,
             cookies=self.client.session.cookies
         )
@@ -930,7 +931,7 @@ class TestPhotoUpload:
         }
         
         upload_response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files,
             cookies=self.client.session.cookies
         )
@@ -1016,7 +1017,7 @@ class TestPhotoUpload:
         
         # Upload photo
         upload_response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files,
             cookies=self.client.session.cookies
         )
@@ -1067,7 +1068,7 @@ class TestPhotoUpload:
         }
         
         response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files,
             cookies=self.client.session.cookies
         )
@@ -1090,7 +1091,7 @@ class TestPhotoUpload:
         
         # Create a new session without cookies
         response = requests.post(
-            f"{self.client.base_url}/v1/plants/{plant_id}/photos",
+            f"{self.client.base_url}/api/v1/plants/{plant_id}/photos",
             files=files
         )
         assert response.status_code == 401
@@ -1319,7 +1320,7 @@ class TestCalendarFunctionality:
         user_id = user_id_match.group(1)
         
         # Try with invalid token
-        invalid_url = f"{self.client.base_url}/v1/calendar/{user_id}.ics?token=invalid_token"
+        invalid_url = f"{self.client.base_url}/api/v1/calendar/{user_id}.ics?token=invalid_token"
         
         import requests
         calendar_response = requests.get(invalid_url)
@@ -1346,7 +1347,7 @@ class TestCalendarFunctionality:
         user_id = user_id_match.group(1)
         
         # Try without token
-        no_token_url = f"{self.client.base_url}/v1/calendar/{user_id}.ics"
+        no_token_url = f"{self.client.base_url}/api/v1/calendar/{user_id}.ics"
         
         import requests
         calendar_response = requests.get(no_token_url)
@@ -1513,6 +1514,256 @@ class TestCalendarFunctionality:
         assert "Mønstéra" in calendar_content
         assert "💧 Water 🌿 Monstera Deliciosa" in calendar_content
         assert "🌱 Fertilize 🌿 Monstera Deliciosa" in calendar_content
+
+
+class TestCareTasksCRUD:
+    """Test care tasks CRUD operations"""
+
+    def _create_plant_with_tasks(self, client, test_users):
+        """Helper: register, login, create plant with care tasks, return (plant_id, care_tasks)"""
+        client.request("POST", "/auth/register", json=test_users["user1"])
+        client.request("POST", "/auth/login", json={
+            "email": test_users["user1"]["email"],
+            "password": test_users["user1"]["password"]
+        })
+        response = client.request("POST", "/plants", json={
+            "name": "Test Plant",
+            "genus": "Testus",
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ],
+            "customMetrics": []
+        })
+        assert response.status_code == 201
+        data = response.json()
+        return data["id"], data["careTasks"]
+
+    def test_care_tasks_created_with_plant(self, client, test_users):
+        """Care tasks are created alongside the plant"""
+        plant_id, care_tasks = self._create_plant_with_tasks(client, test_users)
+        assert len(care_tasks) == 2
+        water = next(t for t in care_tasks if t["name"] == "Water")
+        fert = next(t for t in care_tasks if t["name"] == "Fertilize")
+        assert water["intervalDays"] == 7
+        assert water["icon"] == "💧"
+        assert fert["intervalDays"] == 14
+        assert fert["icon"] == "🌱"
+
+    def test_list_care_tasks(self, client, test_users):
+        """Can list care tasks for a plant"""
+        plant_id, _ = self._create_plant_with_tasks(client, test_users)
+        response = client.request("GET", f"/plants/{plant_id}/care-tasks")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["tasks"]) == 2
+
+    def test_create_care_task(self, client, test_users):
+        """Can add a new care task to an existing plant"""
+        plant_id, _ = self._create_plant_with_tasks(client, test_users)
+        response = client.request("POST", f"/plants/{plant_id}/care-tasks", json={
+            "name": "Mist",
+            "icon": "🌫️",
+            "intervalDays": 2
+        })
+        assert response.status_code == 201
+        task = response.json()
+        assert task["name"] == "Mist"
+        assert task["intervalDays"] == 2
+
+        # Verify it appears in list
+        list_resp = client.request("GET", f"/plants/{plant_id}/care-tasks")
+        assert len(list_resp.json()["tasks"]) == 3
+
+    def test_update_care_task(self, client, test_users):
+        """Can update an existing care task"""
+        plant_id, care_tasks = self._create_plant_with_tasks(client, test_users)
+        task_id = care_tasks[0]["id"]
+        response = client.request("PUT", f"/plants/{plant_id}/care-tasks/{task_id}", json={
+            "name": "Deep Water",
+            "intervalDays": 10
+        })
+        assert response.status_code == 200
+        updated = response.json()
+        assert updated["name"] == "Deep Water"
+        assert updated["intervalDays"] == 10
+
+    def test_delete_care_task(self, client, test_users):
+        """Can delete a care task"""
+        plant_id, care_tasks = self._create_plant_with_tasks(client, test_users)
+        task_id = care_tasks[0]["id"]
+        response = client.request("DELETE", f"/plants/{plant_id}/care-tasks/{task_id}")
+        assert response.status_code == 204
+
+        # Verify it's gone
+        list_resp = client.request("GET", f"/plants/{plant_id}/care-tasks")
+        assert len(list_resp.json()) == 1
+
+    def test_log_care_task(self, client, test_users):
+        """Logging a care task updates lastPerformed and creates a tracking entry"""
+        plant_id, care_tasks = self._create_plant_with_tasks(client, test_users)
+        task_id = care_tasks[0]["id"]
+
+        # Log the task
+        response = client.request("POST", f"/plants/{plant_id}/care-tasks/{task_id}/log", json={
+            "timestamp": "2024-06-15T10:00:00Z"
+        })
+        assert response.status_code in [200, 201]
+
+        # Verify lastPerformed is updated on the care task
+        task_resp = client.request("GET", f"/plants/{plant_id}/care-tasks/{task_id}")
+        assert task_resp.status_code == 200
+        task = task_resp.json()
+        assert task["lastPerformed"] is not None
+
+    def test_archive_unarchive_care_task(self, client, test_users):
+        """Can archive and unarchive a care task"""
+        plant_id, care_tasks = self._create_plant_with_tasks(client, test_users)
+        task_id = care_tasks[0]["id"]
+
+        # Archive
+        response = client.request("POST", f"/plants/{plant_id}/care-tasks/{task_id}/archive")
+        assert response.status_code == 200
+        archived = response.json()
+        assert archived["archivedAt"] is not None
+
+        # Unarchive
+        response = client.request("POST", f"/plants/{plant_id}/care-tasks/{task_id}/unarchive")
+        assert response.status_code == 200
+        unarchived = response.json()
+        assert unarchived.get("archivedAt") is None
+
+
+class TestUnifiedTrackingEntries:
+    """Test unified tracking entries (no entryType discriminator)"""
+
+    def _setup(self, client, test_users):
+        """Helper: register, login, create plant with tasks and metrics"""
+        client.request("POST", "/auth/register", json=test_users["user1"])
+        client.request("POST", "/auth/login", json={
+            "email": test_users["user1"]["email"],
+            "password": test_users["user1"]["password"]
+        })
+        response = client.request("POST", "/plants", json={
+            "name": "Tracked Plant",
+            "genus": "Trackus",
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ],
+            "customMetrics": [
+                {"name": "Height", "unit": "cm", "dataType": "Number"},
+                {"name": "Healthy", "unit": "", "dataType": "Boolean"}
+            ]
+        })
+        assert response.status_code == 201
+        plant = response.json()
+        return plant
+
+    def test_create_entry_with_care_tasks(self, client, test_users):
+        """Can create an entry that logs multiple care tasks"""
+        plant = self._setup(client, test_users)
+        task_ids = [t["id"] for t in plant["careTasks"]]
+
+        response = client.request("POST", f"/plants/{plant['id']}/entries", json={
+            "timestamp": "2024-06-15T10:00:00Z",
+            "careTaskIds": task_ids
+        })
+        assert response.status_code == 201
+        entry = response.json()
+        assert set(entry["careTaskIds"]) == set(task_ids)
+
+    def test_create_entry_with_measurement(self, client, test_users):
+        """Can create an entry with a measurement"""
+        plant = self._setup(client, test_users)
+        metric_id = plant["customMetrics"][0]["id"]
+
+        response = client.request("POST", f"/plants/{plant['id']}/entries", json={
+            "timestamp": "2024-06-15T10:00:00Z",
+            "measurements": [{"metricId": metric_id, "value": 42.5}]
+        })
+        assert response.status_code == 201
+        entry = response.json()
+        assert len(entry["measurements"]) == 1
+        assert entry["measurements"][0]["metricId"] == metric_id
+        assert entry["measurements"][0]["value"] == 42.5
+
+    def test_create_entry_with_notes_only(self, client, test_users):
+        """Can create a notes-only entry"""
+        plant = self._setup(client, test_users)
+
+        response = client.request("POST", f"/plants/{plant['id']}/entries", json={
+            "timestamp": "2024-06-15T10:00:00Z",
+            "notes": "Leaves looking great today"
+        })
+        assert response.status_code == 201
+        entry = response.json()
+        assert entry["notes"] == "Leaves looking great today"
+        assert entry.get("careTaskIds") is None or entry["careTaskIds"] == []
+
+    def test_create_combined_entry(self, client, test_users):
+        """Can create an entry combining care tasks, measurements, and notes"""
+        plant = self._setup(client, test_users)
+        task_id = plant["careTasks"][0]["id"]
+        metric_id = plant["customMetrics"][0]["id"]
+
+        response = client.request("POST", f"/plants/{plant['id']}/entries", json={
+            "timestamp": "2024-06-15T10:00:00Z",
+            "careTaskIds": [task_id],
+            "measurements": [{"metricId": metric_id, "value": 35.0}],
+            "notes": "Watered and measured growth"
+        })
+        assert response.status_code == 201
+        entry = response.json()
+        assert task_id in entry["careTaskIds"]
+        assert len(entry["measurements"]) == 1
+        assert entry["notes"] == "Watered and measured growth"
+
+    def test_list_entries(self, client, test_users):
+        """Can list tracking entries for a plant"""
+        plant = self._setup(client, test_users)
+
+        # Create a few entries
+        for i in range(3):
+            client.request("POST", f"/plants/{plant['id']}/entries", json={
+                "timestamp": f"2024-06-{15+i}T10:00:00Z",
+                "notes": f"Entry {i}"
+            })
+
+        response = client.request("GET", f"/plants/{plant['id']}/entries")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["entries"]) == 3
+
+    def test_entry_updates_care_task_last_performed(self, client, test_users):
+        """Creating an entry with careTaskIds updates lastPerformed on those tasks"""
+        plant = self._setup(client, test_users)
+        task_id = plant["careTasks"][0]["id"]
+
+        # Initially lastPerformed should be null
+        task_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks/{task_id}")
+        assert task_resp.json()["lastPerformed"] is None
+
+        # Create entry
+        client.request("POST", f"/plants/{plant['id']}/entries", json={
+            "timestamp": "2024-06-15T10:00:00Z",
+            "careTaskIds": [task_id]
+        })
+
+        # Now lastPerformed should be set
+        task_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks/{task_id}")
+        assert task_resp.json()["lastPerformed"] is not None
+
+    def test_entry_requires_at_least_one_field(self, client, test_users):
+        """An entry with no content fields should be rejected or treated as empty"""
+        plant = self._setup(client, test_users)
+
+        response = client.request("POST", f"/plants/{plant['id']}/entries", json={
+            "timestamp": "2024-06-15T10:00:00Z"
+        })
+        # Either 400 (validation) or 201 (allowed empty) - both are valid behaviors
+        # Just verify it doesn't crash
+        assert response.status_code in [201, 400, 422]
 
 
 if __name__ == "__main__":

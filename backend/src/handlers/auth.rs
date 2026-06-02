@@ -125,10 +125,17 @@ async fn register(
         let is_admin = invite_code.starts_with("ADMIN-");
         (is_admin, invite_code.clone())
     } else {
-        // No invite code provided - registration not allowed
-        return Err(AppError::Authentication {
-            message: "Registration requires a valid invite code".to_string(),
-        });
+        // No invite code provided - check if open registration is enabled
+        let open_reg = std::env::var("PLANTY_OPEN_REGISTRATION")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false);
+        if open_reg {
+            (false, String::new())
+        } else {
+            return Err(AppError::Authentication {
+                message: "Registration requires a valid invite code".to_string(),
+            });
+        }
     };
 
     // Create user in database with appropriate role
@@ -147,13 +154,15 @@ async fn register(
         db_users::create_user(&auth_session.backend.db, &payload).await
     }?;
 
-    // Mark invite code as used
+    // Mark invite code as used (skip if open registration with no code)
     use crate::database::invites as db_invites;
 
-    if let Err(e) =
-        db_invites::use_invite_code(&auth_session.backend.db, &invite_code, &user.id).await
-    {
-        tracing::error!("Failed to mark invite code as used: {}", e);
+    if !invite_code.is_empty() {
+        if let Err(e) =
+            db_invites::use_invite_code(&auth_session.backend.db, &invite_code, &user.id).await
+        {
+            tracing::error!("Failed to mark invite code as used: {}", e);
+        }
         // Don't fail registration if we can't update invite code
     }
 

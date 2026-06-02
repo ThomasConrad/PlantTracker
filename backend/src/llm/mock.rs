@@ -4,7 +4,9 @@
 
 use anyhow::Result;
 
-use super::{ChatMessage, CoachResponse, CoachSuggestionOutput, ContentPart, PlantCoach};
+use super::{
+    ChatMessage, CoachResponse, CoachSuggestionOutput, ContentPart, ExtractedFactOutput, PlantCoach,
+};
 
 /// A mock coach that returns predictable suggestions based on message keywords.
 ///
@@ -103,6 +105,34 @@ impl PlantCoach for MockCoach {
             )
         };
 
-        Ok(CoachResponse { text, suggestions })
+        // Extract mock facts based on keywords
+        let mut extracted_facts = Vec::new();
+        if lower.contains("window") || lower.contains("south") || lower.contains("north") {
+            extracted_facts.push(ExtractedFactOutput {
+                fact_type: "location".to_string(),
+                content: "Near a window".to_string(),
+                confidence: 0.8,
+            });
+        }
+        if lower.contains("terracotta") || lower.contains("pot") {
+            extracted_facts.push(ExtractedFactOutput {
+                fact_type: "pot".to_string(),
+                content: "In a terracotta pot".to_string(),
+                confidence: 0.85,
+            });
+        }
+        if has_image {
+            extracted_facts.push(ExtractedFactOutput {
+                fact_type: "general".to_string(),
+                content: "Plant appears healthy with good leaf coloration".to_string(),
+                confidence: 0.7,
+            });
+        }
+
+        Ok(CoachResponse {
+            text,
+            suggestions,
+            extracted_facts,
+        })
     }
 }

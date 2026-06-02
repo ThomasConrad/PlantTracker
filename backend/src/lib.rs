@@ -24,6 +24,10 @@ use models::{
         GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
     },
     invite::{CreateInviteRequest, InviteResponse, ValidateInviteRequest},
+    memory::{
+        CreateMemoryRequest, HealthHearts, MemoryFactType, MemorySource, PlantHealthScore,
+        PlantMemoriesResponse, PlantMemory, UpdateMemoryRequest,
+    },
     photo::{Photo, PhotosResponse},
     plant::{
         CreateCustomMetricRequest, CreatePlantCareTaskInput, CreatePlantRequest, CustomMetric,
@@ -101,6 +105,11 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::coach::send_message,
         crate::handlers::coach::accept_suggestion,
         crate::handlers::coach::dismiss_suggestion,
+        crate::handlers::memory::list_memories,
+        crate::handlers::memory::create_memory,
+        crate::handlers::memory::update_memory,
+        crate::handlers::memory::delete_memory,
+        crate::handlers::memory::get_health,
     ),
     components(
         schemas(
@@ -163,6 +172,14 @@ use handlers::google_tasks::StoreTokensRequest;
             CoachMessagesResponse,
             CoachSuggestion,
             SendCoachMessageRequest,
+            PlantMemory,
+            PlantMemoriesResponse,
+            CreateMemoryRequest,
+            UpdateMemoryRequest,
+            MemoryFactType,
+            MemorySource,
+            PlantHealthScore,
+            HealthHearts,
         )
     ),
     tags(

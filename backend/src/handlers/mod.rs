@@ -5,6 +5,7 @@ pub mod care_tasks;
 pub mod coach;
 pub mod google_tasks;
 pub mod invites;
+pub mod memory;
 pub mod photos;
 pub mod plants;
 pub mod reminders;

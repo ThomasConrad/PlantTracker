@@ -194,10 +194,15 @@ pub async fn send_message(
     })?;
 
     // Build LLM context
+    let memory_context =
+        crate::database::memory::get_memory_context(&app_state.pool, &plant_id, &user.id)
+            .await
+            .unwrap_or_default();
     let system_prompt = format!(
-        "{}{}",
+        "{}{}{}",
         crate::llm::COACH_SYSTEM_PROMPT,
-        crate::llm::build_plant_context(&plant)
+        crate::llm::build_plant_context(&plant),
+        memory_context
     );
     let mut llm_messages = vec![ChatMessage {
         role: "system".to_string(),
@@ -262,6 +267,27 @@ pub async fn send_message(
     .map_err(|e| AppError::Internal {
         message: e.to_string(),
     })?;
+
+    // Store extracted facts as plant memories
+    if !response.extracted_facts.is_empty() {
+        let facts: Vec<crate::models::memory::ExtractedFact> = response
+            .extracted_facts
+            .iter()
+            .map(|f| crate::models::memory::ExtractedFact {
+                fact_type: f.fact_type.clone(),
+                content: f.content.clone(),
+                confidence: f.confidence,
+            })
+            .collect();
+        let _ = crate::database::memory::store_extracted_facts(
+            &app_state.pool,
+            &plant_id,
+            &user.id,
+            &facts,
+            Some(&assistant_msg.id),
+        )
+        .await;
+    }
 
     // Insert suggestions
     let mut suggestions = Vec::new();
@@ -507,6 +533,48 @@ pub async fn accept_suggestion(
                     &plant_uuid,
                     &user.id,
                     &create,
+                )
+                .await;
+            }
+        }
+        "species_correction" => {
+            // Update the plant's genus (species stored as memory note)
+            let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                message: "Invalid plant_id".to_string(),
+            })?;
+            let genus = payload
+                .get("genus")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            if let Some(genus) = genus {
+                let update = crate::models::UpdatePlantRequest {
+                    name: None,
+                    genus: Some(genus),
+                    custom_metrics: None,
+                };
+                let _ = crate::database::plants::update_plant(
+                    &app_state.pool,
+                    plant_uuid,
+                    &user.id,
+                    &update,
+                )
+                .await;
+            }
+            // Store species as a memory note if provided
+            if let Some(species) = payload.get("species").and_then(|v| v.as_str()) {
+                let plant_uuid =
+                    uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                        message: "Invalid plant_id".to_string(),
+                    })?;
+                let _ = crate::database::memory::create_memory(
+                    &app_state.pool,
+                    &plant_uuid,
+                    &user.id,
+                    &crate::models::memory::MemoryFactType::SpeciesNote,
+                    &format!("Species: {species}"),
+                    0.9,
+                    crate::models::memory::MemorySource::Coach,
+                    None,
                 )
                 .await;
             }

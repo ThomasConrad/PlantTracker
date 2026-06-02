@@ -30,6 +30,9 @@ pub struct ImageUrlContent {
 pub struct CoachResponse {
     pub text: String,
     pub suggestions: Vec<CoachSuggestionOutput>,
+    /// Facts extracted from the conversation to store as plant memories
+    #[serde(default)]
+    pub extracted_facts: Vec<ExtractedFactOutput>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +40,22 @@ pub struct CoachSuggestionOutput {
     pub suggestion_type: String,
     pub description: String,
     pub payload: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtractedFactOutput {
+    /// One of: location, light, soil, pot, watering_preference, temperature, humidity,
+    /// growth_habit, symptom_pattern, pest_history, fertilizer_preference, propagation,
+    /// acquisition, species_note, general
+    pub fact_type: String,
+    pub content: String,
+    /// 0.0–1.0
+    #[serde(default = "default_confidence")]
+    pub confidence: f64,
+}
+
+fn default_confidence() -> f64 {
+    0.7
 }
 
 #[async_trait::async_trait]
@@ -125,6 +144,27 @@ SUGGESTION TYPES — include only when the conversation warrants actionable chan
 4. "photo_request" — ask the user to take/upload a photo for diagnosis
    payload: {}
    Use when: you need visual information to diagnose, or to track progress over time
+
+5. "species_correction" — correct the plant's recorded species/genus
+   payload: { "genus": "<correct genus>", "species": "<correct species if known>" }
+   Use when: from photos or description you're confident the recorded species is wrong
+
+MEMORY EXTRACTION — extract facts the user reveals (or you observe from photos) about the plant's environment, care, and behavior. Include in "extracted_facts" array:
+{
+  "extracted_facts": [
+    { "fact_type": "<type>", "content": "<concise fact>", "confidence": 0.0-1.0 }
+  ]
+}
+
+Fact types: location, light, soil, pot, watering_preference, temperature, humidity, growth_habit, symptom_pattern, pest_history, fertilizer_preference, propagation, acquisition, species_note, general
+
+Guidelines for extraction:
+- Extract when the user mentions WHERE the plant is, WHAT soil/pot it's in, HOW they water, etc.
+- From photos: extract observable facts (pot type, light level, growth stage, visible issues)
+- Use confidence 0.9+ for facts the user directly states ("it's on my south window")
+- Use confidence 0.6-0.8 for facts you infer ("looks like bright indirect light based on the photo")
+- DON'T re-extract facts that are already in "Known Facts" unless updating them with new info
+- Keep content concise: "south-facing kitchen windowsill" not "The plant is placed on a windowsill that faces south in the user's kitchen"
 
 RULES:
 - Respond ONLY with the JSON object. No markdown fences, no extra text outside the JSON.
@@ -217,13 +257,25 @@ pub const RESPONSE_JSON_SCHEMA: &str = r#"{
             "items": {
                 "type": "object",
                 "properties": {
-                    "suggestion_type": { "type": "string", "enum": ["schedule_change", "new_task", "care_action", "photo_request"] },
+                    "suggestion_type": { "type": "string", "enum": ["schedule_change", "new_task", "care_action", "photo_request", "species_correction"] },
                     "description": { "type": "string" },
                     "payload": { "type": "object" }
                 },
                 "required": ["suggestion_type", "description", "payload"]
             }
+        },
+        "extracted_facts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fact_type": { "type": "string", "enum": ["location", "light", "soil", "pot", "watering_preference", "temperature", "humidity", "growth_habit", "symptom_pattern", "pest_history", "fertilizer_preference", "propagation", "acquisition", "species_note", "general"] },
+                    "content": { "type": "string" },
+                    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+                },
+                "required": ["fact_type", "content", "confidence"]
+            }
         }
     },
-    "required": ["text", "suggestions"]
+    "required": ["text", "suggestions", "extracted_facts"]
 }"#;

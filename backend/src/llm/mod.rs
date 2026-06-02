@@ -1,6 +1,7 @@
 pub mod anthropic;
 pub mod ollama;
 pub mod openai;
+pub mod mock;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -50,6 +51,7 @@ pub fn create_coach() -> Result<Box<dyn PlantCoach>> {
     match provider.as_str() {
         "anthropic" => Ok(Box::new(anthropic::AnthropicCoach::new()?)),
         "ollama" => Ok(Box::new(ollama::OllamaCoach::new()?)),
+        "mock" => Ok(Box::new(mock::MockCoach)),
         _ => Ok(Box::new(openai::OpenAICoach::new()?)),
     }
 }

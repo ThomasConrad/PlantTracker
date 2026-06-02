@@ -22,7 +22,7 @@ CREATE TABLE coach_suggestions (
     id TEXT PRIMARY KEY,
     message_id TEXT NOT NULL REFERENCES coach_messages(id) ON DELETE CASCADE,
     plant_id TEXT NOT NULL REFERENCES plants(id) ON DELETE CASCADE,
-    suggestion_type TEXT NOT NULL CHECK(suggestion_type IN ('schedule_change', 'reminder', 'care_action', 'photo_request')),
+    suggestion_type TEXT NOT NULL CHECK(suggestion_type IN ('schedule_change', 'new_task', 'care_action', 'photo_request')),
     payload TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'dismissed')),
     applied_at TEXT,

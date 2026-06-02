@@ -140,6 +140,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/coach/plants/{plant_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_messages"];
+        put?: never;
+        post: operations["send_message"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/coach/suggestions/{suggestion_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["accept_suggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/coach/suggestions/{suggestion_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["dismiss_suggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/google-tasks/auth-url": {
         parameters: {
             query?: never;
@@ -605,6 +653,29 @@ export interface components {
         CareTasksResponse: {
             tasks: components["schemas"]["CareTaskWithStatus"][];
         };
+        CoachMessage: {
+            content: string;
+            createdAt: string;
+            id: string;
+            imageUrl?: string | null;
+            role: string;
+            suggestions: components["schemas"]["CoachSuggestion"][];
+        };
+        CoachMessageResponse: {
+            message: components["schemas"]["CoachMessage"];
+        };
+        CoachMessagesResponse: {
+            conversationId: string;
+            messages: components["schemas"]["CoachMessage"][];
+        };
+        CoachSuggestion: {
+            appliedAt?: string | null;
+            description: string;
+            id: string;
+            payload: unknown;
+            status: string;
+            suggestionType: string;
+        };
         CreateCareTaskRequest: {
             /** Format: double */
             amount?: number | null;
@@ -855,6 +926,10 @@ export interface components {
         ReorderCareTasksRequest: {
             /** @description Ordered list of care task IDs in desired order */
             taskIds: string[];
+        };
+        SendCoachMessageRequest: {
+            content: string;
+            imageUrl?: string | null;
         };
         StoreTokensRequest: {
             /** @description The access token from Google OAuth */
@@ -1395,6 +1470,165 @@ export interface operations {
             };
             /** @description Email already exists */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_messages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation messages */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachMessagesResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    send_message: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendCoachMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Message sent and AI response received */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachMessageResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description AI service unavailable */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accept_suggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Suggestion ID */
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suggestion accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachSuggestion"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Suggestion not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dismiss_suggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Suggestion ID */
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Suggestion dismissed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoachSuggestion"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Suggestion not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -11,6 +11,10 @@ pub mod models;
 pub mod utils;
 
 use models::{
+    coach::{
+        CoachMessage, CoachMessageResponse, CoachMessagesResponse, CoachSuggestion,
+        SendCoachMessageRequest,
+    },
     google_oauth::{
         CreateGoogleTaskRequest, GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse,
         GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
@@ -90,6 +94,10 @@ use handlers::care_tasks::LogCareTaskResponse;
         crate::handlers::care_tasks::archive_care_task,
         crate::handlers::care_tasks::unarchive_care_task,
         crate::handlers::care_tasks::reorder_care_tasks,
+        crate::handlers::coach::get_messages,
+        crate::handlers::coach::send_message,
+        crate::handlers::coach::accept_suggestion,
+        crate::handlers::coach::dismiss_suggestion,
     ),
     components(
         schemas(
@@ -147,6 +155,11 @@ use handlers::care_tasks::LogCareTaskResponse;
             GoogleTasksStatus,
             SyncPlantTasksRequest,
             StoreTokensRequest,
+            CoachMessage,
+            CoachMessageResponse,
+            CoachMessagesResponse,
+            CoachSuggestion,
+            SendCoachMessageRequest,
         )
     ),
     tags(
@@ -159,6 +172,7 @@ use handlers::care_tasks::LogCareTaskResponse;
         (name = "photos", description = "Photo management endpoints"),
         (name = "google-tasks", description = "Google Tasks integration endpoints"),
         (name = "reminders", description = "In-app and browser reminder endpoints"),
+        (name = "coach", description = "AI plant coach chat and suggestions"),
     ),
     info(
         title = "Planty API",

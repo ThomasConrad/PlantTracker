@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tracing::error;
 
-use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach};
+use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, RESPONSE_JSON_SCHEMA};
 
-/// Ollama coach — uses Ollama's OpenAI-compatible API endpoint.
+/// Ollama coach — uses Ollama's native `/api/chat` endpoint.
 /// Configure via:
 ///   OLLAMA_URL (default: http://localhost:11434)
 ///   OLLAMA_MODEL (default: llama3.2-vision)
@@ -62,7 +62,7 @@ struct OllamaResponseMessage {
 }
 
 /// Convert our generic messages into Ollama's format.
-/// Ollama uses a flat `content` string + separate `images` array (base64 without the data URL prefix).
+/// Ollama uses a flat `content` string + separate `images` array (raw base64).
 fn convert_messages(messages: Vec<ChatMessage>) -> Vec<OllamaMessage> {
     messages
         .into_iter()
@@ -76,10 +76,9 @@ fn convert_messages(messages: Vec<ChatMessage>) -> Vec<OllamaMessage> {
                     ContentPart::ImageUrl { image_url } => {
                         // Ollama expects raw base64 without the "data:image/...;base64," prefix
                         let url = image_url.url;
-                        if let Some(base64_data) = url.split(",").nth(1) {
+                        if let Some(base64_data) = url.split(',').nth(1) {
                             images.push(base64_data.to_string());
                         } else {
-                            // If it's a plain URL or already raw base64, pass as-is
                             images.push(url);
                         }
                     }
@@ -95,32 +94,11 @@ fn convert_messages(messages: Vec<ChatMessage>) -> Vec<OllamaMessage> {
         .collect()
 }
 
-/// JSON schema hint for structured output (Ollama supports `format` field)
-const RESPONSE_SCHEMA: &str = r#"{
-    "type": "object",
-    "properties": {
-        "text": { "type": "string" },
-        "suggestions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "suggestion_type": { "type": "string" },
-                    "description": { "type": "string" },
-                    "payload": {}
-                },
-                "required": ["suggestion_type", "description", "payload"]
-            }
-        }
-    },
-    "required": ["text", "suggestions"]
-}"#;
-
 #[async_trait::async_trait]
 impl PlantCoach for OllamaCoach {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse> {
         let format: serde_json::Value =
-            serde_json::from_str(RESPONSE_SCHEMA).context("Failed to parse response schema")?;
+            serde_json::from_str(RESPONSE_JSON_SCHEMA).context("Failed to parse response schema")?;
 
         let ollama_messages = convert_messages(messages);
 

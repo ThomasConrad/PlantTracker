@@ -5,7 +5,7 @@ use serde_json::json;
 use std::time::Duration;
 use tracing::error;
 
-use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach};
+use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, RESPONSE_JSON_SCHEMA};
 
 pub struct OpenAICoach {
     client: Client,
@@ -81,40 +81,20 @@ fn convert_messages(messages: Vec<ChatMessage>) -> Vec<OpenAIMessage> {
         .collect()
 }
 
-const JSON_SCHEMA: &str = r#"{
-    "type": "json_schema",
-    "json_schema": {
-        "name": "coach_response",
-        "strict": true,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "text": { "type": "string" },
-                "suggestions": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "suggestion_type": { "type": "string" },
-                            "description": { "type": "string" },
-                            "payload": {}
-                        },
-                        "required": ["suggestion_type", "description", "payload"],
-                        "additionalProperties": false
-                    }
-                }
-            },
-            "required": ["text", "suggestions"],
-            "additionalProperties": false
-        }
-    }
-}"#;
-
 #[async_trait::async_trait]
 impl PlantCoach for OpenAICoach {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse> {
-        let response_format: serde_json::Value =
-            serde_json::from_str(JSON_SCHEMA).context("Failed to parse JSON schema")?;
+        let schema: serde_json::Value =
+            serde_json::from_str(RESPONSE_JSON_SCHEMA).context("Failed to parse JSON schema")?;
+
+        let response_format = json!({
+            "type": "json_schema",
+            "json_schema": {
+                "name": "coach_response",
+                "strict": true,
+                "schema": schema
+            }
+        });
 
         let openai_messages = convert_messages(messages);
 

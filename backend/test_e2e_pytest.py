@@ -55,6 +55,7 @@ class BackendServer:
         env = os.environ.copy()
         env["RUST_LOG"] = "debug,tower_http=info,hyper=info"
         env["PLANTY_OPEN_REGISTRATION"] = "true"
+        env["PLANT_COACH_PROVIDER"] = "mock"
         
         try:
             self.process = subprocess.Popen([
@@ -130,7 +131,7 @@ class APIClient:
             endpoint = f"/{endpoint}"
         
         # For API endpoints, add the v1 prefix
-        if endpoint.startswith('/auth') or endpoint.startswith('/plants') or endpoint.startswith('/photos') or endpoint.startswith('/tracking') or endpoint.startswith('/calendar'):
+        if endpoint.startswith('/auth') or endpoint.startswith('/plants') or endpoint.startswith('/photos') or endpoint.startswith('/tracking') or endpoint.startswith('/calendar') or endpoint.startswith('/coach'):
             endpoint = f"{self.api_prefix}{endpoint}"
             
         url = f"{self.base_url}{endpoint}"
@@ -1763,6 +1764,175 @@ class TestUnifiedTrackingEntries:
         # Either 400 (validation) or 201 (allowed empty) - both are valid behaviors
         # Just verify it doesn't crash
         assert response.status_code in [201, 400, 422]
+
+
+class TestCoachSuggestions:
+    """Test AI coach chat and suggestion acceptance with mock LLM provider"""
+
+    def _setup(self, client, test_users):
+        """Helper: register, login, create plant with Water task"""
+        client.request("POST", "/auth/register", json=test_users["user1"])
+        client.request("POST", "/auth/login", json={
+            "email": test_users["user1"]["email"],
+            "password": test_users["user1"]["password"]
+        })
+        response = client.request("POST", "/plants", json={
+            "name": "Coach Test Plant",
+            "genus": "Monstera",
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
+        })
+        assert response.status_code == 201
+        return response.json()
+
+    def test_send_message_returns_response(self, client, test_users):
+        """Sending a message to the coach returns an AI response"""
+        plant = self._setup(client, test_users)
+
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Hello, how is my plant?"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert "message" in data
+        assert data["message"]["role"] == "assistant"
+        assert len(data["message"]["content"]) > 0
+
+    def test_schedule_change_suggestion(self, client, test_users):
+        """Mock returns schedule_change suggestion when 'schedule' keyword used"""
+        plant = self._setup(client, test_users)
+
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "I think I need to change the schedule"
+        })
+        assert response.status_code == 201
+        data = response.json()
+        suggestions = data["message"]["suggestions"]
+        assert len(suggestions) >= 1
+        sched = next(s for s in suggestions if s["suggestionType"] == "schedule_change")
+        assert sched["payload"]["careTaskName"] == "Water"
+        assert sched["payload"]["intervalDays"] == 5
+        assert sched["status"] == "pending"
+
+    def test_accept_schedule_change_updates_task(self, client, test_users):
+        """Accepting a schedule_change suggestion updates the care task interval"""
+        plant = self._setup(client, test_users)
+
+        # Get a schedule_change suggestion
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "I think I need to change the schedule"
+        })
+        suggestions = response.json()["message"]["suggestions"]
+        sched = next(s for s in suggestions if s["suggestionType"] == "schedule_change")
+
+        # Accept it
+        accept_resp = client.request("POST", f"/coach/suggestions/{sched['id']}/accept")
+        assert accept_resp.status_code == 200
+        assert accept_resp.json()["status"] == "accepted"
+
+        # Verify the Water task now has intervalDays=5
+        task_id = next(t["id"] for t in plant["careTasks"] if t["name"] == "Water")
+        task_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks/{task_id}")
+        assert task_resp.status_code == 200
+        assert task_resp.json()["intervalDays"] == 5
+
+    def test_accept_new_task_creates_care_task(self, client, test_users):
+        """Accepting a new_task suggestion creates a new care task on the plant"""
+        plant = self._setup(client, test_users)
+
+        # Get a new_task suggestion
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Should I add a new task for misting?"
+        })
+        suggestions = response.json()["message"]["suggestions"]
+        new_task = next(s for s in suggestions if s["suggestionType"] == "new_task")
+
+        # Accept it
+        accept_resp = client.request("POST", f"/coach/suggestions/{new_task['id']}/accept")
+        assert accept_resp.status_code == 200
+
+        # Verify a Misting task now exists
+        tasks_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks")
+        assert tasks_resp.status_code == 200
+        task_names = [t["name"] for t in tasks_resp.json()["tasks"]]
+        assert "Misting" in task_names
+
+    def test_accept_care_action_logs_entry(self, client, test_users):
+        """Accepting a care_action suggestion logs the care task"""
+        plant = self._setup(client, test_users)
+        task_id = next(t["id"] for t in plant["careTasks"] if t["name"] == "Water")
+
+        # Verify lastPerformed is initially None
+        task_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks/{task_id}")
+        assert task_resp.json()["lastPerformed"] is None
+
+        # Get a care_action suggestion
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "My plant needs action now, it's wilting"
+        })
+        suggestions = response.json()["message"]["suggestions"]
+        action = next(s for s in suggestions if s["suggestionType"] == "care_action")
+
+        # Accept it
+        accept_resp = client.request("POST", f"/coach/suggestions/{action['id']}/accept")
+        assert accept_resp.status_code == 200
+
+        # Verify Water task lastPerformed is now set
+        task_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks/{task_id}")
+        assert task_resp.json()["lastPerformed"] is not None
+
+    def test_dismiss_suggestion(self, client, test_users):
+        """Dismissing a suggestion marks it as dismissed without applying"""
+        plant = self._setup(client, test_users)
+
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Should I change the schedule?"
+        })
+        suggestions = response.json()["message"]["suggestions"]
+        sched = next(s for s in suggestions if s["suggestionType"] == "schedule_change")
+
+        # Dismiss it
+        dismiss_resp = client.request("POST", f"/coach/suggestions/{sched['id']}/dismiss")
+        assert dismiss_resp.status_code == 200
+        assert dismiss_resp.json()["status"] == "dismissed"
+
+        # Verify the task is unchanged (still 7 days)
+        task_id = next(t["id"] for t in plant["careTasks"] if t["name"] == "Water")
+        task_resp = client.request("GET", f"/plants/{plant['id']}/care-tasks/{task_id}")
+        assert task_resp.json()["intervalDays"] == 7
+
+    def test_get_conversation_messages(self, client, test_users):
+        """Can retrieve conversation history"""
+        plant = self._setup(client, test_users)
+
+        # Send a message
+        client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Hello coach"
+        })
+
+        # Get messages
+        response = client.request("GET", f"/coach/plants/{plant['id']}/messages")
+        assert response.status_code == 200
+        data = response.json()
+        assert "conversationId" in data
+        assert len(data["messages"]) >= 2  # user + assistant
+        roles = [m["role"] for m in data["messages"]]
+        assert "user" in roles
+        assert "assistant" in roles
+
+    def test_photo_request_suggestion(self, client, test_users):
+        """Mock returns photo_request when 'photo' keyword used"""
+        plant = self._setup(client, test_users)
+
+        response = client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Can you tell from a photo what's wrong?"
+        })
+        assert response.status_code == 201
+        suggestions = response.json()["message"]["suggestions"]
+        photo = next(s for s in suggestions if s["suggestionType"] == "photo_request")
+        assert photo["payload"] == {}
 
 
 if __name__ == "__main__":

@@ -82,6 +82,7 @@ async fn get_messages(
             .map(|s| CoachSuggestion {
                 id: s.id,
                 suggestion_type: s.suggestion_type,
+                description: s.description,
                 payload: serde_json::from_str(&s.payload).unwrap_or_default(),
                 status: s.status,
                 applied_at: s.applied_at,
@@ -228,6 +229,7 @@ async fn send_message(
             &assistant_msg.id,
             &plant_id.to_string(),
             &s.suggestion_type,
+            &s.description,
             &s.payload,
         )
         .await
@@ -238,6 +240,7 @@ async fn send_message(
         suggestions.push(CoachSuggestion {
             id: row.id,
             suggestion_type: row.suggestion_type,
+            description: row.description,
             payload: serde_json::from_str(&row.payload).unwrap_or_default(),
             status: row.status,
             applied_at: row.applied_at,
@@ -379,6 +382,7 @@ async fn accept_suggestion(
     Ok(Json(CoachSuggestion {
         id: row.id,
         suggestion_type: row.suggestion_type,
+        description: row.description,
         payload,
         status: row.status,
         applied_at: row.applied_at,
@@ -422,10 +426,12 @@ async fn dismiss_suggestion(
     Ok(Json(CoachSuggestion {
         id: row.id,
         suggestion_type: row.suggestion_type,
+        description: row.description,
         payload: serde_json::from_str(&row.payload).unwrap_or_default(),
         status: row.status,
         applied_at: row.applied_at,
     }))
 }
+
 
 

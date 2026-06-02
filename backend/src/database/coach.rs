@@ -70,7 +70,7 @@ pub async fn get_suggestions_for_message(
     message_id: &str,
 ) -> Result<Vec<CoachSuggestionRow>> {
     let suggestions: Vec<CoachSuggestionRow> = sqlx::query_as(
-        "SELECT id, message_id, plant_id, suggestion_type, payload, status, applied_at, created_at
+        "SELECT id, message_id, plant_id, suggestion_type, description, payload, status, applied_at, created_at
          FROM coach_suggestions
          WHERE message_id = ?",
     )
@@ -88,7 +88,7 @@ pub async fn get_pending_suggestions(
     user_id: &str,
 ) -> Result<Vec<CoachSuggestionRow>> {
     let suggestions: Vec<CoachSuggestionRow> = sqlx::query_as(
-        "SELECT s.id, s.message_id, s.plant_id, s.suggestion_type, s.payload, s.status, s.applied_at, s.created_at
+        "SELECT s.id, s.message_id, s.plant_id, s.suggestion_type, s.description, s.payload, s.status, s.applied_at, s.created_at
          FROM coach_suggestions s
          JOIN coach_messages m ON m.id = s.message_id
          JOIN coach_conversations c ON c.id = m.conversation_id
@@ -136,6 +136,7 @@ pub async fn insert_suggestion(
     message_id: &str,
     plant_id: &str,
     suggestion_type: &str,
+    description: &str,
     payload: &serde_json::Value,
 ) -> Result<CoachSuggestionRow> {
     let id = Uuid::new_v4().to_string();
@@ -143,14 +144,15 @@ pub async fn insert_suggestion(
     let payload_str = serde_json::to_string(payload)?;
 
     let row: CoachSuggestionRow = sqlx::query_as(
-        "INSERT INTO coach_suggestions (id, message_id, plant_id, suggestion_type, payload, status, applied_at, created_at)
-         VALUES (?, ?, ?, ?, ?, 'pending', NULL, ?)
-         RETURNING id, message_id, plant_id, suggestion_type, payload, status, applied_at, created_at",
+        "INSERT INTO coach_suggestions (id, message_id, plant_id, suggestion_type, description, payload, status, applied_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', NULL, ?)
+         RETURNING id, message_id, plant_id, suggestion_type, description, payload, status, applied_at, created_at",
     )
     .bind(&id)
     .bind(message_id)
     .bind(plant_id)
     .bind(suggestion_type)
+    .bind(description)
     .bind(&payload_str)
     .bind(&now)
     .fetch_one(pool)
@@ -178,7 +180,7 @@ pub async fn update_suggestion_status(
          WHERE id = ? AND plant_id IN (
              SELECT plant_id FROM coach_conversations WHERE user_id = ?
          )
-         RETURNING id, message_id, plant_id, suggestion_type, payload, status, applied_at, created_at",
+         RETURNING id, message_id, plant_id, suggestion_type, description, payload, status, applied_at, created_at",
     )
     .bind(status)
     .bind(&applied_at)

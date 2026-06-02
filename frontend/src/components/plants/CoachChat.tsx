@@ -3,6 +3,7 @@ import { coachApi, CoachMessage, CoachSuggestion } from '@/api/coach';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { compressImage } from '@/utils/imageCompress';
+import { renderMarkdown } from '@/utils/markdown';
 
 interface CoachChatProps {
   plantId: string;
@@ -177,7 +178,11 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
                     class="rounded-lg mb-2 max-h-48 object-cover"
                   />
                 </Show>
-                <p class="whitespace-pre-wrap text-sm">{message.content}</p>
+                <p class="whitespace-pre-wrap text-sm" innerHTML={
+                  message.role === 'assistant' ? renderMarkdown(message.content) : undefined
+                }>
+                  {message.role === 'user' ? message.content : undefined}
+                </p>
 
                 {/* Suggestions */}
                 <Show when={message.suggestions.length > 0}>
@@ -199,6 +204,11 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
                               </span>
                             </Show>
                           </div>
+                          <Show when={suggestion.description}>
+                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                              {suggestion.description}
+                            </p>
+                          </Show>
                           <Show when={suggestion.status === 'pending'}>
                             <div class="flex gap-2 mt-2">
                               <Button

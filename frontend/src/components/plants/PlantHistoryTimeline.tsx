@@ -1,5 +1,6 @@
 import { Component, For, Show, createEffect, createMemo, createSignal } from 'solid-js';
 import { apiClient } from '@/api/client';
+import { coachApi, CoachMessage } from '@/api/coach';
 import { plantsStore } from '@/stores/plants';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -8,7 +9,7 @@ import type { Plant, Photo, components } from '@/types';
 
 type TrackingEntry = components['schemas']['TrackingEntry'];
 
-type HistoryCategory = 'lifecycle' | 'care' | 'photo';
+type HistoryCategory = 'lifecycle' | 'care' | 'photo' | 'coach';
 
 interface HistoryEvent {
   id: string;
@@ -74,6 +75,8 @@ const getCategoryBadgeClass = (category: HistoryCategory): string => {
       return 'bg-blue-100 text-blue-700';
     case 'photo':
       return 'bg-amber-100 text-amber-700';
+    case 'coach':
+      return 'bg-purple-100 text-purple-700';
     case 'lifecycle':
       return 'bg-gray-100 text-gray-700';
     default:
@@ -87,6 +90,8 @@ const getCategoryLabel = (category: HistoryCategory): string => {
       return 'Care';
     case 'photo':
       return 'Photo';
+    case 'coach':
+      return 'Coach';
     case 'lifecycle':
       return 'System';
     default:
@@ -112,9 +117,10 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
       setLoading(true);
       setError(null);
 
-      const [trackingResponse, photosResponse] = await Promise.all([
+      const [trackingResponse, photosResponse, coachResponse] = await Promise.all([
         plantsStore.getTrackingEntries(props.plant.id),
         apiClient.getPlantPhotos(props.plant.id, { limit: 100 }),
+        coachApi.getMessages(props.plant.id).catch(() => ({ messages: [] as CoachMessage[] })),
       ]);
 
       const timelineEvents: HistoryEvent[] = [];
@@ -164,6 +170,28 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
           category: 'photo' as const,
         }))
       );
+
+      // Coach interactions — only assistant messages with suggestions
+      for (const msg of coachResponse.messages) {
+        if (msg.role === 'assistant' && msg.suggestions.length > 0) {
+          const accepted = msg.suggestions.filter((s) => s.status === 'accepted');
+          const pending = msg.suggestions.filter((s) => s.status === 'pending');
+          let details = msg.content.slice(0, 120);
+          if (msg.content.length > 120) details += '...';
+          if (accepted.length > 0) {
+            details += ` (${accepted.length} accepted)`;
+          } else if (pending.length > 0) {
+            details += ` (${pending.length} pending)`;
+          }
+          timelineEvents.push({
+            id: `coach-${msg.id}`,
+            timestamp: msg.createdAt,
+            title: 'Coach suggestion',
+            details,
+            category: 'coach',
+          });
+        }
+      }
 
       timelineEvents.sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -217,7 +245,12 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
                 <For each={visibleEvents()}>
                   {(event) => (
                     <div class="flex gap-3">
-                      <div class="mt-1 h-2.5 w-2.5 rounded-full bg-primary-500 flex-shrink-0" />
+                      <div class={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                        event.category === 'care' ? 'bg-blue-500' :
+                        event.category === 'photo' ? 'bg-amber-500' :
+                        event.category === 'coach' ? 'bg-purple-500' :
+                        'bg-gray-400'
+                      }`} />
                       <div class="min-w-0 flex-1 border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
                         <div class="flex flex-wrap items-center gap-2">
                           <p class="text-sm font-medium text-gray-900">{event.title}</p>

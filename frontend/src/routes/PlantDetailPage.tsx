@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { ActivityLog } from "@/components/plants/ActivityLog";
 import { PhotoGallery } from "@/components/plants/PhotoGallery";
 import { PlantHistoryTimeline } from "@/components/plants/PlantHistoryTimeline";
+import { PlantMemories } from "@/components/plants/PlantMemories";
 import { calculateDaysUntil, formatDate, isOverdue } from "@/utils/date";
 import {
   makeTransformScheduler,
@@ -620,6 +621,8 @@ export const PlantDetailPage: Component = () => {
                         fullTimelineHref={`/plants/${plant.id}/photos`}
                       />
 
+                      <PlantMemories plantId={plant.id} />
+
                       <details class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
                         <summary class="px-4 py-4 cursor-pointer list-none select-none flex items-center justify-between gap-3 bg-gray-50/60">
                           <h2 class="text-base font-semibold text-gray-900">
@@ -854,6 +857,8 @@ export const PlantDetailPage: Component = () => {
                       mode="preview"
                       fullTimelineHref={`/plants/${plant.id}/photos`}
                     />
+
+                    <PlantMemories plantId={plant.id} />
 
                     <details class="bg-white shadow-sm rounded-xl sm:rounded-2xl border border-gray-200 overflow-hidden">
                       <summary class="px-4 sm:px-6 py-4 sm:py-5 cursor-pointer list-none select-none flex items-center justify-between gap-3 bg-gray-50/50">

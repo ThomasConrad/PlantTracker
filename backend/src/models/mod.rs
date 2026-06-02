@@ -2,6 +2,7 @@ pub mod care_task;
 pub mod coach;
 pub mod google_oauth;
 pub mod invite;
+pub mod memory;
 pub mod photo;
 pub mod plant;
 pub mod reminder;

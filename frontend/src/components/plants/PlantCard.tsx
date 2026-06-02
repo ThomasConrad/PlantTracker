@@ -1,6 +1,7 @@
 import { Component, Show, For, createMemo } from "solid-js";
 import { A } from "@solidjs/router";
 import type { Plant } from "@/types";
+import { PlantHearts } from "./PlantHearts";
 
 interface PlantCardProps {
   plant: Plant;
@@ -66,6 +67,14 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
             {overdueCount()}
           </div>
         </Show>
+
+        {/* Health hearts */}
+        <div class="absolute top-3 left-3">
+          <PlantHearts
+            plantId={props.plant.id}
+            class="text-sm drop-shadow-lg"
+          />
+        </div>
 
         {/* Plant name and genus overlay */}
         <div class="absolute bottom-0 left-0 right-0 p-5">

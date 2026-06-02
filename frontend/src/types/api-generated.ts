@@ -140,6 +140,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/coach/plants/{plant_id}/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["get_health"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/coach/plants/{plant_id}/memories": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["list_memories"];
+    put?: never;
+    post: operations["create_memory"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/coach/plants/{plant_id}/memories/{memory_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["update_memory"];
+    post?: never;
+    delete: operations["delete_memory"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/coach/plants/{plant_id}/messages": {
     parameters: {
       query?: never;
@@ -720,6 +768,10 @@ export interface components {
       /** Format: int32 */
       max_uses?: number | null;
     };
+    CreateMemoryRequest: {
+      content: string;
+      factType: components["schemas"]["MemoryFactType"];
+    };
     /** @description Inline care task definition used when creating a plant */
     CreatePlantCareTaskInput: {
       /** Format: double */
@@ -822,6 +874,18 @@ export interface components {
       expires_at?: string | null;
       scopes?: string[] | null;
     };
+    /** @description Number of hearts (0–5, supports halves like 3.5) */
+    HealthHearts: {
+      /**
+       * Format: double
+       * @description 0.0–5.0, rounded to nearest 0.5
+       */
+      hearts: number;
+      /** Format: double */
+      score: number;
+      /** Format: date-time */
+      scoredAt?: string | null;
+    };
     InviteInfo: {
       code: string;
       created_at: string;
@@ -871,6 +935,25 @@ export interface components {
       value: unknown;
     };
     /** @enum {string} */
+    MemoryFactType:
+      | "location"
+      | "light"
+      | "soil"
+      | "pot"
+      | "watering_preference"
+      | "temperature"
+      | "humidity"
+      | "growth_habit"
+      | "symptom_pattern"
+      | "pest_history"
+      | "fertilizer_preference"
+      | "propagation"
+      | "acquisition"
+      | "species_note"
+      | "general";
+    /** @enum {string} */
+    MemorySource: "coach" | "user";
+    /** @enum {string} */
     MetricDataType: "Number" | "Text" | "Boolean";
     Photo: {
       contentType: string;
@@ -893,6 +976,46 @@ export interface components {
       photos: components["schemas"]["Photo"][];
       /** Format: int64 */
       total: number;
+    };
+    PlantHealthScore: {
+      /** Format: double */
+      careAdherence?: number | null;
+      /** Format: double */
+      coachSentiment?: number | null;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: uuid */
+      id: string;
+      /** Format: double */
+      overduePenalty?: number | null;
+      /** Format: uuid */
+      plantId: string;
+      /**
+       * Format: double
+       * @description 0.0–1.0, displayed as 0–5 hearts
+       */
+      score: number;
+      /** Format: date-time */
+      scoredAt: string;
+    };
+    PlantMemoriesResponse: {
+      memories: components["schemas"]["PlantMemory"][];
+    };
+    PlantMemory: {
+      /** Format: double */
+      confidence: number;
+      content: string;
+      /** Format: date-time */
+      createdAt: string;
+      factType: components["schemas"]["MemoryFactType"];
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      plantId: string;
+      source: components["schemas"]["MemorySource"];
+      sourceMessageId?: string | null;
+      /** Format: date-time */
+      updatedAt: string;
     };
     PlantResponse: {
       /** Format: date-time */
@@ -1033,6 +1156,10 @@ export interface components {
       id?: string | null;
       name: string;
       unit: string;
+    };
+    UpdateMemoryRequest: {
+      content?: string | null;
+      factType?: components["schemas"]["MemoryFactType"] | null;
     };
     UpdatePlantRequest: {
       customMetrics?:
@@ -1481,6 +1608,180 @@ export interface operations {
       };
       /** @description Email already exists */
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  get_health: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Plant ID */
+        plant_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Plant health score as hearts */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HealthHearts"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  list_memories: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Plant ID */
+        plant_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Plant memories */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlantMemoriesResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  create_memory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Plant ID */
+        plant_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateMemoryRequest"];
+      };
+    };
+    responses: {
+      /** @description Memory created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlantMemory"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  update_memory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Plant ID */
+        plant_id: string;
+        /** @description Memory ID */
+        memory_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateMemoryRequest"];
+      };
+    };
+    responses: {
+      /** @description Memory updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlantMemory"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  delete_memory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description Plant ID */
+        plant_id: string;
+        /** @description Memory ID */
+        memory_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Memory deleted */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

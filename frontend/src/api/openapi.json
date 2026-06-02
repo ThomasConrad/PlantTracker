@@ -407,6 +407,216 @@
         }
       }
     },
+    "/coach/plants/{plant_id}/health": {
+      "get": {
+        "tags": [
+          "coach"
+        ],
+        "operationId": "get_health",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant health score as hearts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthHearts"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/coach/plants/{plant_id}/memories": {
+      "get": {
+        "tags": [
+          "coach"
+        ],
+        "operationId": "list_memories",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant memories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantMemoriesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "coach"
+        ],
+        "operationId": "create_memory",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Memory created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantMemory"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/coach/plants/{plant_id}/memories/{memory_id}": {
+      "put": {
+        "tags": [
+          "coach"
+        ],
+        "operationId": "update_memory",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "memory_id",
+            "in": "path",
+            "description": "Memory ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Memory updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantMemory"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "coach"
+        ],
+        "operationId": "delete_memory",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "memory_id",
+            "in": "path",
+            "description": "Memory ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Memory deleted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/coach/plants/{plant_id}/messages": {
       "get": {
         "tags": [
@@ -2430,6 +2640,21 @@
           }
         }
       },
+      "CreateMemoryRequest": {
+        "type": "object",
+        "required": [
+          "factType",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "factType": {
+            "$ref": "#/components/schemas/MemoryFactType"
+          }
+        }
+      },
       "CreatePlantCareTaskInput": {
         "type": "object",
         "description": "Inline care task definition used when creating a plant",
@@ -2783,6 +3008,30 @@
           }
         }
       },
+      "HealthHearts": {
+        "type": "object",
+        "description": "Number of hearts (0–5, supports halves like 3.5)",
+        "required": [
+          "hearts",
+          "score"
+        ],
+        "properties": {
+          "hearts": {
+            "type": "number",
+            "format": "double",
+            "description": "0.0–5.0, rounded to nearest 0.5"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "scoredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
       "InviteInfo": {
         "type": "object",
         "required": [
@@ -2938,6 +3187,33 @@
           "value": {}
         }
       },
+      "MemoryFactType": {
+        "type": "string",
+        "enum": [
+          "location",
+          "light",
+          "soil",
+          "pot",
+          "watering_preference",
+          "temperature",
+          "humidity",
+          "growth_habit",
+          "symptom_pattern",
+          "pest_history",
+          "fertilizer_preference",
+          "propagation",
+          "acquisition",
+          "species_note",
+          "general"
+        ]
+      },
+      "MemorySource": {
+        "type": "string",
+        "enum": [
+          "coach",
+          "user"
+        ]
+      },
       "MetricDataType": {
         "type": "string",
         "enum": [
@@ -3011,6 +3287,116 @@
           "total": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "PlantHealthScore": {
+        "type": "object",
+        "required": [
+          "id",
+          "plantId",
+          "score",
+          "scoredAt",
+          "createdAt"
+        ],
+        "properties": {
+          "careAdherence": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "coachSentiment": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "overduePenalty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "score": {
+            "type": "number",
+            "format": "double",
+            "description": "0.0–1.0, displayed as 0–5 hearts"
+          },
+          "scoredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlantMemoriesResponse": {
+        "type": "object",
+        "required": [
+          "memories"
+        ],
+        "properties": {
+          "memories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlantMemory"
+            }
+          }
+        }
+      },
+      "PlantMemory": {
+        "type": "object",
+        "required": [
+          "id",
+          "plantId",
+          "factType",
+          "content",
+          "confidence",
+          "source",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "confidence": {
+            "type": "number",
+            "format": "double"
+          },
+          "content": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "factType": {
+            "$ref": "#/components/schemas/MemoryFactType"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MemorySource"
+          },
+          "sourceMessageId": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -3414,6 +3800,23 @@
           },
           "unit": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateMemoryRequest": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "nullable": true
+          },
+          "factType": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MemoryFactType"
+              }
+            ],
+            "nullable": true
           }
         }
       },

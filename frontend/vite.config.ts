@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/// <reference types="vitest" />
+
 const apiTarget = process.env.VITE_API_TARGET || 'http://localhost:3001';
 
 export default defineConfig({
@@ -85,5 +87,10 @@ export default defineConfig({
     alias: {
       '@': '/src'
     }
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: [],
   }
 });

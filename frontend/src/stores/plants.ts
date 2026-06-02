@@ -4,15 +4,10 @@ import type { Plant, Photo, components } from '@/types';
 
 type TrackingEntry = components['schemas']['TrackingEntry'];
 type CreateTrackingEntryRequest = components['schemas']['CreateTrackingEntryRequest'];
+type UpdateTrackingEntryRequest = Parameters<typeof apiClient.updateTrackingEntry>[2];
 type TrackingEntriesResponse = components['schemas']['TrackingEntriesResponse'];
 type CreatePlantRequest = components['schemas']['CreatePlantRequest'];
 type UpdatePlantRequest = components['schemas']['UpdatePlantRequest'];
-
-interface UpdateTrackingEntryRequest {
-  timestamp?: string;
-  value?: unknown;
-  notes?: string;
-}
 
 const [plants, setPlants] = createSignal<Plant[]>([]);
 const [selectedPlant, setSelectedPlant] = createSignal<Plant | null>(null);
@@ -110,8 +105,6 @@ const plantsStore = {
       const updateData: UpdatePlantRequest = {
         name: plantData.name,
         genus: plantData.genus,
-        wateringSchedule: plantData.wateringSchedule,
-        fertilizingSchedule: plantData.fertilizingSchedule,
         customMetrics: plantData.customMetrics?.map(metric => ({
           id: undefined, // For updates, we don't send ID for new metrics
           name: metric.name,
@@ -261,22 +254,18 @@ const plantsStore = {
       setError(null);
       const entry = await apiClient.createTrackingEntry(plantId, entryData);
       
-      if (entryData.entryType === 'watering' || entryData.entryType === 'fertilizing') {
-        const plantToUpdate = plants().find(p => p.id === plantId);
-        if (plantToUpdate) {
-          const updatedPlant = {
-            ...plantToUpdate,
-            lastWatered: entryData.entryType === 'watering' ? entryData.timestamp : plantToUpdate.lastWatered,
-            lastFertilized: entryData.entryType === 'fertilizing' ? entryData.timestamp : plantToUpdate.lastFertilized,
-          };
-          
+      // After logging care tasks, reload the plant to get updated care task status
+      if (entryData.careTaskIds && entryData.careTaskIds.length > 0) {
+        try {
+          const updatedPlant = await apiClient.getPlant(plantId);
           setPlants(prev =>
             prev.map(plant => plant.id === plantId ? updatedPlant : plant)
           );
-          
           if (selectedPlant()?.id === plantId) {
             setSelectedPlant(updatedPlant);
           }
+        } catch {
+          // Non-critical: UI will refresh on next load
         }
       }
       

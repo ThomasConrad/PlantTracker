@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
 use crate::database::plants as db_plants;
-use crate::handlers::{photos, tracking};
+use crate::handlers::{care_tasks, photos, tracking};
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{CreatePlantRequest, PlantResponse, PlantsResponse, UpdatePlantRequest};
 use crate::utils::errors::{AppError, Result};
@@ -30,6 +30,7 @@ pub fn routes() -> Router<AppState> {
         .route("/:id/preview", delete(clear_plant_preview))
         .nest("/:plant_id", photos::routes())
         .merge(tracking::routes())
+        .merge(care_tasks::routes())
 }
 
 #[derive(Debug, Deserialize)]
@@ -312,7 +313,11 @@ pub async fn unarchive_plant(
         message: "Not authenticated".to_string(),
     })?;
 
-    tracing::info!("Unarchive plant request for id: {} by user: {}", id, user.id);
+    tracing::info!(
+        "Unarchive plant request for id: {} by user: {}",
+        id,
+        user.id
+    );
     let plant = db_plants::unarchive_plant(&app_state.pool, id, &user.id).await?;
     Ok(Json(plant))
 }

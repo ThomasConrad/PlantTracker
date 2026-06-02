@@ -229,50 +229,32 @@ pub async fn ensure_valid_token(
 pub async fn create_plant_care_task(
     token: &GoogleOAuthToken,
     plant: &PlantResponse,
-    task_type: &str, // "watering" or "fertilizing"
+    care_task: &crate::models::care_task::CareTask,
     due_time: DateTime<Utc>,
     base_url: &str,
     task_list_id: &str,
 ) -> Result<String> {
-    let (title, notes) = match task_type {
-        "watering" => {
-            let interval_days = plant.watering_schedule.interval_days.unwrap_or(0);
-            (
-                format!("💧 Water {}", plant.name),
-                format!(
-                    "Time to water your {} ({}).{}{} Water every {} days.\n\nView plant details: {}/plants/{}",
-                    plant.name,
-                    plant.genus,
-                    plant.watering_schedule.amount.map_or("".to_string(), |amt| format!(" Amount: {}", amt)),
-                    plant.watering_schedule.unit.as_ref().map_or("".to_string(), |unit| format!(" {}", unit)),
-                    interval_days,
-                    base_url,
-                    plant.id
-                ),
-            )
-        }
-        "fertilizing" => {
-            let interval_days = plant.fertilizing_schedule.interval_days.unwrap_or(0);
-            (
-                format!("🌱 Fertilize {}", plant.name),
-                format!(
-                    "Time to fertilize your {} ({}).{}{} Fertilize every {} days.\n\nView plant details: {}/plants/{}",
-                    plant.name,
-                    plant.genus,
-                    plant.fertilizing_schedule.amount.map_or("".to_string(), |amt| format!(" Amount: {}", amt)),
-                    plant.fertilizing_schedule.unit.as_ref().map_or("".to_string(), |unit| format!(" {}", unit)),
-                    interval_days,
-                    base_url,
-                    plant.id
-                ),
-            )
-        }
-        _ => {
-            return Err(AppError::Internal {
-                message: "Invalid task type".to_string(),
-            })
-        }
-    };
+    let icon = care_task.icon.as_deref().unwrap_or("📋");
+    let interval_days = care_task.interval_days.unwrap_or(0);
+    let amount_info = care_task.amount.map_or(String::new(), |amt| {
+        format!(
+            " Amount: {}{}",
+            amt,
+            care_task.unit.as_deref().unwrap_or("")
+        )
+    });
+
+    let title = format!("{} {} {}", icon, care_task.name, plant.name);
+    let notes = format!(
+        "Time to {} your {} ({}).{} Every {} days.\n\nView plant details: {}/plants/{}",
+        care_task.name.to_lowercase(),
+        plant.name,
+        plant.genus,
+        amount_info,
+        interval_days,
+        base_url,
+        plant.id
+    );
 
     let client = create_http_client().await?;
 
@@ -324,7 +306,7 @@ pub async fn create_plant_care_task(
 
     tracing::info!(
         "Created {} task for plant {}: {}",
-        task_type,
+        care_task.name,
         plant.name,
         task_id
     );

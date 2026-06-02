@@ -1,12 +1,13 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
+use crate::database::care_tasks as db_care_tasks;
 use crate::database::DatabasePool;
 use crate::models::{
     CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, UpdatePlantRequest,
 };
+use crate::models::care_task::CreateCareTaskRequest;
 use crate::utils::errors::AppError;
 
 #[derive(Debug, FromRow)]
@@ -15,16 +16,6 @@ pub struct PlantRow {
     pub user_id: String,
     pub name: String,
     pub genus: String,
-    pub watering_interval_days: Option<i32>,
-    pub fertilizing_interval_days: Option<i32>,
-    pub watering_amount: Option<f64>,
-    pub watering_unit: Option<String>,
-    pub watering_notes: Option<String>,
-    pub fertilizing_amount: Option<f64>,
-    pub fertilizing_unit: Option<String>,
-    pub fertilizing_notes: Option<String>,
-    pub last_watered: Option<String>,
-    pub last_fertilized: Option<String>,
     pub preview_id: Option<String>,
     pub archived_at: Option<String>,
     pub created_at: String,
@@ -32,11 +23,6 @@ pub struct PlantRow {
 }
 
 impl PlantRow {
-    /// Converts a `PlantRow` from the database into a `PlantResponse` for the API.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the plant ID in the database is not a valid UUID.
     #[allow(clippy::wrong_self_convention)]
     pub fn to_response(self) -> Result<PlantResponse, AppError> {
         Ok(PlantResponse {
@@ -45,32 +31,6 @@ impl PlantRow {
             })?,
             name: self.name,
             genus: self.genus,
-            watering_schedule: crate::models::plant::CareSchedule {
-                interval_days: self.watering_interval_days,
-                amount: self.watering_amount,
-                unit: self.watering_unit,
-                notes: self.watering_notes,
-            },
-            fertilizing_schedule: crate::models::plant::CareSchedule {
-                interval_days: self.fertilizing_interval_days,
-                amount: self.fertilizing_amount,
-                unit: self.fertilizing_unit,
-                notes: self.fertilizing_notes,
-            },
-            last_watered: self
-                .last_watered
-                .map(|s| s.parse::<DateTime<Utc>>())
-                .transpose()
-                .map_err(|_| AppError::Internal {
-                    message: "Invalid datetime in database".to_string(),
-                })?,
-            last_fertilized: self
-                .last_fertilized
-                .map(|s| s.parse::<DateTime<Utc>>())
-                .transpose()
-                .map_err(|_| AppError::Internal {
-                    message: "Invalid datetime in database".to_string(),
-                })?,
             preview_id: self
                 .preview_id
                 .as_ref()
@@ -87,6 +47,7 @@ impl PlantRow {
                     message: "Invalid datetime in database".to_string(),
                 })?,
             custom_metrics: vec![],
+            care_tasks: vec![],
             created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
                 AppError::Internal {
                     message: "Invalid datetime in database".to_string(),
@@ -192,20 +153,21 @@ async fn replace_custom_metrics_for_plant(
     Ok(())
 }
 
-/// Creates a new plant in the database for a specific user.
-///
-/// # Arguments
-///
-/// * `pool` - Database connection pool
-/// * `user_id` - ID of the user creating the plant
-/// * `request` - Plant creation request data
-///
-/// # Errors
-///
-/// Returns an error if:
-/// - Database insertion fails
-/// - Invalid data provided
-/// - User does not exist
+/// Enriches a PlantResponse with custom_metrics and care_tasks
+async fn enrich_plant_response(
+    pool: &DatabasePool,
+    mut plant: PlantResponse,
+) -> Result<PlantResponse, AppError> {
+    let plant_id_str = plant.id.to_string();
+    plant.custom_metrics = load_custom_metrics_for_plant(pool, &plant_id_str).await?;
+
+    let care_response =
+        db_care_tasks::list_care_tasks_for_plant(pool, &plant.id, &plant.user_id, false).await?;
+    plant.care_tasks = care_response.tasks;
+
+    Ok(plant)
+}
+
 pub async fn create_plant(
     pool: &DatabasePool,
     user_id: &str,
@@ -215,46 +177,16 @@ pub async fn create_plant(
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
 
-    // Extract values to avoid lifetime issues
-    let watering_interval = request.watering_interval_days();
-    let fertilizing_interval = request.fertilizing_interval_days();
-    let watering_amount = request.watering_amount();
-    let watering_unit = request.watering_unit();
-    let watering_notes = request.watering_notes();
-    let fertilizing_amount = request.fertilizing_amount();
-    let fertilizing_unit = request.fertilizing_unit();
-    let fertilizing_notes = request.fertilizing_notes();
-    let last_watered = request.last_watered.map(|dt| dt.to_rfc3339());
-    let last_fertilized = request.last_fertilized.map(|dt| dt.to_rfc3339());
-
-    let result = sqlx::query!(
-        r#"
-        INSERT INTO plants (
-            id, user_id, name, genus, 
-            watering_interval_days, fertilizing_interval_days,
-            watering_amount, watering_unit, watering_notes,
-            fertilizing_amount, fertilizing_unit, fertilizing_notes,
-            last_watered, last_fertilized,
-            created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        plant_id_str,
-        user_id,
-        request.name,
-        request.genus,
-        watering_interval,
-        fertilizing_interval,
-        watering_amount,
-        watering_unit,
-        watering_notes,
-        fertilizing_amount,
-        fertilizing_unit,
-        fertilizing_notes,
-        last_watered,
-        last_fertilized,
-        now,
-        now
+    sqlx::query(
+        "INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)",
     )
+    .bind(&plant_id_str)
+    .bind(user_id)
+    .bind(&request.name)
+    .bind(&request.genus)
+    .bind(&now)
+    .bind(&now)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -262,12 +194,7 @@ pub async fn create_plant(
         AppError::Database(e)
     })?;
 
-    if result.rows_affected() != 1 {
-        return Err(AppError::Internal {
-            message: "Failed to create plant".to_string(),
-        });
-    }
-
+    // Create custom metrics if provided
     if let Some(custom_metrics) = &request.custom_metrics {
         let metrics = custom_metrics
             .iter()
@@ -276,7 +203,24 @@ pub async fn create_plant(
         replace_custom_metrics_for_plant(pool, &plant_id_str, &metrics).await?;
     }
 
-    // Return the created plant
+    // Create care tasks if provided
+    if let Some(care_tasks) = &request.care_tasks {
+        for (i, ct) in care_tasks.iter().enumerate() {
+            let req = CreateCareTaskRequest {
+                name: ct.name.clone(),
+                icon: ct.icon.clone(),
+                color: ct.color.clone(),
+                interval_days: ct.interval_days,
+                amount: ct.amount,
+                unit: ct.unit.clone(),
+                notes: ct.notes.clone(),
+                last_performed: ct.last_performed,
+                sort_order: Some(i as i32),
+            };
+            db_care_tasks::create_care_task(pool, &plant_id, user_id, &req).await?;
+        }
+    }
+
     get_plant_by_id(pool, plant_id).await
 }
 
@@ -294,7 +238,7 @@ pub async fn get_plant_by_id(
             AppError::Database(e)
         })?;
 
-    let mut plant = plant_row.map_or_else(
+    let plant = plant_row.map_or_else(
         || {
             Err(AppError::NotFound {
                 resource: format!("Plant with id {plant_id}"),
@@ -303,8 +247,7 @@ pub async fn get_plant_by_id(
         PlantRow::to_response,
     )?;
 
-    plant.custom_metrics = load_custom_metrics_for_plant(pool, &plant.id.to_string()).await?;
-    Ok(plant)
+    enrich_plant_response(pool, plant).await
 }
 
 pub async fn list_plants_for_user(
@@ -326,12 +269,11 @@ pub async fn list_plants_for_user_with_sort(
     sort: Option<&str>,
     include_archived: bool,
 ) -> Result<(Vec<PlantResponse>, i64), AppError> {
-    // Determine sort order
     let order_clause = match sort {
         Some("date_asc") => "ORDER BY created_at ASC",
         Some("name_asc") => "ORDER BY name ASC",
         Some("name_desc") => "ORDER BY name DESC",
-        _ => "ORDER BY created_at DESC", // default
+        _ => "ORDER BY created_at DESC",
     };
 
     let archived_clause = if include_archived {
@@ -353,7 +295,6 @@ pub async fn list_plants_for_user_with_sort(
         )
     });
 
-    // Get total count
     let total = if let Some(search_param) = &search_param {
         sqlx::query(&count_query)
             .bind(user_id)
@@ -378,7 +319,6 @@ pub async fn list_plants_for_user_with_sort(
             .get::<i64, _>("count")
     };
 
-    // Get plants
     let plant_rows = if let Some(search_param) = &search_param {
         sqlx::query_as::<_, PlantRow>(&query)
             .bind(user_id)
@@ -401,14 +341,10 @@ pub async fn list_plants_for_user_with_sort(
         AppError::Database(e)
     })?;
 
-    let plants = plant_rows
-        .into_iter()
-        .map(PlantRow::to_response)
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let mut plants = plants;
-    for plant in &mut plants {
-        plant.custom_metrics = load_custom_metrics_for_plant(pool, &plant.id.to_string()).await?;
+    let mut plants = Vec::new();
+    for row in plant_rows {
+        let plant = row.to_response()?;
+        plants.push(enrich_plant_response(pool, plant).await?);
     }
 
     Ok((plants, total))
@@ -420,7 +356,6 @@ pub async fn update_plant(
     user_id: &str,
     request: &UpdatePlantRequest,
 ) -> Result<PlantResponse, AppError> {
-    // First verify the plant exists and belongs to the user
     let existing_plant = get_plant_by_id(pool, plant_id).await?;
     if existing_plant.user_id != user_id {
         return Err(AppError::NotFound {
@@ -429,185 +364,44 @@ pub async fn update_plant(
     }
 
     let now = Utc::now().to_rfc3339();
+    let plant_id_str = plant_id.to_string();
 
-    // Build the UPDATE query with proper parameter handling
-    let query = "
-        UPDATE plants SET 
-            name = COALESCE(?, name),
-            genus = COALESCE(?, genus),
-            watering_interval_days = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_interval_days END,
-            fertilizing_interval_days = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_interval_days END,
-            watering_amount = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_amount END,
-            watering_unit = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_unit END,
-            watering_notes = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE watering_notes END,
-            fertilizing_amount = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_amount END,
-            fertilizing_unit = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_unit END,
-            fertilizing_notes = CASE WHEN ? THEN ? WHEN ? THEN NULL ELSE fertilizing_notes END,
-            updated_at = ?
-        WHERE id = ? AND user_id = ?
-    ";
+    let mut sets = vec!["updated_at = ?"];
+    let mut binds: Vec<String> = vec![now.clone()];
 
-    let mut query_builder = sqlx::query(query).bind(&request.name).bind(&request.genus);
-
-    // Handle watering schedule fields with explicit null handling
-    let watering_schedule_provided = request.watering_schedule.is_some();
-
-    // Watering interval days
-    if let Some(watering_interval) = request.watering_interval_days() {
-        query_builder = query_builder.bind(true).bind(watering_interval).bind(false);
-    } else if watering_schedule_provided {
-        // Schedule provided but interval is None = explicitly disabled
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<i32>>)
-            .bind(true);
-    } else {
-        // Schedule not provided = no change
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<i32>>)
-            .bind(false);
+    if let Some(name) = &request.name {
+        sets.push("name = ?");
+        binds.push(name.clone());
+    }
+    if let Some(genus) = &request.genus {
+        sets.push("genus = ?");
+        binds.push(genus.clone());
     }
 
-    // Fertilizing interval days
-    let fertilizing_schedule_provided = request.fertilizing_schedule.is_some();
-    if let Some(fertilizing_interval) = request.fertilizing_interval_days() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(fertilizing_interval)
-            .bind(false);
-    } else if fertilizing_schedule_provided {
-        // Schedule provided but interval is None = explicitly disabled
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<i32>>)
-            .bind(true);
-    } else {
-        // Schedule not provided = no change
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<i32>>)
-            .bind(false);
+    let query_str = format!(
+        "UPDATE plants SET {} WHERE id = ? AND user_id = ?",
+        sets.join(", ")
+    );
+
+    let mut query = sqlx::query(&query_str);
+    for bind in &binds {
+        query = query.bind(bind);
     }
+    query = query.bind(&plant_id_str).bind(user_id);
 
-    // Watering amount
-    if let Some(watering_amount) = request.watering_amount() {
-        query_builder = query_builder.bind(true).bind(watering_amount).bind(false);
-    } else if watering_schedule_provided {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<f64>>)
-            .bind(true);
-    } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<f64>>)
-            .bind(false);
-    }
-
-    // Watering unit
-    if let Some(watering_unit) = request.watering_unit() {
-        query_builder = query_builder.bind(true).bind(watering_unit).bind(false);
-    } else if watering_schedule_provided {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(true);
-    } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(false);
-    }
-
-    // Watering notes
-    if let Some(watering_notes) = request.watering_notes() {
-        query_builder = query_builder.bind(true).bind(watering_notes).bind(false);
-    } else if watering_schedule_provided {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(true);
-    } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(false);
-    }
-
-    // Fertilizing amount
-    if let Some(fertilizing_amount) = request.fertilizing_amount() {
-        query_builder = query_builder
-            .bind(true)
-            .bind(fertilizing_amount)
-            .bind(false);
-    } else if fertilizing_schedule_provided {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<f64>>)
-            .bind(true);
-    } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<f64>>)
-            .bind(false);
-    }
-
-    // Fertilizing unit
-    if let Some(fertilizing_unit) = request.fertilizing_unit() {
-        query_builder = query_builder.bind(true).bind(fertilizing_unit).bind(false);
-    } else if fertilizing_schedule_provided {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(true);
-    } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(false);
-    }
-
-    // Fertilizing notes
-    if let Some(fertilizing_notes) = request.fertilizing_notes() {
-        query_builder = query_builder.bind(true).bind(fertilizing_notes).bind(false);
-    } else if fertilizing_schedule_provided {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(true);
-    } else {
-        query_builder = query_builder
-            .bind(false)
-            .bind(None::<Option<String>>)
-            .bind(false);
-    }
-
-    query_builder = query_builder
-        .bind(&now)
-        .bind(plant_id.to_string())
-        .bind(user_id);
-
-    let result = query_builder.execute(pool).await.map_err(|e| {
+    query.execute(pool).await.map_err(|e| {
         tracing::error!("Failed to update plant: {}", e);
         AppError::Database(e)
     })?;
-
-    if result.rows_affected() != 1 {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
 
     if let Some(custom_metrics) = &request.custom_metrics {
         let metrics = custom_metrics
             .iter()
             .map(|m| (m.id, m.name.clone(), m.unit.clone(), m.data_type.clone()))
             .collect::<Vec<_>>();
-        replace_custom_metrics_for_plant(pool, &plant_id.to_string(), &metrics).await?;
+        replace_custom_metrics_for_plant(pool, &plant_id_str, &metrics).await?;
     }
 
-    // Return the updated plant
     get_plant_by_id(pool, plant_id).await
 }
 
@@ -618,17 +412,15 @@ pub async fn delete_plant(
 ) -> Result<(), AppError> {
     let plant_id_str = plant_id.to_string();
 
-    let result = sqlx::query!(
-        "DELETE FROM plants WHERE id = ? AND user_id = ?",
-        plant_id_str,
-        user_id
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to delete plant: {}", e);
-        AppError::Database(e)
-    })?;
+    let result = sqlx::query("DELETE FROM plants WHERE id = ? AND user_id = ?")
+        .bind(&plant_id_str)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to delete plant: {}", e);
+            AppError::Database(e)
+        })?;
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
@@ -709,16 +501,12 @@ pub async fn set_plant_preview(
     let plant_id_str = plant_id.to_string();
     let photo_id_str = photo_id.to_string();
 
-    // First verify the plant exists and belongs to the user
     let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
         .bind(&plant_id_str)
         .bind(user_id)
         .fetch_optional(pool)
         .await
-        .map_err(|e| {
-            tracing::error!("Failed to check plant existence: {}", e);
-            AppError::Database(e)
-        })?;
+        .map_err(AppError::Database)?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -726,16 +514,12 @@ pub async fn set_plant_preview(
         });
     }
 
-    // Verify the photo exists and belongs to the plant
     let photo_exists = sqlx::query("SELECT 1 FROM photos WHERE id = ? AND plant_id = ?")
         .bind(&photo_id_str)
         .bind(&plant_id_str)
         .fetch_optional(pool)
         .await
-        .map_err(|e| {
-            tracing::error!("Failed to check photo existence: {}", e);
-            AppError::Database(e)
-        })?;
+        .map_err(AppError::Database)?;
 
     if photo_exists.is_none() {
         return Err(AppError::NotFound {
@@ -743,31 +527,19 @@ pub async fn set_plant_preview(
         });
     }
 
-    // Update the plant's preview_id
     let now = Utc::now().to_rfc3339();
-    let result = sqlx::query!(
-        "UPDATE plants SET preview_id = ?, updated_at = ? WHERE id = ? AND user_id = ?",
-        photo_id_str,
-        now,
-        plant_id_str,
-        user_id
-    )
-    .execute(pool)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to update plant thumbnail: {}", e);
-        AppError::Database(e)
-    })?;
+    sqlx::query("UPDATE plants SET preview_id = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+        .bind(&photo_id_str)
+        .bind(&now)
+        .bind(&plant_id_str)
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
 
-    if result.rows_affected() != 1 {
-        return Err(AppError::Internal {
-            message: "Failed to update plant thumbnail".to_string(),
-        });
-    }
-
-    // Return the updated plant
     get_plant_by_id(pool, plant_id).await
 }
+
 pub async fn clear_plant_preview(
     pool: &DatabasePool,
     plant_id: Uuid,
@@ -775,12 +547,12 @@ pub async fn clear_plant_preview(
 ) -> Result<PlantResponse, AppError> {
     let plant_id_str = plant_id.to_string();
 
-    // First verify the plant exists and belongs to the user
     let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
         .bind(&plant_id_str)
         .bind(user_id)
         .fetch_optional(pool)
-        .await?;
+        .await
+        .map_err(AppError::Database)?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -788,23 +560,16 @@ pub async fn clear_plant_preview(
         });
     }
 
-    // Clear the plant's preview_id
     let now = Utc::now().to_rfc3339();
-    let result = sqlx::query!(
+    sqlx::query(
         "UPDATE plants SET preview_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?",
-        now,
-        plant_id_str,
-        user_id
     )
+    .bind(&now)
+    .bind(&plant_id_str)
+    .bind(user_id)
     .execute(pool)
-    .await?;
+    .await
+    .map_err(AppError::Database)?;
 
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
-
-    // Return the updated plant
     get_plant_by_id(pool, plant_id).await
 }

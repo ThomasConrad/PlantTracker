@@ -16,6 +16,8 @@ export const PlantFormPage: Component = () => {
   const [deleting, setDeleting] = createSignal(false);
 
   const isEditing = () => !!params.id;
+  const isCurrentPlantLoaded = () =>
+    !!plantsStore.selectedPlant && plantsStore.selectedPlant.id === params.id;
 
   // Load existing photos for edit mode
   const loadExistingPhotos = async (plantId: string) => {
@@ -166,7 +168,7 @@ export const PlantFormPage: Component = () => {
       <div class="px-4 sm:px-6">
         <div class="max-w-4xl mx-auto">
           <Show
-            when={!isEditing() || (plantsStore.selectedPlant && !plantsStore.loading)}
+            when={!isEditing() || (isCurrentPlantLoaded() && !plantsStore.loading)}
             fallback={
               <div class="flex justify-center py-16 sm:py-20">
                 <div class="flex flex-col items-center gap-4">
@@ -219,24 +221,23 @@ export const PlantFormPage: Component = () => {
                   initialData={isEditing() && plantsStore.selectedPlant ? {
                     name: plantsStore.selectedPlant.name,
                     genus: plantsStore.selectedPlant.genus,
-                    wateringSchedule: plantsStore.selectedPlant.wateringSchedule?.intervalDays ? {
-                      intervalDays: plantsStore.selectedPlant.wateringSchedule.intervalDays,
-                      amount: plantsStore.selectedPlant.wateringSchedule.amount || undefined,
-                      unit: plantsStore.selectedPlant.wateringSchedule.unit || undefined,
-                      notes: plantsStore.selectedPlant.wateringSchedule.notes || undefined,
-                    } : { intervalDays: 7 }, // Default to 7 days when no existing schedule
-                    fertilizingSchedule: plantsStore.selectedPlant.fertilizingSchedule?.intervalDays ? {
-                      intervalDays: plantsStore.selectedPlant.fertilizingSchedule.intervalDays,
-                      amount: plantsStore.selectedPlant.fertilizingSchedule.amount || undefined,
-                      unit: plantsStore.selectedPlant.fertilizingSchedule.unit || undefined,
-                      notes: plantsStore.selectedPlant.fertilizingSchedule.notes || undefined,
-                    } : { intervalDays: 14 }, // Default to 14 days when no existing schedule
+                    careTasks: (plantsStore.selectedPlant.careTasks || [])
+                      .filter(t => !t.archivedAt)
+                      .map(t => ({
+                        name: t.name,
+                        icon: t.icon || undefined,
+                        intervalDays: t.intervalDays ?? undefined,
+                        amount: t.amount ?? undefined,
+                        unit: t.unit || undefined,
+                        notes: t.notes || undefined,
+                      })),
                     customMetrics: plantsStore.selectedPlant.customMetrics?.map(m => ({
                       name: m.name,
                       unit: m.unit,
                       dataType: m.dataType as 'Number' | 'Text' | 'Boolean'
                     })) || []
                   } : undefined}
+                  isEditing={isEditing()}
                   existingPreviewUrl={isEditing() && plantsStore.selectedPlant?.previewUrl ? plantsStore.selectedPlant.previewUrl : null}
                   existingPhotos={existingPhotos()}
                   onSubmit={handleSubmit}

@@ -1,41 +1,30 @@
-import { Component, Show } from 'solid-js';
+import { Component, Show, For } from 'solid-js';
 import type { Plant } from '@/types';
-import { calculateDaysUntil, isOverdue } from '@/utils/date';
+import type { components } from '@/types/api-generated';
+
+type CareTaskWithStatus = components['schemas']['CareTaskWithStatus'];
 
 interface PlantStatsProps {
   plant: Plant;
 }
 
 export const PlantStats: Component<PlantStatsProps> = (props) => {
-  const wateringDays = () => {
-    const interval = props.plant.wateringSchedule?.intervalDays;
-    return interval ? calculateDaysUntil(props.plant.lastWatered ?? null, interval) : null;
-  };
-  const fertilizingDays = () => {
-    const interval = props.plant.fertilizingSchedule?.intervalDays;
-    return interval ? calculateDaysUntil(props.plant.lastFertilized ?? null, interval) : null;
-  };
-  
-  const wateringOverdue = () => {
-    const interval = props.plant.wateringSchedule?.intervalDays;
-    return interval ? isOverdue(props.plant.lastWatered ?? null, interval) : false;
-  };
-  const fertilizingOverdue = () => {
-    const interval = props.plant.fertilizingSchedule?.intervalDays;
-    return interval ? isOverdue(props.plant.lastFertilized ?? null, interval) : false;
-  };
+  const careTasks = () => (props.plant.careTasks ?? []).filter(t => t.intervalDays != null && !t.archivedAt);
 
-  const getStatusColor = (days: number, overdue: boolean) => {
+  const getStatusColor = (task: CareTaskWithStatus) => {
+    if (!task.isDue) return 'text-green-600 bg-green-50';
+    const overdue = (task.daysOverdue ?? 0) > 0;
     if (overdue) return 'text-red-600 bg-red-50';
-    if (days <= 1) return 'text-yellow-600 bg-yellow-50';
-    return 'text-green-600 bg-green-50';
+    return 'text-yellow-600 bg-yellow-50';
   };
 
-  const getStatusText = (days: number, overdue: boolean, type: string) => {
-    if (overdue) return `${type} overdue`;
-    if (days === 0) return `${type} today`;
-    if (days === 1) return `${type} tomorrow`;
-    return `${type} in ${days} days`;
+  const getStatusText = (task: CareTaskWithStatus) => {
+    const days = task.daysOverdue ?? 0;
+    if (days > 0) return `${task.name} overdue`;
+    if (days === 0) return `${task.name} today`;
+    const abs = Math.abs(days);
+    if (abs === 1) return `${task.name} tomorrow`;
+    return `${task.name} in ${abs} days`;
   };
 
   return (
@@ -44,91 +33,32 @@ export const PlantStats: Component<PlantStatsProps> = (props) => {
         <h3 class="text-lg font-medium text-gray-900">Care Status</h3>
       </div>
       <div class="card-body">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <Show when={wateringDays() !== null} fallback={
-            <div class="p-4 rounded-lg bg-gray-50">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width={2}
-                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"
-                    />
-                  </svg>
+        <Show when={careTasks().length > 0} fallback={
+          <div class="text-center py-4">
+            <p class="text-sm text-gray-500 italic">No scheduled care tasks</p>
+          </div>
+        }>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <For each={careTasks()}>
+              {(task) => (
+                <div class={`p-4 rounded-lg ${getStatusColor(task)}`}>
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 text-2xl">
+                      {task.icon ?? '🌱'}
+                    </div>
+                    <div class="ml-3">
+                      <h4 class="text-sm font-medium">{task.name}</h4>
+                      <p class="text-sm font-semibold">
+                        {getStatusText(task)}
+                      </p>
+                      <p class="text-xs opacity-75">Every {task.intervalDays} days</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="ml-4">
-                  <h4 class="text-sm font-medium text-gray-600">Watering</h4>
-                  <p class="text-lg text-gray-500 italic">No schedule</p>
-                </div>
-              </div>
-            </div>
-          }>
-            <div class={`p-4 rounded-lg ${getStatusColor(wateringDays()!, wateringOverdue())}`}>
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width={2}
-                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-4">
-                  <h4 class="text-sm font-medium">Watering</h4>
-                  <p class="text-lg font-semibold">
-                    {getStatusText(wateringDays()!, wateringOverdue(), 'Water')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Show>
-
-          <Show when={fertilizingDays() !== null} fallback={
-            <div class="p-4 rounded-lg bg-gray-50">
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width={2}
-                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-4">
-                  <h4 class="text-sm font-medium text-gray-600">Fertilizing</h4>
-                  <p class="text-lg text-gray-500 italic">No schedule</p>
-                </div>
-              </div>
-            </div>
-          }>
-            <div class={`p-4 rounded-lg ${getStatusColor(fertilizingDays()!, fertilizingOverdue())}`}>
-              <div class="flex items-center">
-                <div class="flex-shrink-0">
-                  <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width={2}
-                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                    />
-                  </svg>
-                </div>
-                <div class="ml-4">
-                  <h4 class="text-sm font-medium">Fertilizing</h4>
-                  <p class="text-lg font-semibold">
-                    {getStatusText(fertilizingDays()!, fertilizingOverdue(), 'Fertilize')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Show>
-        </div>
+              )}
+            </For>
+          </div>
+        </Show>
       </div>
     </div>
   );

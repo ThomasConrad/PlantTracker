@@ -247,13 +247,61 @@ pub async fn delete_photo(
         });
     }
 
-    // Photo data will be automatically deleted with the record
+    let mut tx = pool.begin().await?;
 
-    // Delete photo record
+    // Remove this photo reference from historical tracking entries so old activity rows do not
+    // point to now-missing images.
+    let entries_with_photos = sqlx::query(
+        "SELECT id, photo_ids FROM tracking_entries WHERE plant_id = ? AND photo_ids IS NOT NULL",
+    )
+    .bind(plant_id.to_string())
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let deleted_photo_id = photo_id.to_string();
+    for row in entries_with_photos {
+        let entry_id: String = row.get("id");
+        let photo_ids_raw: Option<String> = row.get("photo_ids");
+
+        let Some(photo_ids_raw) = photo_ids_raw else {
+            continue;
+        };
+
+        let Ok(mut photo_ids) = serde_json::from_str::<Vec<String>>(&photo_ids_raw) else {
+            tracing::warn!(
+                "Skipping malformed photo_ids JSON for tracking entry {}",
+                entry_id
+            );
+            continue;
+        };
+
+        let original_len = photo_ids.len();
+        photo_ids.retain(|id| id != &deleted_photo_id);
+
+        if photo_ids.len() != original_len {
+            let updated_photo_ids: Option<String> = if photo_ids.is_empty() {
+                None
+            } else {
+                Some(serde_json::to_string(&photo_ids).unwrap_or_default())
+            };
+
+            sqlx::query(
+                "UPDATE tracking_entries SET photo_ids = ?, updated_at = ? WHERE id = ? AND plant_id = ?",
+            )
+            .bind(updated_photo_ids)
+            .bind(Utc::now().to_rfc3339())
+            .bind(entry_id)
+            .bind(plant_id.to_string())
+            .execute(&mut *tx)
+            .await?;
+        }
+    }
+
+    // Delete photo record (photo data is deleted with the row)
     let result = sqlx::query("DELETE FROM photos WHERE id = ? AND plant_id = ?")
         .bind(photo_id.to_string())
         .bind(plant_id.to_string())
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
 
     if result.rows_affected() == 0 {
@@ -261,6 +309,8 @@ pub async fn delete_photo(
             resource: format!("Photo with id {photo_id}"),
         });
     }
+
+    tx.commit().await?;
 
     Ok(())
 }
@@ -308,15 +358,13 @@ mod tests {
 
         // Create plant
         sqlx::query(
-            "INSERT INTO plants (id, user_id, name, genus, watering_interval_days, fertilizing_interval_days, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?)"
         )
         .bind(plant_id.to_string())
         .bind(&user_id)
         .bind("Test Plant")
         .bind("Testus")
-        .bind(7)
-        .bind(14)
         .bind(&now)
         .bind(&now)
         .execute(pool)

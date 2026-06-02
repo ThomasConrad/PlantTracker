@@ -27,6 +27,8 @@ pub struct UpdateReminderPreferencesRequest {
 pub struct DueReminder {
     pub plant_id: String,
     pub plant_name: String,
+    pub care_task_id: String,
+    pub care_task_name: String,
     pub reminder_type: String,
     pub due_at: String,
     pub due_date: String,

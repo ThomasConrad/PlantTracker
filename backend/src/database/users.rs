@@ -284,6 +284,85 @@ pub async fn update_user_profile(
     get_user_by_id(pool, user_id).await
 }
 
+pub async fn set_user_profile_picture(
+    pool: &DatabasePool,
+    user_id: &str,
+    image_data: &[u8],
+    content_type: &str,
+) -> Result<(), AppError> {
+    let now = Utc::now().to_rfc3339();
+    let updated = sqlx::query(
+        "UPDATE users SET profile_picture_data = ?, profile_picture_content_type = ?, updated_at = ? WHERE id = ?",
+    )
+    .bind(image_data)
+    .bind(content_type)
+    .bind(now)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("User with id {user_id}"),
+        });
+    }
+
+    Ok(())
+}
+
+pub async fn get_user_profile_picture(
+    pool: &DatabasePool,
+    user_id: &str,
+) -> Result<Option<(Vec<u8>, String)>, AppError> {
+    let row = sqlx::query(
+        "SELECT profile_picture_data, profile_picture_content_type FROM users WHERE id = ?",
+    )
+    .bind(user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let row = row.ok_or_else(|| AppError::NotFound {
+        resource: format!("User with id {user_id}"),
+    })?;
+
+    let data = row
+        .try_get::<Option<Vec<u8>>, _>("profile_picture_data")
+        .map_err(AppError::Database)?;
+    let content_type = row
+        .try_get::<Option<String>, _>("profile_picture_content_type")
+        .map_err(AppError::Database)?;
+
+    Ok(match (data, content_type) {
+        (Some(data), Some(content_type)) => Some((data, content_type)),
+        _ => None,
+    })
+}
+
+pub async fn delete_user_profile_picture(
+    pool: &DatabasePool,
+    user_id: &str,
+) -> Result<(), AppError> {
+    let now = Utc::now().to_rfc3339();
+    let updated = sqlx::query(
+        "UPDATE users SET profile_picture_data = NULL, profile_picture_content_type = NULL, updated_at = ? WHERE id = ?",
+    )
+    .bind(now)
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    if updated.rows_affected() != 1 {
+        return Err(AppError::NotFound {
+            resource: format!("User with id {user_id}"),
+        });
+    }
+
+    Ok(())
+}
+
 pub async fn change_user_password(
     pool: &DatabasePool,
     user_id: &str,
@@ -326,7 +405,7 @@ pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Valu
     })?;
 
     let plants = sqlx::query(
-        "SELECT id, name, genus, watering_interval_days, fertilizing_interval_days, created_at, updated_at FROM plants WHERE user_id = ? ORDER BY created_at DESC",
+        "SELECT id, name, genus, created_at, updated_at FROM plants WHERE user_id = ? ORDER BY created_at DESC",
     )
     .bind(user_id)
     .fetch_all(pool)
@@ -334,7 +413,7 @@ pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Valu
     .map_err(AppError::Database)?;
 
     let tracking_entries = sqlx::query(
-        "SELECT te.id, te.plant_id, te.entry_type, te.timestamp, te.value, te.notes, te.metric_id, te.created_at, te.updated_at
+        "SELECT te.id, te.plant_id, te.timestamp, te.care_task_ids, te.measurements, te.notes, te.photo_ids, te.created_at, te.updated_at
          FROM tracking_entries te
          JOIN plants p ON p.id = te.plant_id
          WHERE p.user_id = ?
@@ -383,19 +462,17 @@ pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Valu
             "id": row.try_get::<String, _>("id").unwrap_or_default(),
             "name": row.try_get::<String, _>("name").unwrap_or_default(),
             "genus": row.try_get::<String, _>("genus").unwrap_or_default(),
-            "watering_interval_days": row.try_get::<Option<i32>, _>("watering_interval_days").ok().flatten(),
-            "fertilizing_interval_days": row.try_get::<Option<i32>, _>("fertilizing_interval_days").ok().flatten(),
             "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
             "updated_at": row.try_get::<String, _>("updated_at").unwrap_or_default(),
         })).collect::<Vec<_>>(),
         "tracking_entries": tracking_entries.into_iter().map(|row| json!({
             "id": row.try_get::<String, _>("id").unwrap_or_default(),
             "plant_id": row.try_get::<String, _>("plant_id").unwrap_or_default(),
-            "entry_type": row.try_get::<String, _>("entry_type").unwrap_or_default(),
             "timestamp": row.try_get::<String, _>("timestamp").unwrap_or_default(),
-            "value": row.try_get::<Option<String>, _>("value").ok().flatten(),
+            "care_task_ids": row.try_get::<Option<String>, _>("care_task_ids").ok().flatten(),
+            "measurements": row.try_get::<Option<String>, _>("measurements").ok().flatten(),
             "notes": row.try_get::<Option<String>, _>("notes").ok().flatten(),
-            "metric_id": row.try_get::<Option<String>, _>("metric_id").ok().flatten(),
+            "photo_ids": row.try_get::<Option<String>, _>("photo_ids").ok().flatten(),
             "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
             "updated_at": row.try_get::<String, _>("updated_at").unwrap_or_default(),
         })).collect::<Vec<_>>(),

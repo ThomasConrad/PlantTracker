@@ -1,3 +1,4 @@
+pub mod care_task;
 pub mod coach;
 pub mod google_oauth;
 pub mod invite;
@@ -14,5 +15,4 @@ pub use invite::{
 pub use photo::*;
 pub use plant::*;
 pub use reminder::*;
-pub use coach::*;
 pub use user::*;

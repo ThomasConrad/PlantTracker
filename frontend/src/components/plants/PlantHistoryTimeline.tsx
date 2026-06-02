@@ -25,34 +25,39 @@ interface PlantHistoryTimelineProps {
 const MAX_VISIBLE_EVENTS = 12;
 
 const getTrackingEntryTitle = (entry: TrackingEntry, plant: Plant): string => {
-  switch (entry.entryType) {
-    case 'watering':
-      return 'Watered';
-    case 'fertilizing':
-      return 'Fertilized';
-    case 'note':
-      return 'Note added';
-    case 'customMetric': {
-      const metric = plant.customMetrics.find((m) => m.id === entry.metricId);
-      return metric ? `${metric.name} logged` : 'Custom metric logged';
-    }
-    default:
-      return 'Activity logged';
+  if (entry.careTaskIds && entry.careTaskIds.length > 0) {
+    const task = (plant.careTasks ?? []).find(t => t.id === entry.careTaskIds![0]);
+    return task ? task.name : 'Care';
   }
+  if (entry.measurements && entry.measurements.length > 0) {
+    const metric = plant.customMetrics.find((m) => m.id === entry.measurements![0].metricId);
+    return metric ? `${metric.name} logged` : 'Measurement logged';
+  }
+  if (entry.photoIds && entry.photoIds.length > 0) {
+    return 'Photo added';
+  }
+  if (entry.notes) {
+    return 'Note added';
+  }
+  return 'Activity logged';
 };
 
 const getTrackingEntryDetails = (entry: TrackingEntry, plant: Plant): string | undefined => {
-  const metric = plant.customMetrics.find((m) => m.id === entry.metricId);
   const parts: string[] = [];
 
-  if (entry.entryType === 'customMetric' && entry.value !== undefined && entry.value !== null) {
-    if (typeof entry.value === 'number') {
-      const unit = metric?.unit ? ` ${metric.unit}` : '';
-      parts.push(`Value: ${entry.value}${unit}`);
-    } else if (typeof entry.value === 'boolean') {
-      parts.push(`Value: ${entry.value ? 'Yes' : 'No'}`);
-    } else if (typeof entry.value === 'string' && entry.value.trim().length > 0) {
-      parts.push(`Value: ${entry.value}`);
+  if (entry.measurements && entry.measurements.length > 0) {
+    const m = entry.measurements[0];
+    const metric = plant.customMetrics.find((cm) => cm.id === m.metricId);
+    const value = m.value;
+    if (value !== undefined && value !== null) {
+      if (typeof value === 'number') {
+        const unit = metric?.unit ? ` ${metric.unit}` : '';
+        parts.push(`Value: ${value}${unit}`);
+      } else if (typeof value === 'boolean') {
+        parts.push(`Value: ${value ? 'Yes' : 'No'}`);
+      } else if (typeof value === 'string' && value.trim().length > 0) {
+        parts.push(`Value: ${value}`);
+      }
     }
   }
 

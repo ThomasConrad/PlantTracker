@@ -19,7 +19,7 @@ interface CalendarEvent {
   plant: Plant;
   entry: TrackingEntry;
   date: Date;
-  type: 'watering' | 'fertilizing' | 'note' | 'customMetric';
+  type: 'care' | 'measurement' | 'note' | 'photo';
 }
 
 interface MobileDayEventsProps {
@@ -58,20 +58,20 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
 
   const getEventIcon = (type: string) => {
     switch (type) {
-      case 'watering': return '💧';
-      case 'fertilizing': return '🌱';
+      case 'care': return '✅';
+      case 'measurement': return '📊';
       case 'note': return '📝';
-      case 'customMetric': return '📊';
+      case 'photo': return '📷';
       default: return '📝';
     }
   };
 
   const getEventColor = (type: string) => {
     switch (type) {
-      case 'watering': return 'border-l-blue-500 bg-blue-50';
-      case 'fertilizing': return 'border-l-green-500 bg-green-50';
+      case 'care': return 'border-l-blue-500 bg-blue-50';
+      case 'measurement': return 'border-l-purple-500 bg-purple-50';
       case 'note': return 'border-l-gray-500 bg-gray-50';
-      case 'customMetric': return 'border-l-purple-500 bg-purple-50';
+      case 'photo': return 'border-l-indigo-500 bg-indigo-50';
       default: return 'border-l-gray-500 bg-gray-50';
     }
   };
@@ -278,10 +278,10 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
                       <div class="mc-event-info">
                         <div class="mc-event-title">{event.plant.name}</div>
                         <div class="mc-event-subtitle">
-                          {event.type === 'customMetric' ? 'Measurement' : event.type}
-                          <Show when={event.entry.value}>
+                          {event.type === 'measurement' ? 'Measurement' : event.type}
+                          <Show when={event.entry.measurements && event.entry.measurements.length > 0}>
                             <span class="font-medium ml-1">
-                              {typeof event.entry.value === 'string' ? event.entry.value : String(event.entry.value)}
+                              {String(event.entry.measurements![0].value)}
                             </span>
                           </Show>
                         </div>

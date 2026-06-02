@@ -194,9 +194,10 @@ pub async fn get_calendar_feed(
     );
 
     for plant in &plants {
-        tracing::info!("Plant: {} - watering: {:?} days, fertilizing: {:?} days, last_watered: {:?}, last_fertilized: {:?}", 
-                      plant.name, plant.watering_schedule.interval_days, plant.fertilizing_schedule.interval_days,
-                      plant.last_watered, plant.last_fertilized);
+        let task_summary: Vec<String> = plant.care_tasks.iter()
+            .map(|t| format!("{}: every {:?} days, last: {:?}", t.task.name, t.task.interval_days, t.task.last_performed))
+            .collect();
+        tracing::info!("Plant: {} - care tasks: {:?}", plant.name, task_summary);
     }
 
     // Get base URL from request headers

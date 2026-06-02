@@ -18,18 +18,22 @@ use models::{
     invite::{CreateInviteRequest, InviteResponse, ValidateInviteRequest},
     photo::{Photo, PhotosResponse},
     plant::{
-        CareSchedule, CreateCareScheduleRequest, CreateCustomMetricRequest, CreatePlantRequest,
-        CustomMetric, MetricDataType, PlantResponse, PlantsResponse, UpdateCareScheduleRequest,
+        CreateCustomMetricRequest, CreatePlantRequest, CreatePlantCareTaskInput,
+        CustomMetric, MetricDataType, PlantResponse, PlantsResponse,
         UpdateCustomMetricRequest, UpdatePlantRequest,
+    },
+    care_task::{
+        CareTask, CareTaskWithStatus, CareTasksResponse, CreateCareTaskRequest,
+        LogCareTaskRequest, ReorderCareTasksRequest, UpdateCareTaskRequest,
     },
     reminder::{
         DispatchRemindersResponse, DueReminder, DueRemindersResponse, ReminderPreferences,
         UpdateReminderPreferencesRequest,
     },
     tracking_entry::{
-        CreateTrackingEntryRequest, EntryType, TrackingEntriesResponse, TrackingEntry,
+        CreateTrackingEntryRequest, Measurement, TrackingEntriesResponse, TrackingEntry,
     },
-    user::{AuthResponse, CreateUserRequest, LoginRequest, UserResponse, UserRole},
+    user::{AuthResponse, CreateUserRequest, FirstDayOfWeek, LoginRequest, PreferredUnits, UserResponse, UserRole},
 };
 
 use admin::SystemStats;
@@ -39,6 +43,7 @@ use handlers::admin::{
 };
 
 use handlers::google_tasks::StoreTokensRequest;
+use handlers::care_tasks::LogCareTaskResponse;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -76,6 +81,15 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::reminders::update_preferences,
         crate::handlers::reminders::get_due_reminders,
         crate::handlers::reminders::dispatch_due_reminders,
+        crate::handlers::care_tasks::list_care_tasks,
+        crate::handlers::care_tasks::create_care_task,
+        crate::handlers::care_tasks::get_care_task,
+        crate::handlers::care_tasks::update_care_task,
+        crate::handlers::care_tasks::delete_care_task,
+        crate::handlers::care_tasks::log_care_task,
+        crate::handlers::care_tasks::archive_care_task,
+        crate::handlers::care_tasks::unarchive_care_task,
+        crate::handlers::care_tasks::reorder_care_tasks,
     ),
     components(
         schemas(
@@ -84,6 +98,8 @@ use handlers::google_tasks::StoreTokensRequest;
             LoginRequest,
             UserResponse,
             UserRole,
+            PreferredUnits,
+            FirstDayOfWeek,
             SystemStats,
             AdminDashboardResponse,
             AdminSettingsResponse,
@@ -97,7 +113,7 @@ use handlers::google_tasks::StoreTokensRequest;
             InviteResponse,
             ValidateInviteRequest,
             CreateTrackingEntryRequest,
-            EntryType,
+            Measurement,
             TrackingEntriesResponse,
             TrackingEntry,
             Photo,
@@ -105,12 +121,18 @@ use handlers::google_tasks::StoreTokensRequest;
             PlantResponse,
             PlantsResponse,
             CreatePlantRequest,
+            CreatePlantCareTaskInput,
             UpdatePlantRequest,
             CreateCustomMetricRequest,
             UpdateCustomMetricRequest,
-            CareSchedule,
-            CreateCareScheduleRequest,
-            UpdateCareScheduleRequest,
+            CareTask,
+            CareTaskWithStatus,
+            CareTasksResponse,
+            CreateCareTaskRequest,
+            UpdateCareTaskRequest,
+            LogCareTaskRequest,
+            LogCareTaskResponse,
+            ReorderCareTasksRequest,
             CustomMetric,
             MetricDataType,
             ReminderPreferences,
@@ -132,6 +154,7 @@ use handlers::google_tasks::StoreTokensRequest;
         (name = "admin", description = "Admin user and system management endpoints"),
         (name = "invites", description = "Invite system endpoints"),
         (name = "plants", description = "Plant management endpoints"),
+        (name = "care_tasks", description = "Care task management endpoints"),
         (name = "tracking", description = "Plant care tracking endpoints"),
         (name = "photos", description = "Photo management endpoints"),
         (name = "google-tasks", description = "Google Tasks integration endpoints"),

@@ -229,7 +229,10 @@ async fn test_update_plant_can_disable_schedules() {
     assert_eq!(response.status(), 200);
 
     let body: serde_json::Value = response.json().await.expect("Failed to parse response");
-    assert_eq!(body["wateringSchedule"]["intervalDays"], serde_json::Value::Null);
+    assert_eq!(
+        body["wateringSchedule"]["intervalDays"],
+        serde_json::Value::Null
+    );
     assert_eq!(
         body["fertilizingSchedule"]["intervalDays"],
         serde_json::Value::Null

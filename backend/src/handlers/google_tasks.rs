@@ -354,19 +354,26 @@ pub async fn sync_plant_tasks(
     let end_date = now + chrono::Duration::days(days_ahead as i64);
 
     for plant in &plants {
-        // Generate watering tasks
-        if let Some(watering_interval) = plant.watering_schedule.interval_days {
-            let last_watered = plant
-                .last_watered
-                .unwrap_or_else(|| now - chrono::Duration::days(watering_interval as i64));
+        for task_with_status in &plant.care_tasks {
+            let ct = &task_with_status.task;
+            let Some(interval) = ct.interval_days else {
+                continue;
+            };
+            if interval <= 0 {
+                continue;
+            }
 
-            let mut next_watering = last_watered + chrono::Duration::days(watering_interval as i64);
-            while next_watering <= end_date && next_watering >= now {
+            let last = ct
+                .last_performed
+                .unwrap_or_else(|| now - chrono::Duration::days(interval as i64));
+
+            let mut next = last + chrono::Duration::days(interval as i64);
+            while next <= end_date && next >= now {
                 match create_plant_care_task(
                     &token,
                     plant,
-                    "watering",
-                    next_watering,
+                    ct,
+                    next,
                     &base_url,
                     &task_list_id,
                 )
@@ -374,40 +381,15 @@ pub async fn sync_plant_tasks(
                 {
                     Ok(_task_id) => created_tasks += 1,
                     Err(e) => {
-                        tracing::error!("Failed to create watering task for {}: {}", plant.name, e)
+                        tracing::error!(
+                            "Failed to create {} task for {}: {}",
+                            ct.name,
+                            plant.name,
+                            e
+                        )
                     }
                 }
-                next_watering += chrono::Duration::days(watering_interval as i64);
-            }
-        }
-
-        // Generate fertilizing tasks
-        if let Some(fertilizing_interval) = plant.fertilizing_schedule.interval_days {
-            let last_fertilized = plant
-                .last_fertilized
-                .unwrap_or_else(|| now - chrono::Duration::days(fertilizing_interval as i64));
-
-            let mut next_fertilizing =
-                last_fertilized + chrono::Duration::days(fertilizing_interval as i64);
-            while next_fertilizing <= end_date && next_fertilizing >= now {
-                match create_plant_care_task(
-                    &token,
-                    plant,
-                    "fertilizing",
-                    next_fertilizing,
-                    &base_url,
-                    &task_list_id,
-                )
-                .await
-                {
-                    Ok(_task_id) => created_tasks += 1,
-                    Err(e) => tracing::error!(
-                        "Failed to create fertilizing task for {}: {}",
-                        plant.name,
-                        e
-                    ),
-                }
-                next_fertilizing += chrono::Duration::days(fertilizing_interval as i64);
+                next += chrono::Duration::days(interval as i64);
             }
         }
     }

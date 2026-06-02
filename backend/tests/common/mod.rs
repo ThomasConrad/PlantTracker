@@ -200,12 +200,18 @@ pub async fn create_test_plant(app: &TestApp, name: &str, genus: &str) -> serde_
         .json(&serde_json::json!({
             "name": name,
             "genus": genus,
-            "wateringSchedule": {
-                "intervalDays": 7
-            },
-            "fertilizingSchedule": {
-                "intervalDays": 14
-            },
+            "careTasks": [
+                {
+                    "name": "Water",
+                    "icon": "💧",
+                    "intervalDays": 7
+                },
+                {
+                    "name": "Fertilize",
+                    "icon": "🌱",
+                    "intervalDays": 14
+                }
+            ],
             "customMetrics": []
         }))
         .send()

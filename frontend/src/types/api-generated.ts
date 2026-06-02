@@ -339,6 +339,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plants/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archive_plant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["unarchive_plant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/care-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_care_tasks"];
+        put?: never;
+        post: operations["create_care_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/care-tasks/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["reorder_care_tasks"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/care-tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_care_task"];
+        put: operations["update_care_task"];
+        post?: never;
+        delete: operations["delete_care_task"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/care-tasks/{task_id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archive_care_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/care-tasks/{task_id}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["log_care_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/care-tasks/{task_id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["unarchive_care_task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plants/{plant_id}/entries": {
         parameters: {
             query?: never;
@@ -429,20 +557,67 @@ export interface components {
             action: components["schemas"]["BulkUserAction"];
             user_ids: string[];
         };
-        CareSchedule: {
+        /** @description A care task represents a specific type of care activity for a plant.
+         *     Examples: "Water", "Fertilize", "Prune leaves", "Repot", "Rotate", "Mist", etc.
+         *     Each can optionally have a recurring schedule (interval_days). */
+        CareTask: {
             /** Format: double */
             amount?: number | null;
+            /** Format: date-time */
+            archivedAt?: string | null;
+            color?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            icon?: string | null;
+            /** Format: uuid */
+            id: string;
             /** Format: int32 */
             intervalDays?: number | null;
+            /** Format: date-time */
+            lastPerformed?: string | null;
+            name: string;
             notes?: string | null;
+            /** Format: uuid */
+            plantId: string;
+            /** Format: int32 */
+            sortOrder: number;
             unit?: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: uuid */
+            userId: string;
         };
-        CreateCareScheduleRequest: {
+        /** @description Computed view of a care task with due-date info for the frontend */
+        CareTaskWithStatus: components["schemas"]["CareTask"] & {
+            /**
+             * Format: int64
+             * @description How many days overdue (negative = days until due, 0 = due today, positive = overdue)
+             */
+            daysOverdue?: number | null;
+            /** @description Whether the task is currently due */
+            isDue: boolean;
+            /**
+             * Format: date-time
+             * @description When this task is next due (None if no interval or never performed with no interval)
+             */
+            nextDue?: string | null;
+        };
+        CareTasksResponse: {
+            tasks: components["schemas"]["CareTaskWithStatus"][];
+        };
+        CreateCareTaskRequest: {
             /** Format: double */
             amount?: number | null;
+            color?: string | null;
+            icon?: string | null;
             /** Format: int32 */
             intervalDays?: number | null;
+            /** Format: date-time */
+            lastPerformed?: string | null;
+            name: string;
             notes?: string | null;
+            /** Format: int32 */
+            sortOrder?: number | null;
             unit?: string | null;
         };
         CreateCustomMetricRequest: {
@@ -470,26 +645,37 @@ export interface components {
             /** Format: int32 */
             max_uses?: number | null;
         };
-        CreatePlantRequest: {
-            customMetrics?: components["schemas"]["CreateCustomMetricRequest"][] | null;
-            fertilizingSchedule?: components["schemas"]["CreateCareScheduleRequest"] | null;
-            genus: string;
+        /** @description Inline care task definition used when creating a plant */
+        CreatePlantCareTaskInput: {
+            /** Format: double */
+            amount?: number | null;
+            color?: string | null;
+            icon?: string | null;
+            /** Format: int32 */
+            intervalDays?: number | null;
             /** Format: date-time */
-            lastFertilized?: string | null;
-            /** Format: date-time */
-            lastWatered?: string | null;
+            lastPerformed?: string | null;
             name: string;
-            wateringSchedule?: components["schemas"]["CreateCareScheduleRequest"] | null;
+            notes?: string | null;
+            unit?: string | null;
+        };
+        CreatePlantRequest: {
+            /** @description Initial care tasks to create with the plant */
+            careTasks?: components["schemas"]["CreatePlantCareTaskInput"][] | null;
+            customMetrics?: components["schemas"]["CreateCustomMetricRequest"][] | null;
+            genus: string;
+            name: string;
         };
         CreateTrackingEntryRequest: {
-            entryType: components["schemas"]["EntryType"];
-            /** Format: uuid */
-            metricId?: string | null;
+            /** @description Care tasks to mark as completed */
+            careTaskIds?: string[] | null;
+            /** @description Measurements to record */
+            measurements?: components["schemas"]["Measurement"][] | null;
             notes?: string | null;
+            /** @description Photo IDs to attach */
             photoIds?: string[] | null;
             /** Format: date-time */
             timestamp: string;
-            value?: unknown;
         };
         CreateUserRequest: {
             email: string;
@@ -512,6 +698,8 @@ export interface components {
         };
         DueReminder: {
             alreadySent: boolean;
+            careTaskId: string;
+            careTaskName: string;
             /** Format: int64 */
             daysOverdue: number;
             dueAt: string;
@@ -526,7 +714,7 @@ export interface components {
             unsentCount: number;
         };
         /** @enum {string} */
-        EntryType: "watering" | "fertilizing" | "customMetric" | "note" | "photo";
+        FirstDayOfWeek: "sunday" | "monday";
         /** @description Request payload for OAuth callback */
         GoogleOAuthCallbackRequest: {
             code: string;
@@ -583,9 +771,27 @@ export interface components {
             /** Format: int32 */
             max_uses: number;
         };
+        /** @description Request to log a care task completion (creates a tracking entry + updates last_performed) */
+        LogCareTaskRequest: {
+            notes?: string | null;
+            photoIds?: string[] | null;
+            /** Format: date-time */
+            timestamp?: string | null;
+            value?: unknown;
+        };
+        LogCareTaskResponse: {
+            entry: components["schemas"]["TrackingEntry"];
+            task: components["schemas"]["CareTaskWithStatus"];
+        };
         LoginRequest: {
             email: string;
             password: string;
+        };
+        /** @description A single measurement within a tracking entry */
+        Measurement: {
+            /** Format: uuid */
+            metricId: string;
+            value: unknown;
         };
         /** @enum {string} */
         MetricDataType: "Number" | "Text" | "Boolean";
@@ -613,16 +819,14 @@ export interface components {
         };
         PlantResponse: {
             /** Format: date-time */
+            archivedAt?: string | null;
+            careTasks: components["schemas"]["CareTaskWithStatus"][];
+            /** Format: date-time */
             createdAt: string;
             customMetrics: components["schemas"]["CustomMetric"][];
-            fertilizingSchedule: components["schemas"]["CareSchedule"];
             genus: string;
             /** Format: uuid */
             id: string;
-            /** Format: date-time */
-            lastFertilized?: string | null;
-            /** Format: date-time */
-            lastWatered?: string | null;
             name: string;
             /** Format: uuid */
             previewId?: string | null;
@@ -630,7 +834,6 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             userId: string;
-            wateringSchedule: components["schemas"]["CareSchedule"];
         };
         PlantsResponse: {
             /** Format: int64 */
@@ -641,11 +844,17 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        /** @enum {string} */
+        PreferredUnits: "metric" | "imperial";
         ReminderPreferences: {
             browserNotificationsEnabled: boolean;
             enabled: boolean;
             reminderTime: string;
             timezone: string;
+        };
+        ReorderCareTasksRequest: {
+            /** @description Ordered list of care task IDs in desired order */
+            taskIds: string[];
         };
         StoreTokensRequest: {
             /** @description The access token from Google OAuth */
@@ -691,23 +900,29 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        /** @description A tracking entry is a timestamped event on a plant that can combine any of:
+         *     - Care task completions (which care tasks were performed)
+         *     - Measurements (metric + value pairs)
+         *     - Notes (free text)
+         *     - Photos (attached images) */
         TrackingEntry: {
+            /** @description Care tasks completed in this entry */
+            careTaskIds?: string[] | null;
             /** Format: date-time */
             createdAt: string;
-            entryType: components["schemas"]["EntryType"];
             /** Format: uuid */
             id: string;
-            /** Format: uuid */
-            metricId?: string | null;
+            /** @description Measurements recorded in this entry */
+            measurements?: components["schemas"]["Measurement"][] | null;
             notes?: string | null;
-            photoIds?: unknown;
+            /** @description Photo IDs attached to this entry */
+            photoIds?: string[] | null;
             /** Format: uuid */
             plantId: string;
             /** Format: date-time */
             timestamp: string;
             /** Format: date-time */
             updatedAt: string;
-            value?: unknown;
         };
         UpdateAdminSettingsRequest: {
             /** Format: int32 */
@@ -716,12 +931,19 @@ export interface components {
             max_total_users?: number | null;
             registration_enabled?: boolean | null;
         };
-        UpdateCareScheduleRequest: {
+        UpdateCareTaskRequest: {
             /** Format: double */
             amount?: number | null;
+            color?: string | null;
+            icon?: string | null;
             /** Format: int32 */
             intervalDays?: number | null;
+            /** Format: date-time */
+            lastPerformed?: string | null;
+            name?: string | null;
             notes?: string | null;
+            /** Format: int32 */
+            sortOrder?: number | null;
             unit?: string | null;
         };
         UpdateCustomMetricRequest: {
@@ -733,10 +955,8 @@ export interface components {
         };
         UpdatePlantRequest: {
             customMetrics?: components["schemas"]["UpdateCustomMetricRequest"][] | null;
-            fertilizingSchedule?: components["schemas"]["UpdateCareScheduleRequest"] | null;
             genus?: string | null;
             name?: string | null;
-            wateringSchedule?: components["schemas"]["UpdateCareScheduleRequest"] | null;
         };
         UpdateReminderPreferencesRequest: {
             browserNotificationsEnabled: boolean;
@@ -780,10 +1000,6 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
-        /** @enum {string} */
-        FirstDayOfWeek: "sunday" | "monday";
-        /** @enum {string} */
-        PreferredUnits: "metric" | "imperial";
         /** @enum {string} */
         UserRole: "admin" | "moderator" | "user";
         ValidateInviteRequest: {
@@ -1541,6 +1757,8 @@ export interface operations {
                 search?: string | null;
                 /** @description Sort order: date_asc, date_desc, name_asc, name_desc */
                 sort?: string | null;
+                /** @description Include archived plants in list results */
+                includeArchived?: boolean | null;
             };
             header?: never;
             path?: never;
@@ -1745,6 +1963,463 @@ export interface operations {
             };
             /** @description Internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive_plant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plant archived successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unarchive_plant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plant unarchived successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_care_tasks: {
+        parameters: {
+            query?: {
+                /** @description Include archived tasks */
+                includeArchived?: boolean | null;
+            };
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description List of care tasks for plant */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareTasksResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_care_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCareTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Care task created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareTaskWithStatus"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder_care_tasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderCareTasksRequest"];
+            };
+        };
+        responses: {
+            /** @description Care tasks reordered */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareTasksResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_care_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Care task ID */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Care task details */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareTaskWithStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_care_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Care task ID */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCareTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Care task updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareTaskWithStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_care_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Care task ID */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Care task deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    archive_care_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Care task ID */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Care task archived */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareTaskWithStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    log_care_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Care task ID */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogCareTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Care task logged */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogCareTaskResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    unarchive_care_task: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Care task ID */
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Care task unarchived */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CareTaskWithStatus"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

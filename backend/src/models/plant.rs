@@ -48,6 +48,7 @@ pub struct CreatePlantRequest {
     pub genus: String,
     pub custom_metrics: Option<Vec<CreateCustomMetricRequest>>,
     /// Initial care tasks to create with the plant
+    #[validate(nested)]
     pub care_tasks: Option<Vec<CreatePlantCareTaskInput>>,
 }
 

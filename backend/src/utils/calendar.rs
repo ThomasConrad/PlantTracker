@@ -56,7 +56,7 @@ pub fn generate_plant_calendar(
                 });
 
                 let event = Event::new()
-                    .uid(&format!("care-{}-{}-{}", plant.id, ct.id, next.timestamp()))
+                    .uid(&format!("care-{}-{}-{}", ct.id, event_count, next.timestamp() as i64))
                     .summary(&format!("{} {} {}", icon, ct.name, plant.name))
                     .description(&format!(
                         "Time to {} your {} ({}).{} Every {} days.\n\nView plant details: {}/plants/{}",

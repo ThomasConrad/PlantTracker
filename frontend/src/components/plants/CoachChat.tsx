@@ -2,6 +2,7 @@ import { Component, createSignal, createEffect, For, Show, onMount } from 'solid
 import { coachApi, CoachMessage, CoachSuggestion } from '@/api/coach';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { compressImage } from '@/utils/imageCompress';
 
 interface CoachChatProps {
   plantId: string;
@@ -85,16 +86,20 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
     }
   };
 
-  const handleFileSelect = (e: Event) => {
+  const handleFileSelect = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     const file = target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setPendingImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const dataUrl = await compressImage(file, { maxDimension: 1024, quality: 0.8 });
+      setPendingImage(dataUrl);
+    } catch {
+      // Fallback: read uncompressed if compression fails
+      const reader = new FileReader();
+      reader.onload = () => setPendingImage(reader.result as string);
+      reader.readAsDataURL(file);
+    }
     target.value = '';
   };
 
@@ -129,7 +134,7 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
   const suggestionLabel = (type: CoachSuggestion['suggestionType']) => {
     switch (type) {
       case 'schedule_change': return 'Schedule Change';
-      case 'reminder': return 'Reminder';
+      case 'new_task': return 'New Task';
       case 'care_action': return 'Care Action';
       case 'photo_request': return 'Photo Request';
     }

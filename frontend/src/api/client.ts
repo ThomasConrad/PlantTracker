@@ -191,6 +191,13 @@ class ApiClient {
     });
   }
 
+  async updateLlmSettings(settings: { baseUrl: string | null; apiKey: string | null; model: string | null }): Promise<unknown> {
+    return this.request('/auth/llm-settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
   async exportUserData(): Promise<unknown> {
     return this.request<unknown>('/auth/export');
   }

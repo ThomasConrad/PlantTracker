@@ -14,7 +14,7 @@ use crate::database::users as db_users;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{
     AuthResponse, ChangePasswordRequest, CreateUserRequest, DeleteAccountRequest, LoginRequest,
-    UpdateProfileRequest, UserResponse, UserRole,
+    UpdateLlmSettingsRequest, UpdateProfileRequest, UserResponse, UserRole,
 };
 use crate::utils::errors::{AppError, Result};
 use crate::utils::image_processing::process_uploaded_image;
@@ -35,6 +35,7 @@ pub fn routes() -> Router<AppState> {
                 .delete(delete_profile_picture),
         )
         .route("/change-password", post(change_password))
+        .route("/llm-settings", put(update_llm_settings))
         .route("/export", get(export_data))
         .route("/account", delete(delete_account))
 }
@@ -258,6 +259,33 @@ async fn update_profile(
             .preferred_units
             .as_ref()
             .unwrap_or(&user.preferred_units),
+    )
+    .await?;
+
+    Ok(Json(updated_user.into()))
+}
+
+async fn update_llm_settings(
+    auth_session: AuthSession,
+    ValidatedJson(payload): ValidatedJson<UpdateLlmSettingsRequest>,
+) -> Result<Json<UserResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    // If api_key is None/empty, preserve existing key (user just didn't re-enter it)
+    let api_key = match &payload.api_key {
+        Some(k) if !k.is_empty() => Some(k.as_str()),
+        Some(_) => user.llm_api_key.as_deref(), // empty string → keep existing
+        None => None, // explicit null → clear
+    };
+
+    let updated_user = db_users::update_user_llm_settings(
+        &auth_session.backend.db,
+        &user.id,
+        payload.base_url.as_deref(),
+        api_key,
+        payload.model.as_deref(),
     )
     .await?;
 

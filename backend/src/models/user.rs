@@ -19,6 +19,9 @@ pub struct User {
     pub can_create_invites: bool,
     pub max_invites: Option<i32>, // None means unlimited
     pub invites_created: i32,
+    pub llm_base_url: Option<String>,
+    pub llm_api_key: Option<String>,
+    pub llm_model: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -122,6 +125,9 @@ pub struct UserRow {
     pub can_create_invites: bool,
     pub max_invites: Option<i32>,
     pub invites_created: i32,
+    pub llm_base_url: Option<String>,
+    pub llm_api_key: Option<String>,
+    pub llm_model: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -153,6 +159,9 @@ impl UserRow {
             can_create_invites: self.can_create_invites,
             max_invites: self.max_invites,
             invites_created: self.invites_created,
+            llm_base_url: self.llm_base_url,
+            llm_api_key: self.llm_api_key,
+            llm_model: self.llm_model,
             created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
                 crate::utils::errors::AppError::Internal {
                     message: "Invalid datetime in database".to_string(),
@@ -217,6 +226,17 @@ pub struct ChangePasswordRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateLlmSettingsRequest {
+    /// OpenAI-compatible API base URL (e.g. https://api.openai.com/v1, https://openrouter.ai/api/v1)
+    pub base_url: Option<String>,
+    /// API key for the LLM provider. Send null to clear.
+    pub api_key: Option<String>,
+    /// Model identifier (e.g. gpt-4o, anthropic/claude-sonnet-4-20250514)
+    pub model: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
 pub struct DeleteAccountRequest {
     #[validate(length(min = 8))]
     pub current_password: String,
@@ -235,6 +255,9 @@ pub struct UserResponse {
     pub max_invites: Option<i32>,
     pub invites_created: i32,
     pub invites_remaining: Option<i32>,
+    pub llm_base_url: Option<String>,
+    pub llm_api_key_set: bool,
+    pub llm_model: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -276,6 +299,7 @@ impl User {
 impl From<User> for UserResponse {
     fn from(user: User) -> Self {
         let invites_remaining = user.max_invites.map(|max| max - user.invites_created);
+        let llm_api_key_set = user.llm_api_key.is_some();
 
         Self {
             id: user.id,
@@ -288,6 +312,9 @@ impl From<User> for UserResponse {
             max_invites: user.max_invites,
             invites_created: user.invites_created,
             invites_remaining,
+            llm_base_url: user.llm_base_url,
+            llm_api_key_set,
+            llm_model: user.llm_model,
             created_at: user.created_at,
             updated_at: user.updated_at,
         }

@@ -150,6 +150,9 @@ pub async fn get_admin_dashboard(
                     .updated_at
                     .parse::<chrono::DateTime<chrono::Utc>>()
                     .unwrap_or_default(),
+                llm_base_url: None,
+                llm_api_key_set: false,
+                llm_model: None,
             })
         })
         .filter_map(Result::ok)
@@ -268,6 +271,9 @@ pub async fn list_users(
                 .map(|max| (max as i32) - (row.invites_created as i32)),
             created_at: row.created_at.parse().unwrap_or_default(),
             updated_at: row.updated_at.parse().unwrap_or_default(),
+            llm_base_url: None,
+            llm_api_key_set: false,
+            llm_model: None,
         })
         .collect();
 
@@ -418,6 +424,9 @@ pub async fn update_user(
             .map(|max| (max as i32) - (updated_user.invites_created as i32)),
         created_at: updated_user.created_at.parse().unwrap_or_default(),
         updated_at: updated_user.updated_at.parse().unwrap_or_default(),
+        llm_base_url: None,
+        llm_api_key_set: false,
+        llm_model: None,
     };
 
     Ok(Json(user_response))

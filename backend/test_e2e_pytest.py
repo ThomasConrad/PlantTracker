@@ -277,12 +277,10 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Fiddle Leaf Fig",
             "genus": "Ficus",
-            "wateringSchedule": {
-                "intervalDays": 7
-            },
-            "fertilizingSchedule": {
-                "intervalDays": 14
-            }
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         response = client.request("POST", "/plants", json=plant_data)
@@ -291,8 +289,10 @@ class TestPlantCRUD:
         response_data = response.json()
         assert response_data["name"] == plant_data["name"]
         assert response_data["genus"] == plant_data["genus"]
-        assert response_data["wateringSchedule"]["intervalDays"] == 7
-        assert response_data["fertilizingSchedule"]["intervalDays"] == 14
+        water_task = next(t for t in response_data["careTasks"] if t["name"] == "Water")
+        fert_task = next(t for t in response_data["careTasks"] if t["name"] == "Fertilize")
+        assert water_task["intervalDays"] == 7
+        assert fert_task["intervalDays"] == 14
         assert "id" in response_data
         
     def test_create_plant_validation_errors(self, client):
@@ -301,12 +301,10 @@ class TestPlantCRUD:
         response = client.request("POST", "/plants", json={
             "name": "",
             "genus": "Ficus",
-            "wateringSchedule": {
-                "intervalDays": 7
-            },
-            "fertilizingSchedule": {
-                "intervalDays": 14
-            }
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         })
         assert response.status_code == 422
         
@@ -314,12 +312,10 @@ class TestPlantCRUD:
         response = client.request("POST", "/plants", json={
             "name": "Test Plant",
             "genus": "Test",
-            "wateringSchedule": {
-                "intervalDays": 0
-            },
-            "fertilizingSchedule": {
-                "intervalDays": 14
-            }
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 0},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         })
         assert response.status_code == 422
         
@@ -330,14 +326,18 @@ class TestPlantCRUD:
             {
                 "name": "Plant 1", 
                 "genus": "Genus1", 
-                "wateringSchedule": {"intervalDays": 7}, 
-                "fertilizingSchedule": {"intervalDays": 14}
+                "careTasks": [
+                    {"name": "Water", "icon": "💧", "intervalDays": 7},
+                    {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+                ]
             },
             {
                 "name": "Plant 2", 
                 "genus": "Genus2", 
-                "wateringSchedule": {"intervalDays": 10}, 
-                "fertilizingSchedule": {"intervalDays": 21}
+                "careTasks": [
+                    {"name": "Water", "icon": "💧", "intervalDays": 10},
+                    {"name": "Fertilize", "icon": "🌱", "intervalDays": 21}
+                ]
             }
         ]
         
@@ -361,8 +361,10 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Test Plant",
             "genus": "TestGenus",
-            "wateringSchedule": {"intervalDays": 5},
-            "fertilizingSchedule": {"intervalDays": 10}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 5},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 10}
+            ]
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
@@ -382,38 +384,25 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Original Plant",
             "genus": "OriginalGenus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
         plant = response.json()
         
-        # Update the plant
+        # Update the plant name and genus
         update_data = {
-            "name": "Updated Plant",
-            "wateringSchedule": {"intervalDays": 10}
+            "name": "Updated Plant"
         }
         response = client.request("PUT", f"/plants/{plant['id']}", json=update_data)
         assert response.status_code == 200
         
         response_data = response.json()
         assert response_data["name"] == "Updated Plant"
-        assert response_data["wateringSchedule"]["intervalDays"] == 10
         assert response_data["genus"] == plant_data["genus"]  # Should remain unchanged
-        
-        # Test removing schedules by setting them to null
-        update_data_remove_schedules = {
-            "wateringSchedule": {"intervalDays": None},
-            "fertilizingSchedule": {"intervalDays": None}
-        }
-        response = client.request("PUT", f"/plants/{plant['id']}", json=update_data_remove_schedules)
-        assert response.status_code == 200
-        
-        response_data = response.json()
-        assert response_data["wateringSchedule"]["intervalDays"] is None
-        assert response_data["fertilizingSchedule"]["intervalDays"] is None
-        assert response_data["name"] == "Updated Plant"  # Other fields should remain
         
     def test_delete_plant(self, client):
         """Test deleting a plant"""
@@ -421,8 +410,10 @@ class TestPlantCRUD:
         plant_data = {
             "name": "Plant to Delete",
             "genus": "DeleteGenus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
@@ -459,8 +450,10 @@ class TestUserIsolation:
         plant_data = {
             "name": "User 1 Plant",
             "genus": "User1Genus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         response = client.request("POST", "/plants", json=plant_data)
         assert response.status_code == 201
@@ -506,8 +499,10 @@ class TestErrorHandling:
         response = client.request("POST", "/plants", json={
             "name": "Test Plant",
             "genus": "TestGenus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         })
         assert response.status_code == 401
         
@@ -559,8 +554,10 @@ class TestErrorHandling:
         # This will get 400 because JSON deserialization fails before validation
         response = client.request("POST", "/plants", json={
             "name": "Test Plant",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         })
         assert response.status_code == 400
         
@@ -568,8 +565,10 @@ class TestErrorHandling:
         response = client.request("POST", "/plants", json={
             "name": "",  # Empty name should fail validation
             "genus": "TestGenus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         })
         assert response.status_code == 422
 
@@ -605,8 +604,10 @@ class TestPerformance:
             plant_data = {
                 "name": f"Performance Plant {i}",
                 "genus": f"Performicus_{i}",
-                "wateringSchedule": {"intervalDays": 7},
-                "fertilizingSchedule": {"intervalDays": 14}
+                "careTasks": [
+                    {"name": "Water", "icon": "💧", "intervalDays": 7},
+                    {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+                ]
             }
             
             response = self.client.request("POST", "/plants", json=plant_data)
@@ -627,8 +628,10 @@ class TestPerformance:
         plant_data = {
             "name": "Performance Test Plant",
             "genus": "Performicus", 
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -730,8 +733,10 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Photo Test Plant",
             "genus": "Photographicus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -793,8 +798,10 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Photo List Plant",
             "genus": "Listicus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -839,8 +846,10 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Photo Delete Plant",
             "genus": "Deleticus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -890,8 +899,10 @@ class TestPhotoUpload:
         plant_data = {
             "name": "preview Test Plant",
             "genus": "previewicus", 
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -967,8 +978,10 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Async Test Plant",
             "genus": "Asyncicus",
-            "wateringSchedule": {"intervalDays": 5},
-            "fertilizingSchedule": {"intervalDays": 12}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 5},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 12}
+            ]
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -1035,8 +1048,10 @@ class TestPhotoUpload:
         plant_data = {
             "name": "Validation Plant",
             "genus": "Validicus", 
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14}
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         plant_response = self.client.request("POST", "/plants", json=plant_data)
@@ -1205,27 +1220,24 @@ class TestCalendarFunctionality:
 
     def test_calendar_feed_with_plants(self):
         """Test calendar feed generation with plants"""
-        from datetime import datetime, timezone, timedelta
-        
-        # Create test plants with different schedules and initial care dates
-        # Set last watered/fertilized to be clearly in the past to avoid timing issues
-        now = datetime.now(timezone.utc)
+        # Create test plants with different schedules
+        # Care tasks with intervalDays and null lastPerformed will be immediately due
         plants_data = [
             {
                 "name": "Fiddle Leaf Fig",
                 "genus": "Ficus",
-                "wateringSchedule": {"intervalDays": 7},
-                "fertilizingSchedule": {"intervalDays": 14},
-                "lastWatered": (now - timedelta(days=6)).isoformat(),  # 6 days ago, so next watering is in 1 day
-                "lastFertilized": (now - timedelta(days=13)).isoformat()  # 13 days ago, so next fertilizing is in 1 day
+                "careTasks": [
+                    {"name": "Water", "icon": "💧", "intervalDays": 7},
+                    {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+                ]
             },
             {
                 "name": "Snake Plant", 
                 "genus": "Sansevieria",
-                "wateringSchedule": {"intervalDays": 14},
-                "fertilizingSchedule": {"intervalDays": 30},
-                "lastWatered": (now - timedelta(days=13)).isoformat(),  # 13 days ago, so next watering is in 1 day
-                "lastFertilized": (now - timedelta(days=29)).isoformat()  # 29 days ago, so next fertilizing is in 1 day
+                "careTasks": [
+                    {"name": "Water", "icon": "💧", "intervalDays": 14},
+                    {"name": "Fertilize", "icon": "🌱", "intervalDays": 30}
+                ]
             }
         ]
         
@@ -1237,10 +1249,7 @@ class TestCalendarFunctionality:
             created_plant = response.json()
             created_plants.append(created_plant)
             print(f"Created plant: {created_plant['name']}")
-            print(f"  Watering schedule: {created_plant.get('wateringSchedule', 'Not found')}")
-            print(f"  Fertilizing schedule: {created_plant.get('fertilizingSchedule', 'Not found')}")
-            print(f"  Last watered: {created_plant.get('lastWatered', 'Not found')}")
-            print(f"  Last fertilized: {created_plant.get('lastFertilized', 'Not found')}")
+            print(f"  Care tasks: {created_plant.get('careTasks', 'Not found')}")
         
         # Get calendar feed
         response = self.client.request("GET", "/calendar/subscription")
@@ -1349,17 +1358,14 @@ class TestCalendarFunctionality:
 
     def test_calendar_feed_content_type(self):
         """Test that calendar feed returns correct content type"""
-        from datetime import datetime, timezone, timedelta
-        now = datetime.now(timezone.utc)
-        
         # Create a plant first
         plant_data = {
             "name": "Test Plant",
             "genus": "Testicus",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 14},
-            "lastWatered": (now - timedelta(days=6)).isoformat(),
-            "lastFertilized": (now - timedelta(days=13)).isoformat()
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+            ]
         }
         
         response = self.client.request("POST", "/plants", json=plant_data)
@@ -1417,26 +1423,23 @@ class TestCalendarFunctionality:
 
     def test_calendar_events_have_unique_uids(self):
         """Test that calendar events have unique UIDs"""
-        from datetime import datetime, timezone, timedelta
-        
-        # Create multiple plants with initial care dates
-        now = datetime.now(timezone.utc)
+        # Create multiple plants
         plants_data = [
             {
                 "name": "Plant 1", 
                 "genus": "Genus1", 
-                "wateringSchedule": {"intervalDays": 5}, 
-                "fertilizingSchedule": {"intervalDays": 10},
-                "lastWatered": (now - timedelta(days=4)).isoformat(),
-                "lastFertilized": (now - timedelta(days=9)).isoformat()
+                "careTasks": [
+                    {"name": "Water", "icon": "💧", "intervalDays": 5},
+                    {"name": "Fertilize", "icon": "🌱", "intervalDays": 10}
+                ]
             },
             {
                 "name": "Plant 2", 
                 "genus": "Genus2", 
-                "wateringSchedule": {"intervalDays": 7}, 
-                "fertilizingSchedule": {"intervalDays": 14},
-                "lastWatered": (now - timedelta(days=6)).isoformat(),
-                "lastFertilized": (now - timedelta(days=13)).isoformat()
+                "careTasks": [
+                    {"name": "Water", "icon": "💧", "intervalDays": 7},
+                    {"name": "Fertilize", "icon": "🌱", "intervalDays": 14}
+                ]
             }
         ]
         
@@ -1475,17 +1478,14 @@ class TestCalendarFunctionality:
 
     def test_calendar_unicode_plant_names(self):
         """Test calendar generation with unicode plant names"""
-        from datetime import datetime, timezone, timedelta
-        now = datetime.now(timezone.utc)
-        
         # Create plant with unicode characters
         plant_data = {
             "name": "🌿 Monstera Deliciosa",
             "genus": "Mønstéra",
-            "wateringSchedule": {"intervalDays": 7},
-            "fertilizingSchedule": {"intervalDays": 21},
-            "lastWatered": (now - timedelta(days=6)).isoformat(),
-            "lastFertilized": (now - timedelta(days=20)).isoformat()
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7},
+                {"name": "Fertilize", "icon": "🌱", "intervalDays": 21}
+            ]
         }
         
         response = self.client.request("POST", "/plants", json=plant_data)

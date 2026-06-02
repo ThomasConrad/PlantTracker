@@ -1,0 +1,31 @@
+# Build artifacts
+target/
+frontend/node_modules/
+frontend/dist/
+
+# Development files
+.git/
+.github/
+.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+**/.DS_Store
+
+# Test artifacts
+backend/test_e2e_pytest.py
+tests/
+e2e_venv/
+__pycache__/
+*.pyc
+
+# Documentation (not needed in image)
+CLAUDE.md
+README.md
+*.md

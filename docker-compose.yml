@@ -1,0 +1,32 @@
+services:
+  planty:
+    build: .
+    container_name: planty
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      # Persist SQLite database and uploaded photos
+      - planty-data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:/app/data/planty.db
+      - RUST_LOG=${RUST_LOG:-info}
+      # LLM provider (optional — users can also configure per-account in Settings)
+      # Set one of: openai, anthropic, ollama, mock
+      - PLANT_COACH_PROVIDER=${PLANT_COACH_PROVIDER:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-}
+      - OLLAMA_URL=${OLLAMA_URL:-}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  planty-data:

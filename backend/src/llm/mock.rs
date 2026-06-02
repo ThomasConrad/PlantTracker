@@ -14,16 +14,21 @@ use super::{ChatMessage, CoachResponse, CoachSuggestionOutput, ContentPart, Plan
 /// - "action" → care_action suggestion (Water)
 /// - "photo" → photo_request suggestion
 /// - anything else → text-only response with no suggestions
+///
+/// If the last user message includes an image, the response acknowledges it
+/// with a photo analysis preamble.
 pub struct MockCoach;
 
 #[async_trait::async_trait]
 impl PlantCoach for MockCoach {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse> {
-        // Find the last user message text
-        let last_user_text = messages
+        // Find the last user message
+        let last_user = messages
             .iter()
             .rev()
-            .find(|m| m.role == "user")
+            .find(|m| m.role == "user");
+
+        let last_user_text = last_user
             .and_then(|m| {
                 m.content.iter().find_map(|part| match part {
                     ContentPart::Text { text } => Some(text.as_str()),
@@ -31,6 +36,10 @@ impl PlantCoach for MockCoach {
                 })
             })
             .unwrap_or("");
+
+        let has_image = last_user
+            .map(|m| m.content.iter().any(|part| matches!(part, ContentPart::ImageUrl { .. })))
+            .unwrap_or(false);
 
         let lower = last_user_text.to_lowercase();
 
@@ -77,7 +86,14 @@ impl PlantCoach for MockCoach {
             });
         }
 
-        let text = if suggestions.is_empty() {
+        let text = if has_image && suggestions.is_empty() {
+            "I can see your plant in the photo! The leaves look healthy with good coloration. I notice some new growth forming — that's a great sign. Keep up your current care routine.".to_string()
+        } else if has_image {
+            format!(
+                "I've analyzed the photo of your plant and have {} suggestion(s) based on what I see.",
+                suggestions.len()
+            )
+        } else if suggestions.is_empty() {
             "Your plant looks healthy! Keep up the good work.".to_string()
         } else {
             format!(

@@ -111,6 +111,7 @@ RULES:
 - Keep suggestions practical and specific to the plant's species and current state.
 - Consider the genus when advising — a succulent and a fern have opposite needs.
 - Factor in the care history: if a task was last performed recently, don't suggest doing it again unless there's a specific reason.
+- PHOTO ANALYSIS: When the user sends a photo, describe what you observe in detail (leaf color, texture, size, spots, soil condition, pot, light levels). This description becomes the persistent record — the image won't be re-sent in future messages, so your text analysis must be thorough enough to reference later.
 "#;
 
 /// Build plant-specific context to append to the system prompt.

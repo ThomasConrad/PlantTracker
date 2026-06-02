@@ -179,20 +179,33 @@ pub async fn send_message(
     }];
 
     // Add conversation history
+    // Only send the actual image data for the LATEST user message (the one just sent).
+    // For older messages that had images, insert a text placeholder — the assistant's
+    // subsequent response already contains the annotation/analysis of that photo,
+    // which serves as persistent context without re-sending expensive image data.
     let history = db_coach::get_messages(&app_state.pool, &conversation.id)
         .await
         .map_err(|e| AppError::Internal {
             message: e.to_string(),
         })?;
 
-    for msg in &history {
+    let last_idx = history.len().saturating_sub(1);
+    for (i, msg) in history.iter().enumerate() {
         let mut parts: Vec<ContentPart> = vec![ContentPart::Text {
             text: msg.content.clone(),
         }];
         if let Some(url) = &msg.image_url {
-            parts.push(ContentPart::ImageUrl {
-                image_url: crate::llm::ImageUrlContent { url: url.clone() },
-            });
+            if i == last_idx {
+                // Latest message: send the actual image for vision analysis
+                parts.push(ContentPart::ImageUrl {
+                    image_url: crate::llm::ImageUrlContent { url: url.clone() },
+                });
+            } else {
+                // Older message: placeholder — the assistant's response has the analysis
+                parts.push(ContentPart::Text {
+                    text: "[User attached a photo — see assistant's analysis in the next message]".to_string(),
+                });
+            }
         }
         llm_messages.push(ChatMessage {
             role: msg.role.clone(),

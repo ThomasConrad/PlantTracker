@@ -1,37 +1,37 @@
-import { Component, JSX, Show } from 'solid-js';
-import { A } from '@solidjs/router';
+import { Component, JSX, Show } from "solid-js";
+import { A } from "@solidjs/router";
 
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
   backUrl: string;
   backLabel?: string;
-  maxWidth?: 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
+  maxWidth?: "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl";
   children?: JSX.Element;
   status?: {
     label: string;
-    color: 'blue' | 'green' | 'yellow' | 'red' | 'gray';
+    color: "blue" | "green" | "yellow" | "red" | "gray";
   };
   badge?: JSX.Element;
 }
 
 export const PageHeader: Component<PageHeaderProps> = (props) => {
   const maxWidthClass = () => {
-    const maxWidth = props.maxWidth || '4xl';
+    const maxWidth = props.maxWidth || "4xl";
     return `max-w-${maxWidth}`;
   };
 
   const statusColorClass = () => {
-    if (!props.status) return '';
-    
+    if (!props.status) return "";
+
     const colorMap = {
-      blue: 'bg-blue-100 text-blue-800',
-      green: 'bg-green-100 text-green-800', 
-      yellow: 'bg-yellow-100 text-yellow-800',
-      red: 'bg-red-100 text-red-800',
-      gray: 'bg-gray-100 text-gray-800'
+      blue: "bg-blue-100 text-blue-800",
+      green: "bg-green-100 text-green-800",
+      yellow: "bg-yellow-100 text-yellow-800",
+      red: "bg-red-100 text-red-800",
+      gray: "bg-gray-100 text-gray-800",
     };
-    
+
     return colorMap[props.status.color] || colorMap.gray;
   };
 
@@ -46,8 +46,18 @@ export const PageHeader: Component<PageHeaderProps> = (props) => {
                 class="flex-shrink-0 p-2 -ml-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200"
                 aria-label={props.backLabel || "Back"}
               >
-                <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M15 19l-7-7 7-7" />
+                <svg
+                  class="h-5 w-5 sm:h-6 sm:w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width={2}
+                    d="M15 19l-7-7 7-7"
+                  />
                 </svg>
               </A>
               <div class="min-w-0 flex-1">
@@ -55,9 +65,7 @@ export const PageHeader: Component<PageHeaderProps> = (props) => {
                   <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 truncate">
                     {props.title}
                   </h1>
-                  <Show when={props.badge}>
-                    {props.badge}
-                  </Show>
+                  <Show when={props.badge}>{props.badge}</Show>
                 </div>
                 <Show when={props.subtitle}>
                   <p class="text-sm sm:text-base text-gray-600 line-clamp-2">
@@ -67,13 +75,25 @@ export const PageHeader: Component<PageHeaderProps> = (props) => {
               </div>
             </div>
           </div>
-          
+
           {/* Status indicator */}
           <Show when={props.status}>
             <div class="flex-shrink-0">
-              <div class={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusColorClass()}`}>
-                <svg class="mr-1.5 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <div
+                class={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusColorClass()}`}
+              >
+                <svg
+                  class="mr-1.5 h-3 w-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width={2}
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  />
                 </svg>
                 {props.status?.label}
               </div>
@@ -90,4 +110,4 @@ export const PageHeader: Component<PageHeaderProps> = (props) => {
       </div>
     </div>
   );
-}; 
+};

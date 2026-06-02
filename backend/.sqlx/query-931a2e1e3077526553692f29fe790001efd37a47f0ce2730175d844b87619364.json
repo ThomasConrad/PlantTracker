@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT MIN(expires_at) as next_expiration\n        FROM google_oauth_tokens \n        WHERE refresh_token IS NOT NULL \n        AND expires_at IS NOT NULL\n        AND expires_at > ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "next_expiration",
+        "ordinal": 0,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "931a2e1e3077526553692f29fe790001efd37a47f0ce2730175d844b87619364"
+}

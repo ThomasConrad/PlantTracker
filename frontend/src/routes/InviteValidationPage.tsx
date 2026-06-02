@@ -1,15 +1,15 @@
-import { Component, createSignal, onMount } from 'solid-js';
-import { A, useNavigate, useSearchParams } from '@solidjs/router';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { apiClient } from '@/api/client';
+import { Component, createSignal, onMount } from "solid-js";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { apiClient } from "@/api/client";
 
 export const InviteValidationPage: Component = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [inviteCode, setInviteCode] = createSignal('');
+  const [inviteCode, setInviteCode] = createSignal("");
   const [loading, setLoading] = createSignal(false);
-  const [error, setError] = createSignal('');
+  const [error, setError] = createSignal("");
 
   onMount(() => {
     // Check for invite code in URL parameters
@@ -24,19 +24,25 @@ export const InviteValidationPage: Component = () => {
   const handleInviteValidation = async (code: string) => {
     try {
       setLoading(true);
-      setError('');
-      
+      setError("");
+
       await apiClient.validateInvite({ code: code.trim() });
-      
+
       // Redirect to register page with the validated invite code
       navigate(`/register?code=${encodeURIComponent(code.trim())}`);
     } catch (error: unknown) {
-      console.error('Invite validation failed:', error);
-      if (error && typeof error === 'object' && 'response' in error && 
-          (error as { response?: { status?: number } }).response?.status === 400) {
-        setError('Invalid or expired invite code. Please check your code and try again.');
+      console.error("Invite validation failed:", error);
+      if (
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        (error as { response?: { status?: number } }).response?.status === 400
+      ) {
+        setError(
+          "Invalid or expired invite code. Please check your code and try again.",
+        );
       } else {
-        setError('Failed to validate invite code. Please try again.');
+        setError("Failed to validate invite code. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -45,9 +51,9 @@ export const InviteValidationPage: Component = () => {
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    
+
     if (!inviteCode().trim()) {
-      setError('Please enter an invite code');
+      setError("Please enter an invite code");
       return;
     }
 
@@ -100,12 +106,14 @@ export const InviteValidationPage: Component = () => {
             <div class="w-full border-t border-gray-300" />
           </div>
           <div class="relative flex justify-center text-sm">
-            <span class="px-2 bg-white text-gray-500">Already have an account?</span>
+            <span class="px-2 bg-white text-gray-500">
+              Already have an account?
+            </span>
           </div>
         </div>
-        
-        <A 
-          href="/login" 
+
+        <A
+          href="/login"
           class="block w-full text-center py-2 text-primary-600 hover:text-primary-500 font-medium"
         >
           Sign in to your account

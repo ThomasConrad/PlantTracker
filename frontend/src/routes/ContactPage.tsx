@@ -1,5 +1,5 @@
-import { Component, createSignal } from 'solid-js';
-import { A } from '@solidjs/router';
+import { Component, createSignal } from "solid-js";
+import { A } from "@solidjs/router";
 
 export const ContactPage: Component = () => {
   const [formSubmitted, setFormSubmitted] = createSignal(false);
@@ -16,26 +16,36 @@ export const ContactPage: Component = () => {
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-8">
           <div class="mb-8">
-            <A href="/" class="text-green-600 hover:text-green-500 text-sm font-medium">
+            <A
+              href="/"
+              class="text-green-600 hover:text-green-500 text-sm font-medium"
+            >
               ← Back to Home
             </A>
           </div>
-          
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Contact Us</h1>
-          
+
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">
+            Contact Us
+          </h1>
+
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Contact Information */}
             <div>
-              <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Get in Touch</h2>
-              
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                Get in Touch
+              </h2>
+
               <div class="space-y-6">
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">General Support</h3>
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    General Support
+                  </h3>
                   <p class="text-gray-600 dark:text-gray-400 mb-2">
-                    For questions about using Planty, plant care tracking, or general support.
+                    For questions about using Planty, plant care tracking, or
+                    general support.
                   </p>
-                  <a 
-                    href="mailto:support@planty.app" 
+                  <a
+                    href="mailto:support@planty.app"
                     class="text-green-600 hover:text-green-500 font-medium"
                   >
                     support@planty.app
@@ -43,12 +53,14 @@ export const ContactPage: Component = () => {
                 </div>
 
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Technical Issues</h3>
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    Technical Issues
+                  </h3>
                   <p class="text-gray-600 dark:text-gray-400 mb-2">
                     Report bugs, technical problems, or access issues.
                   </p>
-                  <a 
-                    href="mailto:tech@planty.app" 
+                  <a
+                    href="mailto:tech@planty.app"
                     class="text-green-600 hover:text-green-500 font-medium"
                   >
                     tech@planty.app
@@ -56,12 +68,15 @@ export const ContactPage: Component = () => {
                 </div>
 
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Privacy & Data</h3>
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    Privacy & Data
+                  </h3>
                   <p class="text-gray-600 dark:text-gray-400 mb-2">
-                    Questions about your data, privacy, or account deletion requests.
+                    Questions about your data, privacy, or account deletion
+                    requests.
                   </p>
-                  <a 
-                    href="mailto:privacy@planty.app" 
+                  <a
+                    href="mailto:privacy@planty.app"
                     class="text-green-600 hover:text-green-500 font-medium"
                   >
                     privacy@planty.app
@@ -69,12 +84,15 @@ export const ContactPage: Component = () => {
                 </div>
 
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Business Inquiries</h3>
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    Business Inquiries
+                  </h3>
                   <p class="text-gray-600 dark:text-gray-400 mb-2">
-                    Partnership opportunities, press inquiries, or business matters.
+                    Partnership opportunities, press inquiries, or business
+                    matters.
                   </p>
-                  <a 
-                    href="mailto:business@planty.app" 
+                  <a
+                    href="mailto:business@planty.app"
                     class="text-green-600 hover:text-green-500 font-medium"
                   >
                     business@planty.app
@@ -83,24 +101,37 @@ export const ContactPage: Component = () => {
               </div>
 
               <div class="mt-8 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <h3 class="text-lg font-medium text-green-900 dark:text-green-100 mb-2">Response Time</h3>
+                <h3 class="text-lg font-medium text-green-900 dark:text-green-100 mb-2">
+                  Response Time
+                </h3>
                 <p class="text-green-800 dark:text-green-200 text-sm">
-                  We aim to respond to all inquiries within 48 hours during business days. 
-                  For urgent technical issues, please include "URGENT" in your subject line.
+                  We aim to respond to all inquiries within 48 hours during
+                  business days. For urgent technical issues, please include
+                  "URGENT" in your subject line.
                 </p>
               </div>
             </div>
 
             {/* Contact Form */}
             <div>
-              <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">Send us a Message</h2>
-              
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+                Send us a Message
+              </h2>
+
               {formSubmitted() ? (
                 <div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                   <div class="flex">
                     <div class="flex-shrink-0">
-                      <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                      <svg
+                        class="h-5 w-5 text-green-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clip-rule="evenodd"
+                        />
                       </svg>
                     </div>
                     <div class="ml-3">
@@ -116,7 +147,10 @@ export const ContactPage: Component = () => {
               ) : (
                 <form onSubmit={handleSubmit} class="space-y-6">
                   <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label
+                      for="name"
+                      class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
                       Name
                     </label>
                     <input
@@ -129,7 +163,10 @@ export const ContactPage: Component = () => {
                   </div>
 
                   <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label
+                      for="email"
+                      class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
                       Email
                     </label>
                     <input
@@ -142,7 +179,10 @@ export const ContactPage: Component = () => {
                   </div>
 
                   <div>
-                    <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label
+                      for="subject"
+                      class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
                       Subject
                     </label>
                     <input
@@ -155,7 +195,10 @@ export const ContactPage: Component = () => {
                   </div>
 
                   <div>
-                    <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label
+                      for="category"
+                      class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
                       Category
                     </label>
                     <select
@@ -172,7 +215,10 @@ export const ContactPage: Component = () => {
                   </div>
 
                   <div>
-                    <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label
+                      for="message"
+                      class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
                       Message
                     </label>
                     <textarea
@@ -198,10 +244,14 @@ export const ContactPage: Component = () => {
 
           {/* Additional Information */}
           <div class="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Before You Contact Us</h2>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Before You Contact Us
+            </h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Common Questions</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Common Questions
+                </h3>
                 <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                   <li>• How do I export my plant data?</li>
                   <li>• Can I sync data across multiple devices?</li>
@@ -210,7 +260,9 @@ export const ContactPage: Component = () => {
                 </ul>
               </div>
               <div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Quick Help</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Quick Help
+                </h3>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
                   Many questions can be answered by:
                 </p>

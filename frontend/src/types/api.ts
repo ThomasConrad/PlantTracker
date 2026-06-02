@@ -5,12 +5,12 @@ export interface CustomMetric {
   id: string;
   name: string;
   unit: string;
-  dataType: 'Number' | 'Text' | 'Boolean';
+  dataType: "Number" | "Text" | "Boolean";
 }
 
 // Import and re-export the generated Plant type
-import type { components } from './api-generated';
-export type Plant = components['schemas']['PlantResponse'] & {
+import type { components } from "./api-generated";
+export type Plant = components["schemas"]["PlantResponse"] & {
   thumbnailId?: string | null;
   thumbnailUrl?: string | null;
   archivedAt?: string | null;
@@ -33,4 +33,4 @@ export interface PhotoWithUrl extends Photo {
 }
 
 // Re-export commonly used generated types for convenience
-export type { components } from './api-generated';
+export type { components } from "./api-generated";

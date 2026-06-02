@@ -1,14 +1,14 @@
-import { Component, createSignal } from 'solid-js';
-import { A } from '@solidjs/router';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { apiClient } from '@/api/client';
+import { Component, createSignal } from "solid-js";
+import { A } from "@solidjs/router";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { apiClient } from "@/api/client";
 
 export const HomePage: Component = () => {
-  const waitlistEnabled = import.meta.env.VITE_WAITLIST_ENABLED === 'true';
-  const [email, setEmail] = createSignal('');
-  const [name, setName] = createSignal('');
-  const [message, setMessage] = createSignal('');
+  const waitlistEnabled = import.meta.env.VITE_WAITLIST_ENABLED === "true";
+  const [email, setEmail] = createSignal("");
+  const [name, setName] = createSignal("");
+  const [message, setMessage] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [submitted, setSubmitted] = createSignal(false);
   const [submitError, setSubmitError] = createSignal<string | null>(null);
@@ -27,8 +27,12 @@ export const HomePage: Component = () => {
       });
       setSubmitted(true);
     } catch (error) {
-      console.error('Waitlist signup failed:', error);
-      setSubmitError(error instanceof Error ? error.message : 'Unable to join waitlist right now');
+      console.error("Waitlist signup failed:", error);
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Unable to join waitlist right now",
+      );
     } finally {
       setLoading(false);
     }
@@ -45,7 +49,10 @@ export const HomePage: Component = () => {
           <span class="text-xl font-bold text-gray-900">Planty</span>
         </div>
         <div class="flex items-center space-x-4">
-          <A href="/login" class="text-gray-600 hover:text-gray-900 font-medium">
+          <A
+            href="/login"
+            class="text-gray-600 hover:text-gray-900 font-medium"
+          >
             Sign In
           </A>
           <Button variant="outline" size="sm">
@@ -64,8 +71,9 @@ export const HomePage: Component = () => {
               Never forget to water your plants again
             </h1>
             <p class="text-xl text-gray-600 mb-8 leading-relaxed">
-              Planty helps you track your plant care schedule, monitor growth metrics, 
-              and build healthy habits that keep your green friends thriving.
+              Planty helps you track your plant care schedule, monitor growth
+              metrics, and build healthy habits that keep your green friends
+              thriving.
             </p>
             <div class="flex flex-col sm:flex-row gap-4">
               <Button size="lg" class="text-lg px-8">
@@ -101,39 +109,48 @@ export const HomePage: Component = () => {
               Everything you need to care for your plants
             </h2>
             <p class="text-xl text-gray-600 max-w-3xl mx-auto">
-              From beginner-friendly reminders to advanced growth tracking, 
+              From beginner-friendly reminders to advanced growth tracking,
               Planty adapts to your gardening experience level.
             </p>
           </div>
-          
+
           <div class="grid md:grid-cols-3 gap-8">
             <div class="text-center p-6">
               <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span class="text-2xl">💧</span>
               </div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-3">Smart Watering Reminders</h3>
+              <h3 class="text-xl font-semibold text-gray-900 mb-3">
+                Smart Watering Reminders
+              </h3>
               <p class="text-gray-600">
-                Customizable schedules based on your plant types, pot sizes, and environmental conditions.
+                Customizable schedules based on your plant types, pot sizes, and
+                environmental conditions.
               </p>
             </div>
-            
+
             <div class="text-center p-6">
               <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span class="text-2xl">📊</span>
               </div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-3">Growth Tracking</h3>
+              <h3 class="text-xl font-semibold text-gray-900 mb-3">
+                Growth Tracking
+              </h3>
               <p class="text-gray-600">
-                Monitor height, leaf count, health metrics, and watch your plants flourish over time.
+                Monitor height, leaf count, health metrics, and watch your
+                plants flourish over time.
               </p>
             </div>
-            
+
             <div class="text-center p-6">
               <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <span class="text-2xl">📅</span>
               </div>
-              <h3 class="text-xl font-semibold text-gray-900 mb-3">Care Calendar</h3>
+              <h3 class="text-xl font-semibold text-gray-900 mb-3">
+                Care Calendar
+              </h3>
               <p class="text-gray-600">
-                Integrated calendar view with feeding schedules, repotting reminders, and seasonal care tips.
+                Integrated calendar view with feeding schedules, repotting
+                reminders, and seasonal care tips.
               </p>
             </div>
           </div>
@@ -151,7 +168,7 @@ export const HomePage: Component = () => {
               Simple, intuitive design that makes plant care enjoyable
             </p>
           </div>
-          
+
           <div class="grid md:grid-cols-3 gap-8">
             {/* Placeholder Screenshots */}
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -162,13 +179,16 @@ export const HomePage: Component = () => {
                 </div>
               </div>
               <div class="p-6">
-                <h3 class="font-semibold text-gray-900 mb-2">Your Plant Collection</h3>
+                <h3 class="font-semibold text-gray-900 mb-2">
+                  Your Plant Collection
+                </h3>
                 <p class="text-gray-600 text-sm">
-                  Beautiful grid view of all your plants with quick status indicators.
+                  Beautiful grid view of all your plants with quick status
+                  indicators.
                 </p>
               </div>
             </div>
-            
+
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
               <div class="bg-gradient-to-br from-blue-100 to-blue-200 h-64 flex items-center justify-center">
                 <div class="text-center">
@@ -179,11 +199,12 @@ export const HomePage: Component = () => {
               <div class="p-6">
                 <h3 class="font-semibold text-gray-900 mb-2">Track Progress</h3>
                 <p class="text-gray-600 text-sm">
-                  Visual charts showing your plant's growth and health metrics over time.
+                  Visual charts showing your plant's growth and health metrics
+                  over time.
                 </p>
               </div>
             </div>
-            
+
             <div class="bg-white rounded-xl shadow-lg overflow-hidden">
               <div class="bg-gradient-to-br from-purple-100 to-purple-200 h-64 flex items-center justify-center">
                 <div class="text-center">
@@ -192,9 +213,12 @@ export const HomePage: Component = () => {
                 </div>
               </div>
               <div class="p-6">
-                <h3 class="font-semibold text-gray-900 mb-2">Never Miss Care</h3>
+                <h3 class="font-semibold text-gray-900 mb-2">
+                  Never Miss Care
+                </h3>
                 <p class="text-gray-600 text-sm">
-                  Smart notifications that help you stay on top of watering and feeding schedules.
+                  Smart notifications that help you stay on top of watering and
+                  feeding schedules.
                 </p>
               </div>
             </div>
@@ -210,16 +234,19 @@ export const HomePage: Component = () => {
               Join the Planty Waitlist
             </h2>
             <p class="text-xl text-green-100 mb-8">
-              Be among the first to experience the future of plant care.
-              We'll notify you as soon as Planty is ready!
+              Be among the first to experience the future of plant care. We'll
+              notify you as soon as Planty is ready!
             </p>
 
             {submitted() ? (
               <div class="bg-white rounded-lg p-8 max-w-md mx-auto">
                 <div class="text-4xl mb-4">✅</div>
-                <h3 class="text-xl font-semibold text-gray-900 mb-2">You're on the list!</h3>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                  You're on the list!
+                </h3>
                 <p class="text-gray-600">
-                  Thank you for your interest. We'll be in touch soon with updates and early access.
+                  Thank you for your interest. We'll be in touch soon with
+                  updates and early access.
                 </p>
               </div>
             ) : (
@@ -267,12 +294,17 @@ export const HomePage: Component = () => {
       ) : (
         <section class="py-20 bg-green-600">
           <div class="max-w-4xl mx-auto px-6 text-center">
-            <h2 class="text-3xl font-bold text-white mb-4">Start with an Invite Link</h2>
+            <h2 class="text-3xl font-bold text-white mb-4">
+              Start with an Invite Link
+            </h2>
             <p class="text-xl text-green-100 mb-8">
-              Signup is invite-based. Use the signup page to validate an invite code and create your account.
+              Signup is invite-based. Use the signup page to validate an invite
+              code and create your account.
             </p>
             <Button size="lg" class="bg-white text-green-700 hover:bg-green-50">
-              <A href="/signup" class="no-underline">Go to Signup</A>
+              <A href="/signup" class="no-underline">
+                Go to Signup
+              </A>
             </Button>
           </div>
         </section>
@@ -289,14 +321,21 @@ export const HomePage: Component = () => {
               <span class="text-xl font-bold text-white">Planty</span>
             </div>
             <div class="flex items-center space-x-6">
-              <A href="/privacy" class="text-gray-400 hover:text-white">Privacy</A>
-              <A href="/terms" class="text-gray-400 hover:text-white">Terms</A>
-              <A href="/contact" class="text-gray-400 hover:text-white">Contact</A>
+              <A href="/privacy" class="text-gray-400 hover:text-white">
+                Privacy
+              </A>
+              <A href="/terms" class="text-gray-400 hover:text-white">
+                Terms
+              </A>
+              <A href="/contact" class="text-gray-400 hover:text-white">
+                Contact
+              </A>
             </div>
           </div>
           <div class="mt-8 pt-8 border-t border-gray-800 text-center">
             <p class="text-gray-400">
-              © 2024 Planty. All rights reserved. Built with 🌱 for plant lovers.
+              © 2024 Planty. All rights reserved. Built with 🌱 for plant
+              lovers.
             </p>
           </div>
         </div>

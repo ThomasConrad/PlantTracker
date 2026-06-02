@@ -1,17 +1,17 @@
-import { Component, createSignal, onMount } from 'solid-js';
-import { A, useNavigate, useSearchParams } from '@solidjs/router';
-import { authStore } from '@/stores/auth';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Component, createSignal, onMount } from "solid-js";
+import { A, useNavigate, useSearchParams } from "@solidjs/router";
+import { authStore } from "@/stores/auth";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export const RegisterPage: Component = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [name, setName] = createSignal('');
-  const [email, setEmail] = createSignal('');
-  const [password, setPassword] = createSignal('');
-  const [confirmPassword, setConfirmPassword] = createSignal('');
-  const [inviteCode, setInviteCode] = createSignal('');
+  const [name, setName] = createSignal("");
+  const [email, setEmail] = createSignal("");
+  const [password, setPassword] = createSignal("");
+  const [confirmPassword, setConfirmPassword] = createSignal("");
+  const [inviteCode, setInviteCode] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [errors, setErrors] = createSignal<Record<string, string>>({});
 
@@ -27,27 +27,27 @@ export const RegisterPage: Component = () => {
     const newErrors: Record<string, string> = {};
 
     if (!name().trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = "Name is required";
     }
 
     if (!email().trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(email())) {
-      newErrors.email = 'Email is invalid';
+      newErrors.email = "Email is invalid";
     }
 
     if (!password()) {
-      newErrors.password = 'Password is required';
+      newErrors.password = "Password is required";
     } else if (password().length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors.password = "Password must be at least 8 characters";
     }
 
     if (password() !== confirmPassword()) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
     if (!inviteCode().trim()) {
-      newErrors.inviteCode = 'Invite code is required';
+      newErrors.inviteCode = "Invite code is required";
     }
 
     setErrors(newErrors);
@@ -56,7 +56,7 @@ export const RegisterPage: Component = () => {
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
@@ -67,9 +67,9 @@ export const RegisterPage: Component = () => {
         password: password(),
         invite_code: inviteCode().trim(),
       });
-      navigate('/plants');
+      navigate("/plants");
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error("Registration failed:", error);
     } finally {
       setLoading(false);
     }
@@ -80,8 +80,11 @@ export const RegisterPage: Component = () => {
       <div>
         <h2 class="text-2xl font-bold text-gray-900">Create your account</h2>
         <p class="mt-2 text-sm text-gray-600">
-          Or{' '}
-          <A href="/login" class="font-medium text-primary-600 hover:text-primary-500">
+          Or{" "}
+          <A
+            href="/login"
+            class="font-medium text-primary-600 hover:text-primary-500"
+          >
             sign in to your existing account
           </A>
         </p>
@@ -148,7 +151,13 @@ export const RegisterPage: Component = () => {
           type="submit"
           class="w-full"
           loading={loading()}
-          disabled={!name() || !email() || !password() || !confirmPassword() || !inviteCode()}
+          disabled={
+            !name() ||
+            !email() ||
+            !password() ||
+            !confirmPassword() ||
+            !inviteCode()
+          }
         >
           Create account
         </Button>

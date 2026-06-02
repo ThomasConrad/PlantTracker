@@ -1,16 +1,16 @@
-import { Component, createEffect, createSignal, For, Show } from 'solid-js';
-import { A } from '@solidjs/router';
-import { plantsStore } from '@/stores/plants';
-import { PlantCard } from '@/components/plants/PlantCard';
-import { NeedsAttention } from '@/components/plants/NeedsAttention';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { Component, createEffect, createSignal, For, Show } from "solid-js";
+import { A } from "@solidjs/router";
+import { plantsStore } from "@/stores/plants";
+import { PlantCard } from "@/components/plants/PlantCard";
+import { NeedsAttention } from "@/components/plants/NeedsAttention";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export const PlantsPage: Component = () => {
-  const [searchQuery] = createSignal('');
-  const [sortBy, setSortBy] = createSignal('date_desc');
+  const [searchQuery] = createSignal("");
+  const [sortBy, setSortBy] = createSignal("date_desc");
 
   createEffect(() => {
-    plantsStore.loadPlants({ 
+    plantsStore.loadPlants({
       search: searchQuery() || undefined,
       sort: sortBy(),
     });
@@ -19,16 +19,18 @@ export const PlantsPage: Component = () => {
   // Group plants by year when sorting by date
   const groupedPlants = () => {
     const plants = plantsStore.plants;
-    const isDateSort = sortBy().includes('date');
-    
+    const isDateSort = sortBy().includes("date");
+
     if (!isDateSort || plants.length === 0) {
       return [{ year: null, plants }];
     }
 
     const groups: { [key: string]: typeof plants } = {};
-    
-    plants.forEach(plant => {
-      const year = plant.createdAt ? new Date(plant.createdAt).getFullYear().toString() : 'Unknown';
+
+    plants.forEach((plant) => {
+      const year = plant.createdAt
+        ? new Date(plant.createdAt).getFullYear().toString()
+        : "Unknown";
       if (!groups[year]) {
         groups[year] = [];
       }
@@ -39,9 +41,9 @@ export const PlantsPage: Component = () => {
     const sortedGroups = Object.entries(groups)
       .map(([year, plants]) => ({ year, plants }))
       .sort((a, b) => {
-        if (a.year === 'Unknown') return 1;
-        if (b.year === 'Unknown') return -1;
-        return sortBy() === 'date_desc' 
+        if (a.year === "Unknown") return 1;
+        if (b.year === "Unknown") return -1;
+        return sortBy() === "date_desc"
           ? parseInt(b.year) - parseInt(a.year)
           : parseInt(a.year) - parseInt(b.year);
       });
@@ -55,7 +57,8 @@ export const PlantsPage: Component = () => {
       <div class="px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
         <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">
-            {plantsStore.plants.length} {plantsStore.plants.length === 1 ? 'plant' : 'plants'}
+            {plantsStore.plants.length}{" "}
+            {plantsStore.plants.length === 1 ? "plant" : "plants"}
           </h1>
           <label class="inline-flex items-center gap-2">
             <span class="text-sm font-medium text-gray-500">Sort</span>
@@ -110,15 +113,24 @@ export const PlantsPage: Component = () => {
               </div>
               <h3 class="empty-state-title">No plants yet</h3>
               <p class="empty-state-description">
-                {searchQuery() ? 'No plants match your search. Try a different term.' : 'Start your plant journey by adding your first green companion.'}
+                {searchQuery()
+                  ? "No plants match your search. Try a different term."
+                  : "Start your plant journey by adding your first green companion."}
               </p>
               {!searchQuery() && (
-                <A 
-                  href="/plants/new" 
-                  class="primary-action-button-compact"
-                >
-                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width={2}>
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                <A href="/plants/new" class="primary-action-button-compact">
+                  <svg
+                    class="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width={2}
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   Add Your First Plant
                 </A>
@@ -133,11 +145,13 @@ export const PlantsPage: Component = () => {
                   {/* Year Header (only show for date sorting) */}
                   <Show when={group.year !== null}>
                     <div class="mb-6">
-                      <h2 class="text-2xl font-bold text-gray-900 mb-1">{group.year}</h2>
+                      <h2 class="text-2xl font-bold text-gray-900 mb-1">
+                        {group.year}
+                      </h2>
                       <div class="h-1 w-12 bg-primary-600 rounded-full"></div>
                     </div>
                   </Show>
-                  
+
                   {/* Plants Grid */}
                   <div class="grid grid-cols-1 h-full sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     <For each={group.plants}>
@@ -154,8 +168,18 @@ export const PlantsPage: Component = () => {
       {plantsStore.error && (
         <div class="mx-6 mb-6 bg-red-50 border border-red-200 rounded-xl p-4">
           <div class="flex items-center gap-3">
-            <svg class="h-5 w-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              class="h-5 w-5 text-red-500 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <p class="text-sm text-red-700 font-medium">{plantsStore.error}</p>
           </div>

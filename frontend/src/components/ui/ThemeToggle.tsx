@@ -1,10 +1,10 @@
-import { Component, createSignal, Show } from 'solid-js';
-import { cn } from '@/utils/cn';
-import { useTheme } from '@/providers/ThemeProvider';
+import { Component, createSignal, Show } from "solid-js";
+import { cn } from "@/utils/cn";
+import { useTheme } from "@/providers/ThemeProvider";
 
 interface ThemeToggleProps {
-  size?: 'sm' | 'md' | 'lg';
-  variant?: 'button' | 'dropdown';
+  size?: "sm" | "md" | "lg";
+  variant?: "button" | "dropdown";
   class?: string;
 }
 
@@ -13,42 +13,53 @@ export const ThemeToggle: Component<ThemeToggleProps> = (props) => {
   const [showDropdown, setShowDropdown] = createSignal(false);
 
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-12 h-12',
+    sm: "w-8 h-8",
+    md: "w-10 h-10",
+    lg: "w-12 h-12",
   };
 
   const handleThemeToggle = () => {
-    if (props.variant === 'dropdown') {
+    if (props.variant === "dropdown") {
       setShowDropdown(!showDropdown());
       return;
     }
 
     // Simple toggle behavior for button variant
     const currentTheme = theme();
-    if (currentTheme === 'light') {
-      setTheme('dark');
-    } else if (currentTheme === 'dark') {
-      setTheme('system');
+    if (currentTheme === "light") {
+      setTheme("dark");
+    } else if (currentTheme === "dark") {
+      setTheme("system");
     } else {
-      setTheme('light');
+      setTheme("light");
     }
   };
 
-  const selectTheme = (newTheme: 'light' | 'dark' | 'system') => {
+  const selectTheme = (newTheme: "light" | "dark" | "system") => {
     setTheme(newTheme);
     setShowDropdown(false);
   };
 
   const getIcon = () => {
     const currentTheme = theme();
-    const size = props.size || 'md';
-    const iconSize = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-6 h-6' : 'w-5 h-5';
+    const size = props.size || "md";
+    const iconSize =
+      size === "sm" ? "w-4 h-4" : size === "lg" ? "w-6 h-6" : "w-5 h-5";
 
-    if (currentTheme === 'system') {
+    if (currentTheme === "system") {
       return (
-        <svg class={iconSize} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        <svg
+          class={iconSize}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
         </svg>
       );
     }
@@ -68,11 +79,14 @@ export const ThemeToggle: Component<ThemeToggleProps> = (props) => {
     );
   };
 
-  const getThemeLabel = (themeType: 'light' | 'dark' | 'system') => {
+  const getThemeLabel = (themeType: "light" | "dark" | "system") => {
     switch (themeType) {
-      case 'light': return 'Light';
-      case 'dark': return 'Dark';
-      case 'system': return 'System';
+      case "light":
+        return "Light";
+      case "dark":
+        return "Dark";
+      case "system":
+        return "System";
     }
   };
 
@@ -81,26 +95,28 @@ export const ThemeToggle: Component<ThemeToggleProps> = (props) => {
       <button
         onClick={handleThemeToggle}
         class={cn(
-          'flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700',
-          'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-          'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors',
-          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
-          sizeClasses[props.size || 'md'],
-          props.class
+          "flex items-center justify-center rounded-lg border border-gray-200 dark:border-gray-700",
+          "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300",
+          "hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors",
+          "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+          sizeClasses[props.size || "md"],
+          props.class,
         )}
         title={`Current theme: ${getThemeLabel(theme())}`}
       >
         {getIcon()}
       </button>
 
-      <Show when={props.variant === 'dropdown' && showDropdown()}>
+      <Show when={props.variant === "dropdown" && showDropdown()}>
         <div class="absolute right-0 mt-2 py-2 w-36 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
           <button
-            onClick={() => selectTheme('light')}
+            onClick={() => selectTheme("light")}
             class={cn(
-              'w-full px-4 py-2 text-left text-sm flex items-center space-x-2',
-              'hover:bg-gray-100 dark:hover:bg-gray-700',
-              theme() === 'light' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900' : 'text-gray-700 dark:text-gray-300'
+              "w-full px-4 py-2 text-left text-sm flex items-center space-x-2",
+              "hover:bg-gray-100 dark:hover:bg-gray-700",
+              theme() === "light"
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900"
+                : "text-gray-700 dark:text-gray-300",
             )}
           >
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -108,13 +124,15 @@ export const ThemeToggle: Component<ThemeToggleProps> = (props) => {
             </svg>
             <span>Light</span>
           </button>
-          
+
           <button
-            onClick={() => selectTheme('dark')}
+            onClick={() => selectTheme("dark")}
             class={cn(
-              'w-full px-4 py-2 text-left text-sm flex items-center space-x-2',
-              'hover:bg-gray-100 dark:hover:bg-gray-700',
-              theme() === 'dark' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900' : 'text-gray-700 dark:text-gray-300'
+              "w-full px-4 py-2 text-left text-sm flex items-center space-x-2",
+              "hover:bg-gray-100 dark:hover:bg-gray-700",
+              theme() === "dark"
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900"
+                : "text-gray-700 dark:text-gray-300",
             )}
           >
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -122,17 +140,29 @@ export const ThemeToggle: Component<ThemeToggleProps> = (props) => {
             </svg>
             <span>Dark</span>
           </button>
-          
+
           <button
-            onClick={() => selectTheme('system')}
+            onClick={() => selectTheme("system")}
             class={cn(
-              'w-full px-4 py-2 text-left text-sm flex items-center space-x-2',
-              'hover:bg-gray-100 dark:hover:bg-gray-700',
-              theme() === 'system' ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900' : 'text-gray-700 dark:text-gray-300'
+              "w-full px-4 py-2 text-left text-sm flex items-center space-x-2",
+              "hover:bg-gray-100 dark:hover:bg-gray-700",
+              theme() === "system"
+                ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900"
+                : "text-gray-700 dark:text-gray-300",
             )}
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
             </svg>
             <span>System</span>
           </button>
@@ -140,4 +170,4 @@ export const ThemeToggle: Component<ThemeToggleProps> = (props) => {
       </Show>
     </div>
   );
-}; 
+};

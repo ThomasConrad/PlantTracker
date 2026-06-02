@@ -3527,6 +3527,7 @@
           "role",
           "canCreateInvites",
           "invitesCreated",
+          "llmApiKeySet",
           "createdAt",
           "updatedAt"
         ],
@@ -3554,6 +3555,17 @@
           "invitesRemaining": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "llmApiKeySet": {
+            "type": "boolean"
+          },
+          "llmBaseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "llmModel": {
+            "type": "string",
             "nullable": true
           },
           "maxInvites": {

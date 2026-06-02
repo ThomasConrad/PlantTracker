@@ -16,8 +16,8 @@ impl AnthropicCoach {
     pub fn new() -> Result<Self> {
         let api_key = std::env::var("ANTHROPIC_API_KEY")
             .context("ANTHROPIC_API_KEY environment variable not set")?;
-        let model =
-            std::env::var("ANTHROPIC_MODEL").unwrap_or_else(|_| "claude-sonnet-4-20250514".to_string());
+        let model = std::env::var("ANTHROPIC_MODEL")
+            .unwrap_or_else(|_| "claude-sonnet-4-20250514".to_string());
         let client = Client::builder()
             .timeout(Duration::from_secs(60))
             .build()
@@ -175,8 +175,8 @@ impl PlantCoach for AnthropicCoach {
             .trim_end_matches("```")
             .trim();
 
-        let coach_response: CoachResponse =
-            serde_json::from_str(clean).context("Failed to parse coach response JSON from Anthropic")?;
+        let coach_response: CoachResponse = serde_json::from_str(clean)
+            .context("Failed to parse coach response JSON from Anthropic")?;
 
         Ok(coach_response)
     }

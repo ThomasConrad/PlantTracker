@@ -1,18 +1,24 @@
-import { Component, createSignal } from 'solid-js';
-import { A, useLocation } from '@solidjs/router';
-import { SettingsMenu } from './SettingsMenu';
-import { NavIcon } from '@/components/ui/NavIcon';
+import { Component, createSignal } from "solid-js";
+import { A, useLocation } from "@solidjs/router";
+import { SettingsMenu } from "./SettingsMenu";
+import { NavIcon } from "@/components/ui/NavIcon";
 
 export const BottomNavigation: Component = () => {
   const location = useLocation();
   const [showSettings, setShowSettings] = createSignal(false);
-  
+
   const isActive = (path: string) => {
-    if (path === '/plants' && (location.pathname === '/plants' || location.pathname === '/')) {
+    if (
+      path === "/plants" &&
+      (location.pathname === "/plants" || location.pathname === "/")
+    ) {
       return true;
     }
     // Special case: Don't highlight calendar tab when on calendar settings page
-    if (path === '/calendar' && location.pathname.startsWith('/calendar/settings')) {
+    if (
+      path === "/calendar" &&
+      location.pathname.startsWith("/calendar/settings")
+    ) {
       return false;
     }
     return location.pathname.startsWith(path);
@@ -20,51 +26,51 @@ export const BottomNavigation: Component = () => {
 
   const navItems = [
     {
-      path: '/plants',
+      path: "/plants",
       icon: (active: boolean) => (
         <NavIcon isActive={active}>
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width={active ? 2.5 : 2} 
-            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" 
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={active ? 2.5 : 2}
+            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
           />
         </NavIcon>
-      )
+      ),
     },
     {
-      path: '/calendar',
+      path: "/calendar",
       icon: (active: boolean) => (
         <NavIcon isActive={active}>
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width={active ? 2.5 : 2} 
-            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={active ? 2.5 : 2}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
           />
         </NavIcon>
-      )
+      ),
     },
     {
-      path: '/search',
+      path: "/search",
       icon: (active: boolean) => (
         <NavIcon isActive={active}>
-          <path 
-            stroke-linecap="round" 
-            stroke-linejoin="round" 
-            stroke-width={2} 
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
           />
         </NavIcon>
-      )
+      ),
     },
   ];
 
   const settingsActive =
     showSettings() ||
-    location.pathname.startsWith('/calendar/settings') ||
-    location.pathname.startsWith('/settings') ||
-    location.pathname.startsWith('/reminders');
+    location.pathname.startsWith("/calendar/settings") ||
+    location.pathname.startsWith("/settings") ||
+    location.pathname.startsWith("/reminders");
 
   return (
     <nav class="bottom-nav">
@@ -77,9 +83,23 @@ export const BottomNavigation: Component = () => {
         </A>
 
         <div class="bottom-nav-center-slot">
-          <A href="/plants/new" class="bottom-nav-add-button" aria-label="Add plant">
-            <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2.5} d="M12 5v14m7-7H5" />
+          <A
+            href="/plants/new"
+            class="bottom-nav-add-button"
+            aria-label="Add plant"
+          >
+            <svg
+              class="h-6 w-6 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2.5}
+                d="M12 5v14m7-7H5"
+              />
             </svg>
           </A>
         </div>
@@ -88,7 +108,10 @@ export const BottomNavigation: Component = () => {
           {navItems[2].icon(isActive(navItems[2].path))}
         </A>
 
-        <button class="bottom-nav-item" onClick={() => setShowSettings(!showSettings())}>
+        <button
+          class="bottom-nav-item"
+          onClick={() => setShowSettings(!showSettings())}
+        >
           <NavIcon isActive={settingsActive}>
             <path
               stroke-linecap="round"
@@ -100,7 +123,10 @@ export const BottomNavigation: Component = () => {
         </button>
       </div>
 
-      <SettingsMenu isOpen={showSettings()} onClose={() => setShowSettings(false)} />
+      <SettingsMenu
+        isOpen={showSettings()}
+        onClose={() => setShowSettings(false)}
+      />
     </nav>
   );
 };

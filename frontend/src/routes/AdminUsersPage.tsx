@@ -1,6 +1,6 @@
-import { Component, createSignal, onMount, Show, For } from 'solid-js';
-import { A } from '@solidjs/router';
-import { authStore } from '@/stores/auth';
+import { Component, createSignal, onMount, Show, For } from "solid-js";
+import { A } from "@solidjs/router";
+import { authStore } from "@/stores/auth";
 
 interface User {
   id: string;
@@ -23,41 +23,42 @@ interface UserListResponse {
   total_pages: number;
 }
 
-type Role = 'admin' | 'moderator' | 'user';
+type Role = "admin" | "moderator" | "user";
 
 export const AdminUsersPage: Component = () => {
   const [data, setData] = createSignal<UserListResponse | null>(null);
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
   const [currentPage, setCurrentPage] = createSignal(1);
-  const [roleFilter, setRoleFilter] = createSignal('');
+  const [roleFilter, setRoleFilter] = createSignal("");
 
   const [editingUser, setEditingUser] = createSignal<User | null>(null);
-  const [editingRole, setEditingRole] = createSignal<Role>('user');
-  const [editingCanCreateInvites, setEditingCanCreateInvites] = createSignal(false);
-  const [editingMaxInvites, setEditingMaxInvites] = createSignal('5');
+  const [editingRole, setEditingRole] = createSignal<Role>("user");
+  const [editingCanCreateInvites, setEditingCanCreateInvites] =
+    createSignal(false);
+  const [editingMaxInvites, setEditingMaxInvites] = createSignal("5");
   const [savingUser, setSavingUser] = createSignal(false);
   const [deletingUserId, setDeletingUserId] = createSignal<string | null>(null);
   const [selectedUserIds, setSelectedUserIds] = createSignal<string[]>([]);
-  const [bulkRole, setBulkRole] = createSignal<Role>('user');
+  const [bulkRole, setBulkRole] = createSignal<Role>("user");
   const [bulkWorking, setBulkWorking] = createSignal(false);
 
-  const loadUsers = async (page = 1, role = '') => {
+  const loadUsers = async (page = 1, role = "") => {
     try {
       setLoading(true);
       setError(null);
 
       const params = new URLSearchParams();
-      params.set('page', page.toString());
-      params.set('limit', '20');
-      if (role) params.set('role', role);
+      params.set("page", page.toString());
+      params.set("limit", "20");
+      if (role) params.set("role", role);
 
       const response = await fetch(`/api/v1/admin/users?${params}`, {
-        credentials: 'include',
+        credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load users');
+        throw new Error("Failed to load users");
       }
 
       const userData = await response.json();
@@ -65,8 +66,8 @@ export const AdminUsersPage: Component = () => {
       setCurrentPage(page);
       setSelectedUserIds([]);
     } catch (err) {
-      console.error('Error loading users:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load users');
+      console.error("Error loading users:", err);
+      setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
       setLoading(false);
     }
@@ -95,7 +96,10 @@ export const AdminUsersPage: Component = () => {
     const ids = selectedUserIds();
     if (ids.length === 0) return;
 
-    if (label === 'Delete' && !confirm(`Delete ${ids.length} selected users? This cannot be undone.`)) {
+    if (
+      label === "Delete" &&
+      !confirm(`Delete ${ids.length} selected users? This cannot be undone.`)
+    ) {
       return;
     }
 
@@ -103,10 +107,10 @@ export const AdminUsersPage: Component = () => {
       setBulkWorking(true);
       setError(null);
 
-      const response = await fetch('/api/v1/admin/users/bulk', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/v1/admin/users/bulk", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_ids: ids,
           action,
@@ -121,7 +125,9 @@ export const AdminUsersPage: Component = () => {
       await loadUsers(currentPage(), roleFilter());
     } catch (err) {
       console.error(`Bulk action failed (${label}):`, err);
-      setError(err instanceof Error ? err.message : `Failed bulk action: ${label}`);
+      setError(
+        err instanceof Error ? err.message : `Failed bulk action: ${label}`,
+      );
     } finally {
       setBulkWorking(false);
     }
@@ -129,9 +135,11 @@ export const AdminUsersPage: Component = () => {
 
   const openEditModal = (user: User) => {
     setEditingUser(user);
-    setEditingRole((user.role.toLowerCase() as Role) || 'user');
+    setEditingRole((user.role.toLowerCase() as Role) || "user");
     setEditingCanCreateInvites(user.can_create_invites);
-    setEditingMaxInvites(user.max_invites === null ? '5' : String(user.max_invites));
+    setEditingMaxInvites(
+      user.max_invites === null ? "5" : String(user.max_invites),
+    );
   };
 
   const handleSaveUser = async () => {
@@ -142,12 +150,15 @@ export const AdminUsersPage: Component = () => {
       setSavingUser(true);
       setError(null);
 
-      const maxInvites = Math.max(0, Number.parseInt(editingMaxInvites() || '0', 10));
+      const maxInvites = Math.max(
+        0,
+        Number.parseInt(editingMaxInvites() || "0", 10),
+      );
 
       const response = await fetch(`/api/v1/admin/users/${user.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           role: editingRole(),
           can_create_invites: editingCanCreateInvites(),
@@ -157,21 +168,23 @@ export const AdminUsersPage: Component = () => {
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.message || 'Failed to update user');
+        throw new Error(body.message || "Failed to update user");
       }
 
       setEditingUser(null);
       await loadUsers(currentPage(), roleFilter());
     } catch (err) {
-      console.error('Error updating user:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update user');
+      console.error("Error updating user:", err);
+      setError(err instanceof Error ? err.message : "Failed to update user");
     } finally {
       setSavingUser(false);
     }
   };
 
   const handleDeleteUser = async (user: User) => {
-    const confirmed = confirm(`Delete user "${user.name}" (${user.email})? This cannot be undone.`);
+    const confirmed = confirm(
+      `Delete user "${user.name}" (${user.email})? This cannot be undone.`,
+    );
     if (!confirmed) return;
 
     try {
@@ -179,19 +192,19 @@ export const AdminUsersPage: Component = () => {
       setError(null);
 
       const response = await fetch(`/api/v1/admin/users/${user.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
+        method: "DELETE",
+        credentials: "include",
       });
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body.message || 'Failed to delete user');
+        throw new Error(body.message || "Failed to delete user");
       }
 
       await loadUsers(currentPage(), roleFilter());
     } catch (err) {
-      console.error('Error deleting user:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete user');
+      console.error("Error deleting user:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete user");
     } finally {
       setDeletingUserId(null);
     }
@@ -208,12 +221,12 @@ export const AdminUsersPage: Component = () => {
 
   const getRoleBadgeClass = (role: string) => {
     switch (role.toLowerCase()) {
-      case 'admin':
-        return 'bg-red-100 text-red-800';
-      case 'moderator':
-        return 'bg-yellow-100 text-yellow-800';
+      case "admin":
+        return "bg-red-100 text-red-800";
+      case "moderator":
+        return "bg-yellow-100 text-yellow-800";
       default:
-        return 'bg-gray-100 text-gray-800';
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -227,7 +240,9 @@ export const AdminUsersPage: Component = () => {
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-3xl font-bold text-gray-900">User Management</h1>
-            <p class="mt-2 text-gray-600">Manage user accounts, roles, and permissions</p>
+            <p class="mt-2 text-gray-600">
+              Manage user accounts, roles, and permissions
+            </p>
           </div>
           <A
             href="/admin/dashboard"
@@ -242,7 +257,10 @@ export const AdminUsersPage: Component = () => {
         <div class="bg-white shadow rounded-lg p-4">
           <div class="flex items-center space-x-4">
             <div>
-              <label for="role-filter" class="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                for="role-filter"
+                class="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Filter by Role
               </label>
               <select
@@ -294,7 +312,9 @@ export const AdminUsersPage: Component = () => {
         <div class="bg-white shadow overflow-hidden sm:rounded-md">
           <div class="px-4 py-5 sm:p-6">
             <div class="mb-4 flex items-center justify-between">
-              <h2 class="text-lg font-medium text-gray-900">Users ({data()?.total || 0})</h2>
+              <h2 class="text-lg font-medium text-gray-900">
+                Users ({data()?.total || 0})
+              </h2>
               <div class="text-sm text-gray-500">
                 Page {data()?.page || 1} of {data()?.total_pages || 1}
               </div>
@@ -305,22 +325,31 @@ export const AdminUsersPage: Component = () => {
                 <input
                   type="checkbox"
                   checked={
-                    (data()?.users || []).filter((u) => !isCurrentUser(u.id)).length > 0 &&
-                    selectedUserIds().length === (data()?.users || []).filter((u) => !isCurrentUser(u.id)).length
+                    (data()?.users || []).filter((u) => !isCurrentUser(u.id))
+                      .length > 0 &&
+                    selectedUserIds().length ===
+                      (data()?.users || []).filter((u) => !isCurrentUser(u.id))
+                        .length
                   }
-                  onChange={(e) => toggleSelectAllVisible(e.currentTarget.checked)}
+                  onChange={(e) =>
+                    toggleSelectAllVisible(e.currentTarget.checked)
+                  }
                 />
                 Select visible
               </label>
 
-              <span class="text-sm text-gray-600 ml-2">{selectedUserIds().length} selected</span>
+              <span class="text-sm text-gray-600 ml-2">
+                {selectedUserIds().length} selected
+              </span>
 
               <div class="flex-1"></div>
 
               <button
                 class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                 disabled={selectedUserIds().length === 0 || bulkWorking()}
-                onClick={() => handleBulkAction('enable_invites', 'Enable invites')}
+                onClick={() =>
+                  handleBulkAction("enable_invites", "Enable invites")
+                }
               >
                 Enable Invites
               </button>
@@ -328,7 +357,9 @@ export const AdminUsersPage: Component = () => {
               <button
                 class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 disabled:opacity-50"
                 disabled={selectedUserIds().length === 0 || bulkWorking()}
-                onClick={() => handleBulkAction('disable_invites', 'Disable invites')}
+                onClick={() =>
+                  handleBulkAction("disable_invites", "Disable invites")
+                }
               >
                 Disable Invites
               </button>
@@ -346,7 +377,9 @@ export const AdminUsersPage: Component = () => {
               <button
                 class="px-3 py-1.5 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                 disabled={selectedUserIds().length === 0 || bulkWorking()}
-                onClick={() => handleBulkAction({ set_role: bulkRole() }, 'Set role')}
+                onClick={() =>
+                  handleBulkAction({ set_role: bulkRole() }, "Set role")
+                }
               >
                 Set Role
               </button>
@@ -354,7 +387,7 @@ export const AdminUsersPage: Component = () => {
               <button
                 class="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                 disabled={selectedUserIds().length === 0 || bulkWorking()}
-                onClick={() => handleBulkAction('delete', 'Delete')}
+                onClick={() => handleBulkAction("delete", "Delete")}
               >
                 Delete
               </button>
@@ -393,15 +426,26 @@ export const AdminUsersPage: Component = () => {
                             type="checkbox"
                             disabled={isCurrentUser(user.id)}
                             checked={selectedUserIds().includes(user.id)}
-                            onChange={(e) => toggleUserSelection(user.id, e.currentTarget.checked)}
+                            onChange={(e) =>
+                              toggleUserSelection(
+                                user.id,
+                                e.currentTarget.checked,
+                              )
+                            }
                           />
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div class="text-sm font-medium text-gray-900">{user.name}</div>
-                            <div class="text-sm text-gray-500">{user.email}</div>
+                            <div class="text-sm font-medium text-gray-900">
+                              {user.name}
+                            </div>
+                            <div class="text-sm text-gray-500">
+                              {user.email}
+                            </div>
                             <Show when={isCurrentUser(user.id)}>
-                              <div class="text-xs text-blue-600">Current user</div>
+                              <div class="text-xs text-blue-600">
+                                Current user
+                              </div>
                             </Show>
                           </div>
                         </td>
@@ -413,16 +457,21 @@ export const AdminUsersPage: Component = () => {
                           </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <Show when={user.can_create_invites} fallback={<span class="text-gray-400">None</span>}>
+                          <Show
+                            when={user.can_create_invites}
+                            fallback={<span class="text-gray-400">None</span>}
+                          >
                             <div>
                               <div>Can create invites</div>
                               <div class="text-xs text-gray-500">
-                                {(user.invites_remaining ?? 0)} remaining
+                                {user.invites_remaining ?? 0} remaining
                               </div>
                             </div>
                           </Show>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(user.created_at)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(user.created_at)}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                           <button
                             class="text-green-700 hover:text-green-900"
@@ -435,7 +484,9 @@ export const AdminUsersPage: Component = () => {
                             disabled={deletingUserId() === user.id}
                             onClick={() => handleDeleteUser(user)}
                           >
-                            {deletingUserId() === user.id ? 'Deleting...' : 'Delete'}
+                            {deletingUserId() === user.id
+                              ? "Deleting..."
+                              : "Delete"}
                           </button>
                         </td>
                       </tr>
@@ -448,7 +499,9 @@ export const AdminUsersPage: Component = () => {
             <Show when={(data()?.total_pages || 0) > 1}>
               <div class="mt-6 flex items-center justify-between">
                 <button
-                  onClick={() => loadUsers(Math.max(1, currentPage() - 1), roleFilter())}
+                  onClick={() =>
+                    loadUsers(Math.max(1, currentPage() - 1), roleFilter())
+                  }
                   disabled={currentPage() <= 1}
                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -458,7 +511,12 @@ export const AdminUsersPage: Component = () => {
                   Page {currentPage()} of {data()?.total_pages || 1}
                 </span>
                 <button
-                  onClick={() => loadUsers(Math.min(data()?.total_pages || 1, currentPage() + 1), roleFilter())}
+                  onClick={() =>
+                    loadUsers(
+                      Math.min(data()?.total_pages || 1, currentPage() + 1),
+                      roleFilter(),
+                    )
+                  }
                   disabled={currentPage() >= (data()?.total_pages || 1)}
                   class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -475,15 +533,21 @@ export const AdminUsersPage: Component = () => {
           <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
             <div class="px-6 py-4 border-b">
               <h3 class="text-lg font-semibold text-gray-900">Edit User</h3>
-              <p class="text-sm text-gray-600">{editingUser()?.name} ({editingUser()?.email})</p>
+              <p class="text-sm text-gray-600">
+                {editingUser()?.name} ({editingUser()?.email})
+              </p>
             </div>
 
             <div class="px-6 py-4 space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Role
+                </label>
                 <select
                   value={editingRole()}
-                  onChange={(e) => setEditingRole(e.currentTarget.value as Role)}
+                  onChange={(e) =>
+                    setEditingRole(e.currentTarget.value as Role)
+                  }
                   class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 >
                   <option value="user">User</option>
@@ -496,13 +560,17 @@ export const AdminUsersPage: Component = () => {
                 <input
                   type="checkbox"
                   checked={editingCanCreateInvites()}
-                  onChange={(e) => setEditingCanCreateInvites(e.currentTarget.checked)}
+                  onChange={(e) =>
+                    setEditingCanCreateInvites(e.currentTarget.checked)
+                  }
                 />
                 Can create invites
               </label>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Invite limit</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Invite limit
+                </label>
                 <input
                   type="number"
                   min="0"
@@ -527,7 +595,7 @@ export const AdminUsersPage: Component = () => {
                 onClick={handleSaveUser}
                 class="px-4 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               >
-                {savingUser() ? 'Saving...' : 'Save Changes'}
+                {savingUser() ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>

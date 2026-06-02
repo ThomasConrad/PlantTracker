@@ -1,7 +1,7 @@
-import { Component, createSignal, onMount, Show } from 'solid-js';
-import { apiClient } from '@/api/client';
-import { authStore } from '@/stores/auth';
-import { Select } from '@/components/ui';
+import { Component, createSignal, onMount, Show } from "solid-js";
+import { apiClient } from "@/api/client";
+import { authStore } from "@/stores/auth";
+import { Select } from "@/components/ui";
 
 export const UserSettingsPage: Component = () => {
   const [profileSaving, setProfileSaving] = createSignal(false);
@@ -13,33 +13,39 @@ export const UserSettingsPage: Component = () => {
   const [success, setSuccess] = createSignal<string | null>(null);
   const [error, setError] = createSignal<string | null>(null);
 
-  const [name, setName] = createSignal('');
-  const [email, setEmail] = createSignal('');
-  const [firstDayOfWeek, setFirstDayOfWeek] = createSignal<'sunday' | 'monday'>('sunday');
-  const [preferredUnits, setPreferredUnits] = createSignal<'metric' | 'imperial'>('metric');
-  const [currentPassword, setCurrentPassword] = createSignal('');
-  const [newPassword, setNewPassword] = createSignal('');
-  const [confirmPassword, setConfirmPassword] = createSignal('');
-  const [deletePassword, setDeletePassword] = createSignal('');
+  const [name, setName] = createSignal("");
+  const [email, setEmail] = createSignal("");
+  const [firstDayOfWeek, setFirstDayOfWeek] = createSignal<"sunday" | "monday">(
+    "monday",
+  );
+  const [preferredUnits, setPreferredUnits] = createSignal<
+    "metric" | "imperial"
+  >("metric");
+  const [currentPassword, setCurrentPassword] = createSignal("");
+  const [newPassword, setNewPassword] = createSignal("");
+  const [confirmPassword, setConfirmPassword] = createSignal("");
+  const [deletePassword, setDeletePassword] = createSignal("");
   const [avatarLoadError, setAvatarLoadError] = createSignal(false);
-  const [pictureVersion, setPictureVersion] = createSignal<string>(Date.now().toString());
+  const [pictureVersion, setPictureVersion] = createSignal<string>(
+    Date.now().toString(),
+  );
 
   // LLM settings
   const [llmSaving, setLlmSaving] = createSignal(false);
-  const [llmBaseUrl, setLlmBaseUrl] = createSignal('');
-  const [llmApiKey, setLlmApiKey] = createSignal('');
+  const [llmBaseUrl, setLlmBaseUrl] = createSignal("");
+  const [llmApiKey, setLlmApiKey] = createSignal("");
   const [llmApiKeySet, setLlmApiKeySet] = createSignal(false);
-  const [llmModel, setLlmModel] = createSignal('');
+  const [llmModel, setLlmModel] = createSignal("");
 
   onMount(() => {
     if (authStore.user) {
-      setName(authStore.user.name || '');
-      setEmail(authStore.user.email || '');
-      setFirstDayOfWeek(authStore.user.firstDayOfWeek || 'sunday');
-      setPreferredUnits(authStore.user.preferredUnits || 'metric');
-      setLlmBaseUrl((authStore.user as any).llmBaseUrl || '');
-      setLlmApiKeySet((authStore.user as any).llmApiKeySet || false);
-      setLlmModel((authStore.user as any).llmModel || '');
+      setName(authStore.user.name || "");
+      setEmail(authStore.user.email || "");
+      setFirstDayOfWeek(authStore.user.firstDayOfWeek || "monday");
+      setPreferredUnits(authStore.user.preferredUnits || "metric");
+      setLlmBaseUrl(authStore.user.llmBaseUrl || "");
+      setLlmApiKeySet(authStore.user.llmApiKeySet || false);
+      setLlmModel(authStore.user.llmModel || "");
     }
   });
 
@@ -62,12 +68,14 @@ export const UserSettingsPage: Component = () => {
       await authStore.initializeAuth();
       setPictureVersion(Date.now().toString());
       setAvatarLoadError(false);
-      showSuccess('Profile picture updated.');
+      showSuccess("Profile picture updated.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload profile picture');
+      setError(
+        err instanceof Error ? err.message : "Failed to upload profile picture",
+      );
     } finally {
       setPictureSaving(false);
-      input.value = '';
+      input.value = "";
     }
   };
 
@@ -79,9 +87,11 @@ export const UserSettingsPage: Component = () => {
       await authStore.initializeAuth();
       setPictureVersion(Date.now().toString());
       setAvatarLoadError(true);
-      showSuccess('Profile picture removed.');
+      showSuccess("Profile picture removed.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove profile picture');
+      setError(
+        err instanceof Error ? err.message : "Failed to remove profile picture",
+      );
     } finally {
       setPictureSaving(false);
     }
@@ -100,9 +110,9 @@ export const UserSettingsPage: Component = () => {
         preferred_units: preferredUnits(),
       });
       await authStore.initializeAuth();
-      showSuccess('Profile updated successfully.');
+      showSuccess("Profile updated successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      setError(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
       setProfileSaving(false);
     }
@@ -113,7 +123,7 @@ export const UserSettingsPage: Component = () => {
     setError(null);
 
     if (newPassword() !== confirmPassword()) {
-      setError('New passwords do not match');
+      setError("New passwords do not match");
       return;
     }
 
@@ -124,12 +134,14 @@ export const UserSettingsPage: Component = () => {
         new_password: newPassword(),
       });
 
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      showSuccess('Password changed successfully.');
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      showSuccess("Password changed successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to change password');
+      setError(
+        err instanceof Error ? err.message : "Failed to change password",
+      );
     } finally {
       setPasswordSaving(false);
     }
@@ -147,11 +159,13 @@ export const UserSettingsPage: Component = () => {
         model: llmModel().trim() || null,
       });
       await authStore.initializeAuth();
-      setLlmApiKey(''); // Clear from memory after save
-      setLlmApiKeySet(!!(llmBaseUrl().trim()));
-      showSuccess('AI coach settings saved.');
+      setLlmApiKey(""); // Clear from memory after save
+      setLlmApiKeySet(!!llmBaseUrl().trim());
+      showSuccess("AI coach settings saved.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save AI settings');
+      setError(
+        err instanceof Error ? err.message : "Failed to save AI settings",
+      );
     } finally {
       setLlmSaving(false);
     }
@@ -163,16 +177,18 @@ export const UserSettingsPage: Component = () => {
     try {
       setExportLoading(true);
       const payload = await apiClient.exportUserData();
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `planty-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      showSuccess('Data export downloaded.');
+      showSuccess("Data export downloaded.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export data');
+      setError(err instanceof Error ? err.message : "Failed to export data");
     } finally {
       setExportLoading(false);
     }
@@ -182,12 +198,12 @@ export const UserSettingsPage: Component = () => {
     setError(null);
 
     if (!deletePassword()) {
-      setError('Enter your current password to delete your account');
+      setError("Enter your current password to delete your account");
       return;
     }
 
     const confirmed = confirm(
-      'Delete your account permanently? This removes all plants, photos, and tracking data.'
+      "Delete your account permanently? This removes all plants, photos, and tracking data.",
     );
     if (!confirmed) return;
 
@@ -195,9 +211,9 @@ export const UserSettingsPage: Component = () => {
       setDeleteLoading(true);
       await apiClient.deleteAccount({ current_password: deletePassword() });
       await authStore.logout();
-      window.location.href = '/';
+      window.location.href = "/";
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete account');
+      setError(err instanceof Error ? err.message : "Failed to delete account");
     } finally {
       setDeleteLoading(false);
     }
@@ -207,30 +223,40 @@ export const UserSettingsPage: Component = () => {
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <div>
         <h1 class="text-3xl font-bold text-gray-900">Account Settings</h1>
-        <p class="mt-2 text-gray-600">Manage your profile, password, and data privacy options.</p>
+        <p class="mt-2 text-gray-600">
+          Manage your profile, password, and data privacy options.
+        </p>
       </div>
 
       <Show when={success()}>
-        <div class="bg-green-50 border border-green-200 rounded-md p-4 text-sm text-green-800">{success()}</div>
+        <div class="bg-green-50 border border-green-200 rounded-md p-4 text-sm text-green-800">
+          {success()}
+        </div>
       </Show>
 
       <Show when={error()}>
-        <div class="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800">{error()}</div>
+        <div class="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800">
+          {error()}
+        </div>
       </Show>
 
       <form onSubmit={handleProfileSave} class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 sm:p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-6">Profile Information</h2>
+          <h2 class="text-lg font-medium text-gray-900 mb-6">
+            Profile Information
+          </h2>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Profile Picture</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                Profile Picture
+              </label>
               <div class="flex items-center gap-4">
                 <div class="h-16 w-16 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
                   <Show
                     when={!avatarLoadError()}
                     fallback={
                       <span class="text-lg font-semibold text-gray-700">
-                        {authStore.user?.name?.[0]?.toUpperCase() || 'U'}
+                        {authStore.user?.name?.[0]?.toUpperCase() || "U"}
                       </span>
                     }
                   >
@@ -245,7 +271,7 @@ export const UserSettingsPage: Component = () => {
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <label class="inline-flex cursor-pointer justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">
-                    {pictureSaving() ? 'Uploading...' : 'Upload'}
+                    {pictureSaving() ? "Uploading..." : "Upload"}
                     <input
                       type="file"
                       class="hidden"
@@ -266,7 +292,12 @@ export const UserSettingsPage: Component = () => {
               </div>
             </div>
             <div>
-              <label for="name" class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+              <label
+                for="name"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Full Name
+              </label>
               <input
                 id="name"
                 type="text"
@@ -277,7 +308,12 @@ export const UserSettingsPage: Component = () => {
               />
             </div>
             <div>
-              <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+              <label
+                for="email"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Email Address
+              </label>
               <input
                 id="email"
                 type="email"
@@ -292,10 +328,12 @@ export const UserSettingsPage: Component = () => {
                 id="first-day-of-week"
                 label="First Day of Week"
                 value={firstDayOfWeek()}
-                onValueChange={(value) => setFirstDayOfWeek(value as 'sunday' | 'monday')}
+                onValueChange={(value) =>
+                  setFirstDayOfWeek(value as "sunday" | "monday")
+                }
                 options={[
-                  { value: 'sunday', label: 'Sunday' },
-                  { value: 'monday', label: 'Monday' },
+                  { value: "sunday", label: "Sunday" },
+                  { value: "monday", label: "Monday" },
                 ]}
               />
             </div>
@@ -304,10 +342,12 @@ export const UserSettingsPage: Component = () => {
                 id="preferred-units"
                 label="Preferred Units"
                 value={preferredUnits()}
-                onValueChange={(value) => setPreferredUnits(value as 'metric' | 'imperial')}
+                onValueChange={(value) =>
+                  setPreferredUnits(value as "metric" | "imperial")
+                }
                 options={[
-                  { value: 'metric', label: 'Metric (cm, ml, g)' },
-                  { value: 'imperial', label: 'Imperial (in, fl oz, oz)' },
+                  { value: "metric", label: "Metric (cm, ml, g)" },
+                  { value: "imperial", label: "Imperial (in, fl oz, oz)" },
                 ]}
               />
             </div>
@@ -319,14 +359,16 @@ export const UserSettingsPage: Component = () => {
             disabled={profileSaving()}
             class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
           >
-            {profileSaving() ? 'Saving...' : 'Save Profile'}
+            {profileSaving() ? "Saving..." : "Save Profile"}
           </button>
         </div>
       </form>
 
       <form onSubmit={handlePasswordChange} class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 sm:p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-6">Change Password</h2>
+          <h2 class="text-lg font-medium text-gray-900 mb-6">
+            Change Password
+          </h2>
           <div class="space-y-4">
             <input
               type="password"
@@ -362,20 +404,31 @@ export const UserSettingsPage: Component = () => {
             disabled={passwordSaving()}
             class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
           >
-            {passwordSaving() ? 'Updating...' : 'Change Password'}
+            {passwordSaving() ? "Updating..." : "Change Password"}
           </button>
         </div>
       </form>
 
-      <form onSubmit={handleLlmSettingsSave} class="bg-white dark:bg-gray-800 shadow rounded-lg">
+      <form
+        onSubmit={handleLlmSettingsSave}
+        class="bg-white dark:bg-gray-800 shadow rounded-lg"
+      >
         <div class="px-4 py-5 sm:p-6">
-          <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">AI Coach</h2>
+          <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            AI Coach
+          </h2>
           <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            Connect any OpenAI-compatible API. Works with OpenAI, OpenRouter, Ollama, LiteLLM, and more.
+            Connect any OpenAI-compatible API. Works with OpenAI, OpenRouter,
+            Ollama, LiteLLM, and more.
           </p>
           <div class="space-y-4">
             <div>
-              <label for="llm-base-url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Base URL</label>
+              <label
+                for="llm-base-url"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                API Base URL
+              </label>
               <input
                 id="llm-base-url"
                 type="url"
@@ -385,25 +438,39 @@ export const UserSettingsPage: Component = () => {
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
               />
               <p class="mt-1 text-xs text-gray-400">
-                OpenAI: https://api.openai.com/v1 &middot; OpenRouter: https://openrouter.ai/api/v1 &middot; Ollama: http://localhost:11434/v1
+                OpenAI: https://api.openai.com/v1 &middot; OpenRouter:
+                https://openrouter.ai/api/v1 &middot; Ollama:
+                http://localhost:11434/v1
               </p>
             </div>
             <div>
-              <label for="llm-api-key" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key</label>
+              <label
+                for="llm-api-key"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                API Key
+              </label>
               <input
                 id="llm-api-key"
                 type="password"
                 value={llmApiKey()}
                 onInput={(e) => setLlmApiKey(e.currentTarget.value)}
-                placeholder={llmApiKeySet() ? '••••••••••••••••' : 'sk-...'}
+                placeholder={llmApiKeySet() ? "••••••••••••••••" : "sk-..."}
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
               />
               <Show when={llmApiKeySet()}>
-                <p class="mt-1 text-xs text-green-600 dark:text-green-400">Key is saved. Leave blank to keep current key.</p>
+                <p class="mt-1 text-xs text-green-600 dark:text-green-400">
+                  Key is saved. Leave blank to keep current key.
+                </p>
               </Show>
             </div>
             <div>
-              <label for="llm-model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model</label>
+              <label
+                for="llm-model"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Model
+              </label>
               <input
                 id="llm-model"
                 type="text"
@@ -424,7 +491,7 @@ export const UserSettingsPage: Component = () => {
             disabled={llmSaving()}
             class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
           >
-            {llmSaving() ? 'Saving...' : 'Save AI Settings'}
+            {llmSaving() ? "Saving..." : "Save AI Settings"}
           </button>
         </div>
       </form>
@@ -439,11 +506,13 @@ export const UserSettingsPage: Component = () => {
             disabled={exportLoading()}
             class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
           >
-            {exportLoading() ? 'Exporting...' : 'Export My Data'}
+            {exportLoading() ? "Exporting..." : "Export My Data"}
           </button>
 
           <div class="border-t pt-4">
-            <p class="text-sm text-gray-600 mb-3">Delete account permanently (requires your current password).</p>
+            <p class="text-sm text-gray-600 mb-3">
+              Delete account permanently (requires your current password).
+            </p>
             <input
               type="password"
               placeholder="Current password"
@@ -458,7 +527,7 @@ export const UserSettingsPage: Component = () => {
                 disabled={deleteLoading()}
                 class="inline-flex justify-center py-2 px-4 text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
               >
-                {deleteLoading() ? 'Deleting...' : 'Delete Account'}
+                {deleteLoading() ? "Deleting..." : "Delete Account"}
               </button>
             </div>
           </div>

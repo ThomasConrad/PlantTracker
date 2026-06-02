@@ -80,15 +80,15 @@ CT=$(curl -sf -I "http://localhost:$PORT/" | grep -i "content-type")
 assert "GET / returns text/html" "$CT" "text/html"
 
 # Test 4: API returns 401 for unauthenticated requests
-AUTH_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://localhost:$PORT/api/auth/me")
+AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/api/v1/auth/me")
 assert "GET /api/auth/me returns 401" "$AUTH_STATUS" "401"
 
 # Test 5: Registration with admin invite works
 # First get the admin invite from logs
-INVITE=$(docker logs "$CONTAINER_NAME" 2>&1 | grep -oP 'ADMIN-[A-Z0-9]+' | head -1 || echo "")
+INVITE=$(docker logs "$CONTAINER_NAME" 2>&1 | grep -o 'ADMIN-[A-Z0-9]*' | head -1 || echo "")
 if [ -n "$INVITE" ]; then
-    REG_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" \
-        -X POST "http://localhost:$PORT/api/auth/register" \
+    REG_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST "http://localhost:$PORT/api/v1/auth/register" \
         -H "Content-Type: application/json" \
         -d "{\"name\":\"Test User\",\"email\":\"test@planty.local\",\"password\":\"testpass123\",\"invite_code\":\"$INVITE\"}")
     assert "POST /api/auth/register with admin invite" "$REG_STATUS" "200\|201"

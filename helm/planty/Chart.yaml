@@ -1,0 +1,12 @@
+apiVersion: v2
+name: planty
+description: Planty - AI-powered plant care tracker PWA
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - plants
+  - pwa
+  - ai
+  - tracker
+home: https://github.com/thomasconrad/PlantTracker

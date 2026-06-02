@@ -1,6 +1,6 @@
-import { Component, Show, For, createMemo } from 'solid-js';
-import { A } from '@solidjs/router';
-import type { Plant } from '@/types';
+import { Component, Show, For, createMemo } from "solid-js";
+import { A } from "@solidjs/router";
+import type { Plant } from "@/types";
 
 interface PlantCardProps {
   plant: Plant;
@@ -8,7 +8,7 @@ interface PlantCardProps {
 
 export const PlantCard: Component<PlantCardProps> = (props) => {
   const overdueTasks = createMemo(() =>
-    (props.plant.careTasks || []).filter((t) => t.isDue)
+    (props.plant.careTasks || []).filter((t) => t.isDue),
   );
 
   const overdueCount = createMemo(() => overdueTasks().length);
@@ -20,7 +20,12 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
           when={props.plant.previewUrl}
           fallback={
             <div class="h-full w-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
-              <svg class="h-16 w-16 text-primary-600 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg
+                class="h-16 w-16 text-primary-600 opacity-60"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -38,20 +43,30 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
             loading="lazy"
           />
         </Show>
-        
+
         {/* Gradient overlay for better text contrast */}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
         {/* Overdue badge */}
         <Show when={overdueCount() > 0}>
           <div class="absolute top-3 right-3 flex items-center gap-1 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow-lg">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01" />
+            <svg
+              class="w-3 h-3"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M12 8v4m0 4h.01"
+              />
             </svg>
             {overdueCount()}
           </div>
         </Show>
-        
+
         {/* Plant name and genus overlay */}
         <div class="absolute bottom-0 left-0 right-0 p-5">
           <Show when={props.plant.archivedAt}>
@@ -72,19 +87,26 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
                 {(task) => (
                   <span
                     class="bg-red-500/80 backdrop-blur-sm text-white text-xs rounded-full px-2 py-0.5 flex items-center gap-1"
-                    title={`${task.name} overdue${task.daysOverdue ? ` by ${task.daysOverdue}d` : ''}`}
+                    title={`${task.name} overdue${task.daysOverdue ? ` by ${task.daysOverdue}d` : ""}`}
                   >
-                    <Show when={task.icon} fallback={<span class="w-3 h-3">!</span>}>
+                    <Show
+                      when={task.icon}
+                      fallback={<span class="w-3 h-3">!</span>}
+                    >
                       <span class="text-xs">{task.icon}</span>
                     </Show>
                     <Show when={task.daysOverdue && task.daysOverdue > 0}>
-                      <span class="text-[10px] font-medium">{task.daysOverdue}d</span>
+                      <span class="text-[10px] font-medium">
+                        {task.daysOverdue}d
+                      </span>
                     </Show>
                   </span>
                 )}
               </For>
               <Show when={overdueCount() > 4}>
-                <span class="text-white/80 text-xs self-center">+{overdueCount() - 4}</span>
+                <span class="text-white/80 text-xs self-center">
+                  +{overdueCount() - 4}
+                </span>
               </Show>
             </div>
           </Show>

@@ -1,15 +1,22 @@
-import { Component, For, Show, createEffect, createMemo, createSignal } from 'solid-js';
-import { apiClient } from '@/api/client';
-import { coachApi, CoachMessage } from '@/api/coach';
-import { plantsStore } from '@/stores/plants';
-import { Button } from '@/components/ui/Button';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { formatDateTime } from '@/utils/date';
-import type { Plant, Photo, components } from '@/types';
+import {
+  Component,
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+} from "solid-js";
+import { apiClient } from "@/api/client";
+import { coachApi, CoachMessage } from "@/api/coach";
+import { plantsStore } from "@/stores/plants";
+import { Button } from "@/components/ui/Button";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { formatDateTime } from "@/utils/date";
+import type { Plant, Photo, components } from "@/types";
 
-type TrackingEntry = components['schemas']['TrackingEntry'];
+type TrackingEntry = components["schemas"]["TrackingEntry"];
 
-type HistoryCategory = 'lifecycle' | 'care' | 'photo' | 'coach';
+type HistoryCategory = "lifecycle" | "care" | "photo" | "coach";
 
 interface HistoryEvent {
   id: string;
@@ -27,23 +34,30 @@ const MAX_VISIBLE_EVENTS = 12;
 
 const getTrackingEntryTitle = (entry: TrackingEntry, plant: Plant): string => {
   if (entry.careTaskIds && entry.careTaskIds.length > 0) {
-    const task = (plant.careTasks ?? []).find(t => t.id === entry.careTaskIds![0]);
-    return task ? task.name : 'Care';
+    const task = (plant.careTasks ?? []).find(
+      (t) => t.id === entry.careTaskIds![0],
+    );
+    return task ? task.name : "Care";
   }
   if (entry.measurements && entry.measurements.length > 0) {
-    const metric = plant.customMetrics.find((m) => m.id === entry.measurements![0].metricId);
-    return metric ? `${metric.name} logged` : 'Measurement logged';
+    const metric = plant.customMetrics.find(
+      (m) => m.id === entry.measurements![0].metricId,
+    );
+    return metric ? `${metric.name} logged` : "Measurement logged";
   }
   if (entry.photoIds && entry.photoIds.length > 0) {
-    return 'Photo added';
+    return "Photo added";
   }
   if (entry.notes) {
-    return 'Note added';
+    return "Note added";
   }
-  return 'Activity logged';
+  return "Activity logged";
 };
 
-const getTrackingEntryDetails = (entry: TrackingEntry, plant: Plant): string | undefined => {
+const getTrackingEntryDetails = (
+  entry: TrackingEntry,
+  plant: Plant,
+): string | undefined => {
   const parts: string[] = [];
 
   if (entry.measurements && entry.measurements.length > 0) {
@@ -51,12 +65,12 @@ const getTrackingEntryDetails = (entry: TrackingEntry, plant: Plant): string | u
     const metric = plant.customMetrics.find((cm) => cm.id === m.metricId);
     const value = m.value;
     if (value !== undefined && value !== null) {
-      if (typeof value === 'number') {
-        const unit = metric?.unit ? ` ${metric.unit}` : '';
+      if (typeof value === "number") {
+        const unit = metric?.unit ? ` ${metric.unit}` : "";
         parts.push(`Value: ${value}${unit}`);
-      } else if (typeof value === 'boolean') {
-        parts.push(`Value: ${value ? 'Yes' : 'No'}`);
-      } else if (typeof value === 'string' && value.trim().length > 0) {
+      } else if (typeof value === "boolean") {
+        parts.push(`Value: ${value ? "Yes" : "No"}`);
+      } else if (typeof value === "string" && value.trim().length > 0) {
         parts.push(`Value: ${value}`);
       }
     }
@@ -66,40 +80,42 @@ const getTrackingEntryDetails = (entry: TrackingEntry, plant: Plant): string | u
     parts.push(entry.notes.trim());
   }
 
-  return parts.length > 0 ? parts.join(' · ') : undefined;
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 };
 
 const getCategoryBadgeClass = (category: HistoryCategory): string => {
   switch (category) {
-    case 'care':
-      return 'bg-blue-100 text-blue-700';
-    case 'photo':
-      return 'bg-amber-100 text-amber-700';
-    case 'coach':
-      return 'bg-purple-100 text-purple-700';
-    case 'lifecycle':
-      return 'bg-gray-100 text-gray-700';
+    case "care":
+      return "bg-blue-100 text-blue-700";
+    case "photo":
+      return "bg-amber-100 text-amber-700";
+    case "coach":
+      return "bg-purple-100 text-purple-700";
+    case "lifecycle":
+      return "bg-gray-100 text-gray-700";
     default:
-      return 'bg-gray-100 text-gray-700';
+      return "bg-gray-100 text-gray-700";
   }
 };
 
 const getCategoryLabel = (category: HistoryCategory): string => {
   switch (category) {
-    case 'care':
-      return 'Care';
-    case 'photo':
-      return 'Photo';
-    case 'coach':
-      return 'Coach';
-    case 'lifecycle':
-      return 'System';
+    case "care":
+      return "Care";
+    case "photo":
+      return "Photo";
+    case "coach":
+      return "Coach";
+    case "lifecycle":
+      return "System";
     default:
-      return 'Event';
+      return "Event";
   }
 };
 
-export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props) => {
+export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (
+  props,
+) => {
   const [events, setEvents] = createSignal<HistoryEvent[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
@@ -117,28 +133,31 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
       setLoading(true);
       setError(null);
 
-      const [trackingResponse, photosResponse, coachResponse] = await Promise.all([
-        plantsStore.getTrackingEntries(props.plant.id),
-        apiClient.getPlantPhotos(props.plant.id, { limit: 100 }),
-        coachApi.getMessages(props.plant.id).catch(() => ({ messages: [] as CoachMessage[] })),
-      ]);
+      const [trackingResponse, photosResponse, coachResponse] =
+        await Promise.all([
+          plantsStore.getTrackingEntries(props.plant.id),
+          apiClient.getPlantPhotos(props.plant.id, { limit: 100 }),
+          coachApi
+            .getMessages(props.plant.id)
+            .catch(() => ({ messages: [] as CoachMessage[] })),
+        ]);
 
       const timelineEvents: HistoryEvent[] = [];
 
       timelineEvents.push({
         id: `plant-created-${props.plant.id}`,
         timestamp: props.plant.createdAt,
-        title: 'Plant added',
+        title: "Plant added",
         details: `${props.plant.name} was added to your collection`,
-        category: 'lifecycle',
+        category: "lifecycle",
       });
 
       if (props.plant.updatedAt !== props.plant.createdAt) {
         timelineEvents.push({
           id: `plant-updated-${props.plant.id}`,
           timestamp: props.plant.updatedAt,
-          title: 'Plant details updated',
-          category: 'lifecycle',
+          title: "Plant details updated",
+          category: "lifecycle",
         });
       }
 
@@ -146,8 +165,8 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
         timelineEvents.push({
           id: `plant-archived-${props.plant.id}`,
           timestamp: props.plant.archivedAt,
-          title: 'Plant archived',
-          category: 'lifecycle',
+          title: "Plant archived",
+          category: "lifecycle",
         });
       }
 
@@ -157,27 +176,29 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
           timestamp: entry.timestamp,
           title: getTrackingEntryTitle(entry, props.plant),
           details: getTrackingEntryDetails(entry, props.plant),
-          category: 'care' as const,
-        }))
+          category: "care" as const,
+        })),
       );
 
       timelineEvents.push(
         ...photosResponse.photos.map((photo: Photo) => ({
           id: `photo-${photo.id}`,
           timestamp: photo.createdAt,
-          title: 'Photo added',
+          title: "Photo added",
           details: photo.originalFilename,
-          category: 'photo' as const,
-        }))
+          category: "photo" as const,
+        })),
       );
 
       // Coach interactions — only assistant messages with suggestions
       for (const msg of coachResponse.messages) {
-        if (msg.role === 'assistant' && msg.suggestions.length > 0) {
-          const accepted = msg.suggestions.filter((s) => s.status === 'accepted');
-          const pending = msg.suggestions.filter((s) => s.status === 'pending');
+        if (msg.role === "assistant" && msg.suggestions.length > 0) {
+          const accepted = msg.suggestions.filter(
+            (s) => s.status === "accepted",
+          );
+          const pending = msg.suggestions.filter((s) => s.status === "pending");
           let details = msg.content.slice(0, 120);
-          if (msg.content.length > 120) details += '...';
+          if (msg.content.length > 120) details += "...";
           if (accepted.length > 0) {
             details += ` (${accepted.length} accepted)`;
           } else if (pending.length > 0) {
@@ -186,20 +207,22 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
           timelineEvents.push({
             id: `coach-${msg.id}`,
             timestamp: msg.createdAt,
-            title: 'Coach suggestion',
+            title: "Coach suggestion",
             details,
-            category: 'coach',
+            category: "coach",
           });
         }
       }
 
       timelineEvents.sort(
-        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
       );
 
       setEvents(timelineEvents);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to load history';
+      const message =
+        err instanceof Error ? err.message : "Failed to load history";
       setError(message);
     } finally {
       setLoading(false);
@@ -219,12 +242,19 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
       <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-gray-50/50">
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h3 class="text-base sm:text-lg font-semibold text-gray-900">Full History</h3>
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900">
+              Full History
+            </h3>
             <p class="text-xs sm:text-sm text-gray-500">
               Complete timeline including date added and activity updates
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => void loadHistory()} loading={loading()}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadHistory()}
+            loading={loading()}
+          >
             Refresh
           </Button>
         </div>
@@ -239,30 +269,47 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
             </div>
           }
         >
-          <Show when={!error()} fallback={<p class="text-sm text-red-600">{error()}</p>}>
-            <Show when={events().length > 0} fallback={<p class="text-sm text-gray-500">No history yet.</p>}>
+          <Show
+            when={!error()}
+            fallback={<p class="text-sm text-red-600">{error()}</p>}
+          >
+            <Show
+              when={events().length > 0}
+              fallback={<p class="text-sm text-gray-500">No history yet.</p>}
+            >
               <div class="space-y-4">
                 <For each={visibleEvents()}>
                   {(event) => (
                     <div class="flex gap-3">
-                      <div class={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                        event.category === 'care' ? 'bg-blue-500' :
-                        event.category === 'photo' ? 'bg-amber-500' :
-                        event.category === 'coach' ? 'bg-purple-500' :
-                        'bg-gray-400'
-                      }`} />
+                      <div
+                        class={`mt-1 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
+                          event.category === "care"
+                            ? "bg-blue-500"
+                            : event.category === "photo"
+                              ? "bg-amber-500"
+                              : event.category === "coach"
+                                ? "bg-purple-500"
+                                : "bg-gray-400"
+                        }`}
+                      />
                       <div class="min-w-0 flex-1 border-b border-gray-100 pb-4 last:border-b-0 last:pb-0">
                         <div class="flex flex-wrap items-center gap-2">
-                          <p class="text-sm font-medium text-gray-900">{event.title}</p>
+                          <p class="text-sm font-medium text-gray-900">
+                            {event.title}
+                          </p>
                           <span
                             class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getCategoryBadgeClass(event.category)}`}
                           >
                             {getCategoryLabel(event.category)}
                           </span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-0.5">{formatDateTime(event.timestamp)}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                          {formatDateTime(event.timestamp)}
+                        </p>
                         <Show when={event.details}>
-                          <p class="text-sm text-gray-600 mt-1 break-words">{event.details}</p>
+                          <p class="text-sm text-gray-600 mt-1 break-words">
+                            {event.details}
+                          </p>
                         </Show>
                       </div>
                     </div>
@@ -277,7 +324,9 @@ export const PlantHistoryTimeline: Component<PlantHistoryTimelineProps> = (props
                       onClick={() => setShowAll((prev) => !prev)}
                       class="w-full"
                     >
-                      {showAll() ? 'Show less' : `Show all ${events().length} events`}
+                      {showAll()
+                        ? "Show less"
+                        : `Show all ${events().length} events`}
                     </Button>
                   </div>
                 </Show>

@@ -1,6 +1,6 @@
-import { Component, Show, For, createMemo, onMount, onCleanup } from 'solid-js';
-import type { Plant } from '@/types';
-import type { components } from '@/types/api-generated';
+import { Component, Show, For, createMemo, onMount, onCleanup } from "solid-js";
+import type { Plant } from "@/types";
+import type { components } from "@/types/api-generated";
 import {
   makeTransformScheduler,
   VelocityTracker,
@@ -9,9 +9,9 @@ import {
   FLING_THRESHOLD,
   SWIPE_FRACTION,
   detectDirection,
-} from '@/utils/touch';
+} from "@/utils/touch";
 
-type TrackingEntry = components['schemas']['TrackingEntry'];
+type TrackingEntry = components["schemas"]["TrackingEntry"];
 
 interface CalendarEvent {
   id: string;
@@ -19,7 +19,7 @@ interface CalendarEvent {
   plant: Plant;
   entry: TrackingEntry;
   date: Date;
-  type: 'care' | 'measurement' | 'note' | 'photo';
+  type: "care" | "measurement" | "note" | "photo";
 }
 
 interface MobileDayEventsProps {
@@ -36,43 +36,55 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
   const eventsByTime = createMemo(() => {
     const grouped: { [key: string]: CalendarEvent[] } = {};
 
-    props.events.forEach(event => {
+    props.events.forEach((event) => {
       const eventDate = new Date(event.entry.timestamp);
       const hours = eventDate.getHours();
       const minutes = eventDate.getMinutes();
       const roundedMinutes = Math.floor(minutes / 10) * 10;
-      const timeKey = `${hours.toString().padStart(2, '0')}:${roundedMinutes.toString().padStart(2, '0')}`;
+      const timeKey = `${hours.toString().padStart(2, "0")}:${roundedMinutes.toString().padStart(2, "0")}`;
 
       if (!grouped[timeKey]) grouped[timeKey] = [];
       grouped[timeKey].push(event);
     });
 
     const sortedTimes = Object.keys(grouped).sort();
-    return sortedTimes.map(time => ({
+    return sortedTimes.map((time) => ({
       time,
-      events: grouped[time].sort((a, b) =>
-        new Date(a.entry.timestamp).getTime() - new Date(b.entry.timestamp).getTime()
-      )
+      events: grouped[time].sort(
+        (a, b) =>
+          new Date(a.entry.timestamp).getTime() -
+          new Date(b.entry.timestamp).getTime(),
+      ),
     }));
   });
 
   const getEventIcon = (type: string) => {
     switch (type) {
-      case 'care': return '✅';
-      case 'measurement': return '📊';
-      case 'note': return '📝';
-      case 'photo': return '📷';
-      default: return '📝';
+      case "care":
+        return "✅";
+      case "measurement":
+        return "📊";
+      case "note":
+        return "📝";
+      case "photo":
+        return "📷";
+      default:
+        return "📝";
     }
   };
 
   const getEventColor = (type: string) => {
     switch (type) {
-      case 'care': return 'border-l-blue-500 bg-blue-50';
-      case 'measurement': return 'border-l-purple-500 bg-purple-50';
-      case 'note': return 'border-l-gray-500 bg-gray-50';
-      case 'photo': return 'border-l-indigo-500 bg-indigo-50';
-      default: return 'border-l-gray-500 bg-gray-50';
+      case "care":
+        return "border-l-blue-500 bg-blue-50";
+      case "measurement":
+        return "border-l-purple-500 bg-purple-50";
+      case "note":
+        return "border-l-gray-500 bg-gray-50";
+      case "photo":
+        return "border-l-indigo-500 bg-indigo-50";
+      default:
+        return "border-l-gray-500 bg-gray-50";
     }
   };
 
@@ -83,14 +95,14 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
 
     const velocity = new VelocityTracker();
     let tracking = false;
-    let direction: 'horizontal' | 'vertical' | null = null;
+    let direction: "horizontal" | "vertical" | null = null;
     let startX = 0;
     let startY = 0;
     let currentX = 0;
     let containerW = 0;
     let track: HTMLDivElement | null = null;
 
-    const scheduleTrackX = makeTransformScheduler(x => {
+    const scheduleTrackX = makeTransformScheduler((x) => {
       if (track) translateX(track, x);
     });
 
@@ -105,27 +117,30 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
       containerW = el.offsetWidth;
       const scrollRect = el.getBoundingClientRect();
 
-      track = document.createElement('div');
-      track.className = 'mc-agenda-track';
-      track.style.width = (containerW * 3) + 'px';
-      track.style.height = scrollRect.height + 'px';
-      track.style.position = 'fixed';
-      track.style.left = scrollRect.left + 'px';
-      track.style.top = scrollRect.top + 'px';
-      track.style.zIndex = '30';
-      track.style.overflow = 'hidden';
+      track = document.createElement("div");
+      track.className = "mc-agenda-track";
+      track.style.width = containerW * 3 + "px";
+      track.style.height = scrollRect.height + "px";
+      track.style.position = "fixed";
+      track.style.left = scrollRect.left + "px";
+      track.style.top = scrollRect.top + "px";
+      track.style.zIndex = "30";
+      track.style.overflow = "hidden";
       translateX(track, -containerW);
 
       // Create 3 panels (prev, current, next) with placeholder content
       for (let i = -1; i <= 1; i++) {
-        const panel = document.createElement('div');
-        panel.className = 'mc-agenda-panel';
-        panel.style.width = containerW + 'px';
-        panel.innerHTML = i === 0 ? el.innerHTML : '<div class="p-3 text-center text-gray-400 text-sm">Loading...</div>';
+        const panel = document.createElement("div");
+        panel.className = "mc-agenda-panel";
+        panel.style.width = containerW + "px";
+        panel.innerHTML =
+          i === 0
+            ? el.innerHTML
+            : '<div class="p-3 text-center text-gray-400 text-sm">Loading...</div>';
         track.appendChild(panel);
       }
 
-      el.style.visibility = 'hidden';
+      el.style.visibility = "hidden";
       document.body.appendChild(track);
     }
 
@@ -134,7 +149,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
         track.parentNode.removeChild(track);
       }
       track = null;
-      el.style.visibility = '';
+      el.style.visibility = "";
     }
 
     const onTouchStart = (e: TouchEvent) => {
@@ -157,7 +172,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
         direction = detectDirection(dx, dy, 10);
       }
 
-      if (direction === 'horizontal') {
+      if (direction === "horizontal") {
         e.preventDefault();
         e.stopPropagation();
         velocity.update(x);
@@ -167,7 +182,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
           createSwipeTrack();
         }
         if (track) {
-          (track as HTMLDivElement).style.transition = 'none';
+          (track as HTMLDivElement).style.transition = "none";
           translateX(track, -containerW + dx);
         }
 
@@ -180,7 +195,7 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
     const onTouchEnd = () => {
       if (!tracking) return;
       tracking = false;
-      if (direction !== 'horizontal' || !track) {
+      if (direction !== "horizontal" || !track) {
         direction = null;
         return;
       }
@@ -189,10 +204,12 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
       const v = velocity.velocity;
 
       let swipeDir: -1 | 0 | 1 = 0;
-      if (v > FLING_THRESHOLD || dx > containerW * SWIPE_FRACTION) swipeDir = -1; // prev day
-      else if (v < -FLING_THRESHOLD || dx < -containerW * SWIPE_FRACTION) swipeDir = 1; // next day
+      if (v > FLING_THRESHOLD || dx > containerW * SWIPE_FRACTION)
+        swipeDir = -1; // prev day
+      else if (v < -FLING_THRESHOLD || dx < -containerW * SWIPE_FRACTION)
+        swipeDir = 1; // next day
 
-      const targetX = -containerW + (-swipeDir * containerW);
+      const targetX = -containerW + -swipeDir * containerW;
       track.style.transition = SNAP_TRANSITION;
       translateX(track, targetX);
 
@@ -201,13 +218,13 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
         const newDate = getAdjacentDate(swipeDir);
         const animTrack = track;
         track = null;
-        el.style.visibility = '';
+        el.style.visibility = "";
 
         const cleanup = () => {
-          animTrack.removeEventListener('transitionend', cleanup);
+          animTrack.removeEventListener("transitionend", cleanup);
           if (animTrack.parentNode) animTrack.parentNode.removeChild(animTrack);
         };
-        animTrack.addEventListener('transitionend', cleanup);
+        animTrack.addEventListener("transitionend", cleanup);
         setTimeout(cleanup, 400);
 
         props.onDateChange(newDate);
@@ -215,10 +232,10 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
         // Snap back
         const snapTrack = track;
         const cleanup = () => {
-          snapTrack.removeEventListener('transitionend', cleanup);
+          snapTrack.removeEventListener("transitionend", cleanup);
           removeSwipeTrack();
         };
-        snapTrack.addEventListener('transitionend', cleanup);
+        snapTrack.addEventListener("transitionend", cleanup);
         setTimeout(cleanup, 400);
       }
 
@@ -232,16 +249,16 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
       removeSwipeTrack();
     };
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    el.addEventListener('touchend', onTouchEnd);
-    el.addEventListener('touchcancel', onTouchCancel);
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchCancel);
 
     onCleanup(() => {
-      el.removeEventListener('touchstart', onTouchStart);
-      el.removeEventListener('touchmove', onTouchMove);
-      el.removeEventListener('touchend', onTouchEnd);
-      el.removeEventListener('touchcancel', onTouchCancel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchCancel);
       removeSwipeTrack();
     });
   });
@@ -253,7 +270,9 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
         fallback={
           <div class="mc-empty">
             <div class="mc-empty-title">No activities</div>
-            <div class="mc-empty-sub">No plant care activities recorded for this day.</div>
+            <div class="mc-empty-sub">
+              No plant care activities recorded for this day.
+            </div>
           </div>
         }
       >
@@ -278,20 +297,39 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
                       <div class="mc-event-info">
                         <div class="mc-event-title">{event.plant.name}</div>
                         <div class="mc-event-subtitle">
-                          {event.type === 'measurement' ? 'Measurement' : event.type}
-                          <Show when={event.entry.measurements && event.entry.measurements.length > 0}>
+                          {event.type === "measurement"
+                            ? "Measurement"
+                            : event.type}
+                          <Show
+                            when={
+                              event.entry.measurements &&
+                              event.entry.measurements.length > 0
+                            }
+                          >
                             <span class="font-medium ml-1">
                               {String(event.entry.measurements![0].value)}
                             </span>
                           </Show>
                         </div>
                         <Show when={event.entry.notes}>
-                          <div class="mc-event-notes">{String(event.entry.notes)}</div>
+                          <div class="mc-event-notes">
+                            {String(event.entry.notes)}
+                          </div>
                         </Show>
                       </div>
                       <div class="mc-event-chevron">
-                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width={2} d="M9 5l7 7-7 7" />
+                        <svg
+                          class="h-4 w-4 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width={2}
+                            d="M9 5l7 7-7 7"
+                          />
                         </svg>
                       </div>
                     </div>

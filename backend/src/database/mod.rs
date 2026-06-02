@@ -33,7 +33,14 @@ pub async fn create_pool() -> Result<DatabasePool> {
 pub async fn create_pool_with_url(database_url: &str) -> Result<DatabasePool> {
     tracing::info!("Connecting to database: {}", database_url);
 
-    let pool = SqlitePool::connect(database_url).await?;
+    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect_with(
+            database_url
+                .parse::<sqlx::sqlite::SqliteConnectOptions>()?
+                .create_if_missing(true),
+        )
+        .await?;
 
     tracing::info!("Database connected and ready");
     Ok(pool)

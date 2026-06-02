@@ -1,11 +1,11 @@
-export * from './api';
-import type { Plant, components } from './api';
+export * from "./api";
+import type { Plant, components } from "./api";
 export type { Plant };
 
-type User = components['schemas']['UserResponse'];
-type CareTaskWithStatus = components['schemas']['CareTaskWithStatus'];
-type Measurement = components['schemas']['Measurement'];
-type TrackingEntry = components['schemas']['TrackingEntry'];
+type User = components["schemas"]["UserResponse"];
+type CareTaskWithStatus = components["schemas"]["CareTaskWithStatus"];
+type Measurement = components["schemas"]["Measurement"];
+type TrackingEntry = components["schemas"]["TrackingEntry"];
 
 export interface AppState {
   isAuthenticated: boolean;
@@ -32,7 +32,7 @@ export interface PlantFormData {
   customMetrics: {
     name: string;
     unit: string;
-    dataType: 'Number' | 'Text' | 'Boolean';
+    dataType: "Number" | "Text" | "Boolean";
   }[];
 }
 

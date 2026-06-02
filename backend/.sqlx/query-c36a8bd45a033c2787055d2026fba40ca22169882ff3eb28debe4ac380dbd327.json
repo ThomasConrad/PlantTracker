@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO google_oauth_tokens (\n            user_id, access_token, refresh_token, expires_at, scope, token_type, created_at, updated_at\n        ) VALUES (?, ?, ?, ?, ?, 'Bearer', ?, ?)\n        ON CONFLICT(user_id) DO UPDATE SET\n            access_token = excluded.access_token,\n            refresh_token = excluded.refresh_token,\n            expires_at = excluded.expires_at,\n            scope = excluded.scope,\n            updated_at = excluded.updated_at\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "c36a8bd45a033c2787055d2026fba40ca22169882ff3eb28debe4ac380dbd327"
+}

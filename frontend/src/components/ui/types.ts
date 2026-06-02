@@ -1,9 +1,9 @@
-import { JSX } from 'solid-js';
+import { JSX } from "solid-js";
 
 // Button Component Types
 export interface ButtonProps extends JSX.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "outline" | "danger";
+  size?: "sm" | "md" | "lg";
   loading?: boolean;
 }
 
@@ -29,14 +29,14 @@ export interface SelectProps extends JSX.SelectHTMLAttributes<HTMLSelectElement>
 
 // Loading Spinner Types
 export interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   class?: string;
 }
 
 // Card Component Types
 export interface CardProps extends JSX.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'elevated' | 'outlined' | 'ghost';
-  padding?: 'none' | 'sm' | 'md' | 'lg';
+  variant?: "default" | "elevated" | "outlined" | "ghost";
+  padding?: "none" | "sm" | "md" | "lg";
   hover?: boolean;
 }
 
@@ -44,8 +44,8 @@ export interface CardProps extends JSX.HTMLAttributes<HTMLDivElement> {
 export interface ModalProps {
   open: boolean;
   onClose: () => void;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  position?: 'center' | 'top' | 'bottom';
+  size?: "sm" | "md" | "lg" | "xl" | "full";
+  position?: "center" | "top" | "bottom";
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
   children: JSX.Element;
@@ -54,17 +54,29 @@ export interface ModalProps {
 
 // Badge Component Types
 export interface BadgeProps extends JSX.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
-  careType?: 'watering' | 'fertilizing' | 'pruning' | 'repotting' | 'pest-control';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "default" | "success" | "warning" | "error" | "info";
+  careType?:
+    | "watering"
+    | "fertilizing"
+    | "pruning"
+    | "repotting"
+    | "pest-control";
+  size?: "sm" | "md" | "lg";
   pill?: boolean;
 }
 
 // Care Icon Types
 export interface CareIconProps extends JSX.SvgSVGAttributes<SVGSVGElement> {
-  type: 'watering' | 'fertilizing' | 'pruning' | 'repotting' | 'pest-control' | 'note' | 'custom';
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-  variant?: 'default' | 'solid' | 'outline';
+  type:
+    | "watering"
+    | "fertilizing"
+    | "pruning"
+    | "repotting"
+    | "pest-control"
+    | "note"
+    | "custom";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  variant?: "default" | "solid" | "outline";
   class?: string;
 }
 
@@ -76,7 +88,7 @@ export interface NavIconProps {
 }
 
 // Theme Types
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = "light" | "dark" | "system";
 
 export interface ThemeContextValue {
   theme: () => Theme;
@@ -90,10 +102,26 @@ export interface LayoutProps {
 }
 
 // Care Type Union
-export type CareType = 'watering' | 'fertilizing' | 'pruning' | 'repotting' | 'pest-control' | 'note' | 'custom';
+export type CareType =
+  | "watering"
+  | "fertilizing"
+  | "pruning"
+  | "repotting"
+  | "pest-control"
+  | "note"
+  | "custom";
 
 // Size Union
-export type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+export type Size = "xs" | "sm" | "md" | "lg" | "xl";
 
 // Variant Union
-export type Variant = 'default' | 'primary' | 'secondary' | 'outline' | 'danger' | 'success' | 'warning' | 'error' | 'info'; 
+export type Variant =
+  | "default"
+  | "primary"
+  | "secondary"
+  | "outline"
+  | "danger"
+  | "success"
+  | "warning"
+  | "error"
+  | "info";

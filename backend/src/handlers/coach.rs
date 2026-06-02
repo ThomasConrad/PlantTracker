@@ -18,9 +18,18 @@ use crate::utils::errors::{AppError, Result};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/plants/:plant_id/messages", get(get_messages).post(send_message))
-        .route("/suggestions/:suggestion_id/accept", post(accept_suggestion))
-        .route("/suggestions/:suggestion_id/dismiss", post(dismiss_suggestion))
+        .route(
+            "/plants/:plant_id/messages",
+            get(get_messages).post(send_message),
+        )
+        .route(
+            "/suggestions/:suggestion_id/accept",
+            post(accept_suggestion),
+        )
+        .route(
+            "/suggestions/:suggestion_id/dismiss",
+            post(dismiss_suggestion),
+        )
 }
 
 #[utoipa::path(
@@ -222,7 +231,8 @@ pub async fn send_message(
             } else {
                 // Older message: placeholder — the assistant's response has the analysis
                 parts.push(ContentPart::Text {
-                    text: "[User attached a photo — see assistant's analysis in the next message]".to_string(),
+                    text: "[User attached a photo — see assistant's analysis in the next message]"
+                        .to_string(),
                 });
             }
         }
@@ -316,14 +326,15 @@ pub async fn accept_suggestion(
         message: "Not authenticated".to_string(),
     })?;
 
-    let row = db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "accepted")
-        .await
-        .map_err(|e| AppError::Internal {
-            message: e.to_string(),
-        })?
-        .ok_or(AppError::NotFound {
-            resource: format!("Suggestion with id {suggestion_id}"),
-        })?;
+    let row =
+        db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "accepted")
+            .await
+            .map_err(|e| AppError::Internal {
+                message: e.to_string(),
+            })?
+            .ok_or(AppError::NotFound {
+                resource: format!("Suggestion with id {suggestion_id}"),
+            })?;
 
     // Apply the suggestion based on type
     let payload: serde_json::Value = serde_json::from_str(&row.payload).unwrap_or_default();
@@ -336,15 +347,27 @@ pub async fn accept_suggestion(
                 payload.get("careTaskName").and_then(|v| v.as_str()),
                 payload.get("intervalDays").and_then(|v| v.as_i64()),
             ) {
-                let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
-                    message: "Invalid plant_id".to_string(),
-                })?;
+                let plant_uuid =
+                    uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                        message: "Invalid plant_id".to_string(),
+                    })?;
                 // Find the care task by name
                 let tasks_resp = crate::database::care_tasks::list_care_tasks_for_plant(
-                    &app_state.pool, &plant_uuid, &user.id, false
-                ).await.map_err(|e| AppError::Internal { message: e.to_string() })?;
+                    &app_state.pool,
+                    &plant_uuid,
+                    &user.id,
+                    false,
+                )
+                .await
+                .map_err(|e| AppError::Internal {
+                    message: e.to_string(),
+                })?;
 
-                if let Some(task) = tasks_resp.tasks.iter().find(|t| t.task.name.eq_ignore_ascii_case(task_name)) {
+                if let Some(task) = tasks_resp
+                    .tasks
+                    .iter()
+                    .find(|t| t.task.name.eq_ignore_ascii_case(task_name))
+                {
                     let update = crate::models::care_task::UpdateCareTaskRequest {
                         name: None,
                         icon: None,
@@ -357,22 +380,33 @@ pub async fn accept_suggestion(
                         sort_order: None,
                     };
                     let _ = crate::database::care_tasks::update_care_task(
-                        &app_state.pool, &task.task.id, &user.id, &update
-                    ).await;
+                        &app_state.pool,
+                        &task.task.id,
+                        &user.id,
+                        &update,
+                    )
+                    .await;
                 }
             }
         }
         "new_task" => {
             // Create a new care task
             if let Some(name) = payload.get("name").and_then(|v| v.as_str()) {
-                let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
-                    message: "Invalid plant_id".to_string(),
-                })?;
+                let plant_uuid =
+                    uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                        message: "Invalid plant_id".to_string(),
+                    })?;
                 let create = crate::models::care_task::CreateCareTaskRequest {
                     name: name.to_string(),
-                    icon: payload.get("icon").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                    icon: payload
+                        .get("icon")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
                     color: None,
-                    interval_days: payload.get("intervalDays").and_then(|v| v.as_i64()).map(|d| d as i32),
+                    interval_days: payload
+                        .get("intervalDays")
+                        .and_then(|v| v.as_i64())
+                        .map(|d| d as i32),
                     amount: None,
                     unit: None,
                     notes: None,
@@ -380,21 +414,37 @@ pub async fn accept_suggestion(
                     sort_order: None,
                 };
                 let _ = crate::database::care_tasks::create_care_task(
-                    &app_state.pool, &plant_uuid, &user.id, &create
-                ).await;
+                    &app_state.pool,
+                    &plant_uuid,
+                    &user.id,
+                    &create,
+                )
+                .await;
             }
         }
         "care_action" => {
             // Log a care task completion
             if let Some(task_name) = payload.get("careTaskName").and_then(|v| v.as_str()) {
-                let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
-                    message: "Invalid plant_id".to_string(),
-                })?;
+                let plant_uuid =
+                    uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                        message: "Invalid plant_id".to_string(),
+                    })?;
                 let tasks_resp = crate::database::care_tasks::list_care_tasks_for_plant(
-                    &app_state.pool, &plant_uuid, &user.id, false
-                ).await.map_err(|e| AppError::Internal { message: e.to_string() })?;
+                    &app_state.pool,
+                    &plant_uuid,
+                    &user.id,
+                    false,
+                )
+                .await
+                .map_err(|e| AppError::Internal {
+                    message: e.to_string(),
+                })?;
 
-                if let Some(task) = tasks_resp.tasks.iter().find(|t| t.task.name.eq_ignore_ascii_case(task_name)) {
+                if let Some(task) = tasks_resp
+                    .tasks
+                    .iter()
+                    .find(|t| t.task.name.eq_ignore_ascii_case(task_name))
+                {
                     let log_req = crate::models::care_task::LogCareTaskRequest {
                         timestamp: None,
                         value: None,
@@ -402,8 +452,12 @@ pub async fn accept_suggestion(
                         photo_ids: None,
                     };
                     let _ = crate::database::care_tasks::log_care_task(
-                        &app_state.pool, &task.task.id, &user.id, &log_req
-                    ).await;
+                        &app_state.pool,
+                        &task.task.id,
+                        &user.id,
+                        &log_req,
+                    )
+                    .await;
                 }
             }
         }
@@ -413,16 +467,30 @@ pub async fn accept_suggestion(
                 message: "Invalid plant_id".to_string(),
             })?;
             let tasks_resp = crate::database::care_tasks::list_care_tasks_for_plant(
-                &app_state.pool, &plant_uuid, &user.id, false
-            ).await.map_err(|e| AppError::Internal { message: e.to_string() })?;
+                &app_state.pool,
+                &plant_uuid,
+                &user.id,
+                false,
+            )
+            .await
+            .map_err(|e| AppError::Internal {
+                message: e.to_string(),
+            })?;
 
             let has_photo_task = tasks_resp.tasks.iter().any(|t| {
                 let name_lower = t.task.name.to_lowercase();
-                name_lower.contains("photo") && (name_lower.contains("check") || name_lower.contains("update") || name_lower.contains("progress"))
+                name_lower.contains("photo")
+                    && (name_lower.contains("check")
+                        || name_lower.contains("update")
+                        || name_lower.contains("progress"))
             });
 
             if !has_photo_task {
-                let interval = payload.get("intervalDays").and_then(|v| v.as_i64()).map(|d| d as i32).unwrap_or(14);
+                let interval = payload
+                    .get("intervalDays")
+                    .and_then(|v| v.as_i64())
+                    .map(|d| d as i32)
+                    .unwrap_or(14);
                 let create = crate::models::care_task::CreateCareTaskRequest {
                     name: "Photo check-in".to_string(),
                     icon: Some("📸".to_string()),
@@ -435,8 +503,12 @@ pub async fn accept_suggestion(
                     sort_order: None,
                 };
                 let _ = crate::database::care_tasks::create_care_task(
-                    &app_state.pool, &plant_uuid, &user.id, &create
-                ).await;
+                    &app_state.pool,
+                    &plant_uuid,
+                    &user.id,
+                    &create,
+                )
+                .await;
             }
         }
         _ => {}
@@ -477,14 +549,15 @@ pub async fn dismiss_suggestion(
         message: "Not authenticated".to_string(),
     })?;
 
-    let row = db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "dismissed")
-        .await
-        .map_err(|e| AppError::Internal {
-            message: e.to_string(),
-        })?
-        .ok_or(AppError::NotFound {
-            resource: format!("Suggestion with id {suggestion_id}"),
-        })?;
+    let row =
+        db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "dismissed")
+            .await
+            .map_err(|e| AppError::Internal {
+                message: e.to_string(),
+            })?
+            .ok_or(AppError::NotFound {
+                resource: format!("Suggestion with id {suggestion_id}"),
+            })?;
 
     Ok(Json(CoachSuggestion {
         id: row.id,
@@ -495,6 +568,3 @@ pub async fn dismiss_suggestion(
         applied_at: row.applied_at,
     }))
 }
-
-
-

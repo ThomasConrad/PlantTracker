@@ -134,7 +134,10 @@ async fn test_care_task_updates_last_performed() {
         .json()
         .await
         .expect("Failed to parse updated plant");
-    assert_eq!(updated_plant["careTasks"][0]["lastPerformed"], watering_time);
+    assert_eq!(
+        updated_plant["careTasks"][0]["lastPerformed"],
+        watering_time
+    );
 }
 
 #[tokio::test]

@@ -277,7 +277,7 @@ async fn update_llm_settings(
     let api_key = match &payload.api_key {
         Some(k) if !k.is_empty() => Some(k.as_str()),
         Some(_) => user.llm_api_key.as_deref(), // empty string → keep existing
-        None => None, // explicit null → clear
+        None => None,                           // explicit null → clear
     };
 
     let updated_user = db_users::update_user_llm_settings(

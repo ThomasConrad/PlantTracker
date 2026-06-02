@@ -1,7 +1,7 @@
-import { Component, createMemo, For, Show, createSignal } from 'solid-js';
-import { A } from '@solidjs/router';
-import type { Plant } from '@/types';
-import { plantsStore } from '@/stores/plants';
+import { Component, createMemo, For, Show, createSignal } from "solid-js";
+import { A } from "@solidjs/router";
+import type { Plant } from "@/types";
+import { plantsStore } from "@/stores/plants";
 
 interface NeedsAttentionProps {
   plants: Plant[];
@@ -75,7 +75,8 @@ export const NeedsAttention: Component<NeedsAttentionProps> = (props) => {
               Needs Attention
             </h2>
             <span class="text-xs text-gray-400 font-medium">
-              {overdueItems().length} {overdueItems().length === 1 ? 'task' : 'tasks'}
+              {overdueItems().length}{" "}
+              {overdueItems().length === 1 ? "task" : "tasks"}
             </span>
           </div>
 
@@ -110,7 +111,9 @@ export const NeedsAttention: Component<NeedsAttentionProps> = (props) => {
                         {item.plant.name}
                       </span>
                       <span class="text-red-500 text-xs font-medium whitespace-nowrap">
-                        {item.daysOverdue === 0 ? 'Due today' : `${item.daysOverdue}d overdue`}
+                        {item.daysOverdue === 0
+                          ? "Due today"
+                          : `${item.daysOverdue}d overdue`}
                       </span>
                     </div>
                     <div class="flex items-center gap-1 text-xs text-gray-500">
@@ -131,14 +134,40 @@ export const NeedsAttention: Component<NeedsAttentionProps> = (props) => {
                     <Show
                       when={!isLogging(item)}
                       fallback={
-                        <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" class="opacity-25" />
-                          <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+                        <svg
+                          class="w-4 h-4 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            class="opacity-25"
+                          />
+                          <path
+                            d="M4 12a8 8 0 018-8"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-linecap="round"
+                          />
                         </svg>
                       }
                     >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                      <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2.5"
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                     </Show>
                   </button>

@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
                 .into()
             }),
         )
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().with_writer(std::io::stderr))
         .init();
 
     // Database setup with custom URL
@@ -240,6 +240,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Planty API starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
+    println!("READY port={}", listener.local_addr()?.port());
     axum::serve(listener, app).await?;
 
     Ok(())

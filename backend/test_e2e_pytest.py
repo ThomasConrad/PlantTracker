@@ -58,38 +58,27 @@ class BackendServer:
         env["PLANT_COACH_PROVIDER"] = "mock"
         
         try:
+            binary = Path(__file__).parent / "target" / "release" / "planty-api"
             self.process = subprocess.Popen([
-                "cargo", "run", "--release", "--bin", "planty-api", "--",
+                str(binary),
                 "--port", str(self.port),
                 "--database-url", "sqlite::memory:",
                 "--frontend-dir", "/nonexistent"  # Force API-only mode
             ],
                 env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
                 text=True
             )
             
-            # Wait for server to start
-            max_retries = 30
-            for i in range(max_retries):
-                try:
-                    response = requests.get(f"{self.base_url}/", timeout=1)
-                    if response.status_code == 200:
-                        print(f"Backend started successfully on port {self.port}")
-                        return
-                except requests.exceptions.RequestException:
-                    pass
-                    
-                time.sleep(1)
-                
-                # Check if process is still running
-                if self.process.poll() is not None:
-                    stdout, stderr = self.process.communicate()
-                    print(f"Backend process failed to start:")
-                    print(f"STDOUT: {stdout}")
-                    print(f"STDERR: {stderr}")
-                    raise RuntimeError("Backend process exited unexpectedly")
-                    
-            raise TimeoutError(f"Backend failed to start within {max_retries} seconds")
+            # Wait for "READY" signal on stdout
+            while True:
+                line = self.process.stdout.readline()
+                if not line:
+                    raise RuntimeError("Backend exited without READY signal")
+                if line.startswith("READY"):
+                    print(f"Backend ready on port {self.port}")
+                    return
             
         except Exception as e:
             print(f"Failed to start backend: {e}")
@@ -702,32 +691,21 @@ class TestPerformance:
 class TestPhotoUpload:
     """Test photo upload functionality"""
     
-    @pytest.fixture(scope="function")
-    def photo_backend(self):
-        """Create a dedicated backend server instance for photo tests to ensure isolation"""
-        with BackendServer() as server:
-            yield server
-    
-    @pytest.fixture(scope="function")
-    def photo_client(self, photo_backend):
-        """Create a dedicated client for photo tests"""
-        return APIClient(photo_backend.base_url, photo_backend.api_prefix)
-    
     @pytest.fixture(autouse=True)
-    def login_user(self, photo_client, test_users):
+    def login_user(self, client, test_users):
         """Automatically login a user before each test"""
         user_data = test_users["user1"]
         
         # Register and login user
-        photo_client.request("POST", "/auth/register", json=user_data)
-        response = photo_client.request("POST", "/auth/login", json={
+        client.request("POST", "/auth/register", json=user_data)
+        response = client.request("POST", "/auth/login", json={
             "email": user_data["email"],
             "password": user_data["password"]
         })
         assert response.status_code == 200
         
         # Store client reference for test methods
-        self.client = photo_client
+        self.client = client
 
     def test_upload_photo_multipart(self):
         """Test uploading a photo using multipart form data"""
@@ -1102,32 +1080,21 @@ class TestPhotoUpload:
 class TestCalendarFunctionality:
     """Test calendar subscription and iCal feed functionality"""
     
-    @pytest.fixture(scope="function")
-    def calendar_backend(self):
-        """Create a dedicated backend server instance for calendar tests"""
-        with BackendServer() as server:
-            yield server
-    
-    @pytest.fixture(scope="function")
-    def calendar_client(self, calendar_backend):
-        """Create a dedicated client for calendar tests"""
-        return APIClient(calendar_backend.base_url, calendar_backend.api_prefix)
-    
     @pytest.fixture(autouse=True)
-    def login_user(self, calendar_client, test_users):
+    def login_user(self, client, test_users):
         """Automatically login a user before each test"""
         user_data = test_users["user1"]
         
         # Register and login user
-        calendar_client.request("POST", "/auth/register", json=user_data)
-        response = calendar_client.request("POST", "/auth/login", json={
+        client.request("POST", "/auth/register", json=user_data)
+        response = client.request("POST", "/auth/login", json={
             "email": user_data["email"],
             "password": user_data["password"]
         })
         assert response.status_code == 200
         
         # Store client and user info for test methods
-        self.client = calendar_client
+        self.client = client
         self.user_data = user_data
         self.user_response = response.json()
 

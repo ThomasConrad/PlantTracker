@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM google_task_sync WHERE due_date < ? AND status = 'completed'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "3b5fc4a19c8ab7faf31718d1cdec6c9c4b60affd1609097a57dbcc76853fb3ca"
+}

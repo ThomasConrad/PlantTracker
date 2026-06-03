@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE google_task_sync\n        SET status = 'completed', completed_at = ?, updated_at = datetime('now')\n        WHERE google_task_id = ? AND status = 'needsAction'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "681b88274df68cad219f935674b687fec95abd2e6d7cbd4a02f21646a368fa4a"
+}

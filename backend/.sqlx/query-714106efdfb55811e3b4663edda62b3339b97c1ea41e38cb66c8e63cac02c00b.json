@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO google_task_sync (\n            user_id, plant_id, care_task_id, google_task_id,\n            google_task_list_id, due_date, status\n        ) VALUES (?, ?, ?, ?, ?, ?, 'needsAction')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "714106efdfb55811e3b4663edda62b3339b97c1ea41e38cb66c8e63cac02c00b"
+}

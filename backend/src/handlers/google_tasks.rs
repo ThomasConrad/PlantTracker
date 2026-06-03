@@ -10,7 +10,7 @@ use utoipa::ToSchema;
 
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
-use crate::database::{google_oauth, plants as db_plants};
+use crate::database::{google_oauth, google_task_sync, plants as db_plants};
 use crate::models::google_oauth::{
     CreateGoogleTaskRequest, GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse,
     GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
@@ -18,7 +18,7 @@ use crate::models::google_oauth::{
 use crate::utils::errors::{AppError, Result};
 use crate::utils::google_tasks::{
     create_plant_care_task, ensure_valid_token, exchange_code_for_tokens, generate_auth_url,
-    generate_oauth_state, get_or_create_plant_care_task_list, GoogleTasksConfig,
+    generate_oauth_state, get_or_create_plant_care_task_list, get_task_status, GoogleTasksConfig,
 };
 
 /// Create Google Tasks routes
@@ -30,6 +30,7 @@ pub fn routes() -> Router<AppState> {
         .route("/status", get(get_google_tasks_status))
         .route("/disconnect", post(disconnect_google_tasks))
         .route("/sync-tasks", post(sync_plant_tasks))
+        .route("/poll-completions", post(poll_completions))
         .route("/create-task", post(create_task))
 }
 
@@ -140,19 +141,14 @@ pub async fn handle_google_oauth_callback(
     // Notify the token refresh scheduler about the new token
     app_state.notify_token_added();
 
-    // Redirect back to calendar settings without any parameters
-    let frontend_url = std::env::var("FRONTEND_URL").unwrap_or_else(|_| {
-        let host_ip = std::env::var("HOST_IP").unwrap_or_else(|_| "localhost".to_string());
-        format!("http://{}:3000", host_ip)
-    });
-
-    let redirect_url = format!("{}/calendar-settings", frontend_url);
+    // Redirect back to calendar settings (relative path works since backend serves frontend)
+    let redirect_url = "/calendar-settings";
 
     tracing::info!(
         "Google OAuth callback successful, redirecting to: {}",
         redirect_url
     );
-    Ok(Redirect::temporary(&redirect_url))
+    Ok(Redirect::temporary(redirect_url))
 }
 
 /// Store Google OAuth tokens (called by frontend after callback)
@@ -350,6 +346,7 @@ pub async fn sync_plant_tasks(
         std::env::var("BASE_URL").unwrap_or_else(|_| "https://your-domain.com".to_string());
 
     let mut created_tasks = 0;
+    let mut skipped_tasks = 0;
     let now = Utc::now();
     let end_date = now + chrono::Duration::days(days_ahead as i64);
 
@@ -369,10 +366,40 @@ pub async fn sync_plant_tasks(
 
             let mut next = last + chrono::Duration::days(interval as i64);
             while next <= end_date && next >= now {
+                let due_date = next.format("%Y-%m-%d").to_string();
+
+                // Check if we already synced this task+date
+                let existing = google_task_sync::get_synced_task(
+                    &app_state.pool,
+                    &user.id,
+                    &ct.id.to_string(),
+                    &due_date,
+                )
+                .await?;
+
+                if existing.is_some() {
+                    skipped_tasks += 1;
+                    next += chrono::Duration::days(interval as i64);
+                    continue;
+                }
+
                 match create_plant_care_task(&token, plant, ct, next, &base_url, &task_list_id)
                     .await
                 {
-                    Ok(_task_id) => created_tasks += 1,
+                    Ok(google_task_id) => {
+                        // Track the synced task
+                        let _ = google_task_sync::insert_synced_task(
+                            &app_state.pool,
+                            &user.id,
+                            &plant.id.to_string(),
+                            &ct.id.to_string(),
+                            &google_task_id,
+                            &task_list_id,
+                            &due_date,
+                        )
+                        .await;
+                        created_tasks += 1;
+                    }
                     Err(e) => {
                         tracing::error!(
                             "Failed to create {} task for {}: {}",
@@ -388,17 +415,114 @@ pub async fn sync_plant_tasks(
     }
 
     tracing::info!(
-        "Synced {} plant care tasks to Google Tasks for user: {}",
+        "Synced plant tasks for user {}: {} created, {} skipped (already exist)",
+        user.id,
         created_tasks,
-        user.id
+        skipped_tasks
     );
 
     Ok(Json(serde_json::json!({
         "success": true,
-        "message": format!("Created {} plant care tasks in your Google Tasks", created_tasks),
+        "message": format!("Created {} new plant care tasks ({} already synced)", created_tasks, skipped_tasks),
         "tasks_created": created_tasks,
+        "tasks_skipped": skipped_tasks,
         "plants_processed": plants.len(),
         "days_ahead": days_ahead
+    })))
+}
+
+/// Poll Google Tasks for completions and mark care tasks as done in Planty
+#[utoipa::path(
+    post,
+    path = "/google-tasks/poll-completions",
+    responses(
+        (status = 200, description = "Polled completions successfully"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "No Google Tasks connection found"),
+        (status = 500, description = "Failed to poll completions")
+    ),
+    tag = "google-tasks",
+    security(
+        ("session" = [])
+    )
+)]
+pub async fn poll_completions(
+    State(app_state): State<AppState>,
+    auth_session: AuthSession,
+) -> Result<impl IntoResponse> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    // Check for incomplete tasks first (avoids needing Google config if nothing to do)
+    let incomplete = google_task_sync::get_incomplete_tasks(&app_state.pool, &user.id).await?;
+
+    if incomplete.is_empty() {
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "No tasks to check",
+            "completed": 0,
+            "checked": 0
+        })));
+    }
+
+    let config = GoogleTasksConfig::from_env()?;
+    let token = ensure_valid_token(&app_state.pool, &user.id, &config).await?;
+
+    let mut completed_count = 0;
+
+    for record in &incomplete {
+        // Check status in Google Tasks
+        match get_task_status(&token, &record.google_task_list_id, &record.google_task_id).await {
+            Ok(status) if status == "completed" => {
+                // Mark as completed in our sync table
+                google_task_sync::mark_task_completed(&app_state.pool, &record.google_task_id)
+                    .await?;
+
+                // Log the care task as performed in Planty
+                if let Ok(task_uuid) = uuid::Uuid::parse_str(&record.care_task_id) {
+                    let log_req = crate::models::care_task::LogCareTaskRequest {
+                        timestamp: None,
+                        value: None,
+                        notes: Some("Completed via Google Tasks".to_string()),
+                        photo_ids: None,
+                    };
+                    let _ = crate::database::care_tasks::log_care_task(
+                        &app_state.pool,
+                        &task_uuid,
+                        &user.id,
+                        &log_req,
+                    )
+                    .await;
+                }
+
+                completed_count += 1;
+            }
+            Ok(_) => {
+                // Still needsAction, skip
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to check task {} status: {}",
+                    record.google_task_id,
+                    e
+                );
+            }
+        }
+    }
+
+    tracing::info!(
+        "Poll completions for user {}: {}/{} tasks completed",
+        user.id,
+        completed_count,
+        incomplete.len()
+    );
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": format!("{} task(s) completed in Google Tasks and synced back", completed_count),
+        "completed": completed_count,
+        "checked": incomplete.len()
     })))
 }
 
@@ -448,7 +572,8 @@ pub async fn create_task(
 
     let response = client
         .post(format!(
-            "https://tasks.googleapis.com/tasks/v1/lists/{}/tasks",
+            "{}/tasks/v1/lists/{}/tasks",
+            crate::utils::google_tasks::tasks_api_base_url(),
             task_list_id
         ))
         .header("Authorization", format!("Bearer {}", token.access_token))

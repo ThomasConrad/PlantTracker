@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            id as \"id!: String\",\n            user_id as \"user_id!: String\",\n            plant_id as \"plant_id!: String\",\n            care_task_id as \"care_task_id!: String\",\n            google_task_id as \"google_task_id!: String\",\n            google_task_list_id as \"google_task_list_id!: String\",\n            due_date as \"due_date!: String\",\n            status as \"status!: String\",\n            synced_at as \"synced_at!: String\",\n            completed_at as \"completed_at?: String\"\n        FROM google_task_sync\n        WHERE user_id = ? AND status = 'needsAction'\n        ORDER BY due_date ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "plant_id!: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "care_task_id!: String",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "google_task_id!: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "google_task_list_id!: String",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "due_date!: String",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: String",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "synced_at!: String",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "completed_at?: String",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "0a6299de286ebfe4ef0de3979276d1f0b2c99a464a200e0b2ff6096536943232"
+}

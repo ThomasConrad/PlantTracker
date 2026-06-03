@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            id as \"id!: String\",\n            user_id as \"user_id!: String\",\n            name as \"name!: String\",\n            genus as \"genus!: String\",\n            preview_id as \"preview_id?: String\",\n            archived_at as \"archived_at?: String\",\n            created_at as \"created_at!: String\",\n            updated_at as \"updated_at!: String\"\n        FROM plants WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name!: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "genus!: String",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "preview_id?: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "archived_at?: String",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: String",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: String",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "fca8d478bff5fdf65c7256eb9b3c6d021c240f37b0132d564f1a47450dcb5c90"
+}

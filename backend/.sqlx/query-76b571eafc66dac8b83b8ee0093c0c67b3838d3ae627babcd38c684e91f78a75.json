@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users\n         SET invites_created = invites_created + 1, updated_at = ?\n         WHERE id = ?\n           AND can_create_invites = TRUE\n           AND max_invites IS NOT NULL\n           AND invites_created < max_invites",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "76b571eafc66dac8b83b8ee0093c0c67b3838d3ae627babcd38c684e91f78a75"
+}

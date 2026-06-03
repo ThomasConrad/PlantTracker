@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO users (id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)\n        VALUES (?, ?, ?, 'monday', 'metric', ?, ?, ?, ?, 0, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "61e44d8eb8cdbfe3f8742927409ea3d855f5637d1438d8bf44064ae5fae0533f"
+}

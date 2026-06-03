@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT profile_picture_data, profile_picture_content_type FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "profile_picture_data",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "profile_picture_content_type",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "3ef414442f3c9971582b51bc2c7103d9c1435a13bdc48c5ced757d389bd4bf9f"
+}

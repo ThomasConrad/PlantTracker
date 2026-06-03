@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "exists_flag",
+        "ordinal": 0,
+        "type_info": "Int"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "09e38d72d6e7c0acaee19b099e62e067ec3920030271fe9124c2dd3e77ec6dc4"
+}

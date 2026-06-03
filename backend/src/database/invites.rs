@@ -51,16 +51,16 @@ pub async fn create_invite_code_consuming_quota(
     let mut tx = pool.begin().await.map_err(AppError::Database)?;
     let now_str = Utc::now().to_rfc3339();
 
-    let updated = sqlx::query(
+    let updated = sqlx::query!(
         "UPDATE users
          SET invites_created = invites_created + 1, updated_at = ?
          WHERE id = ?
            AND can_create_invites = TRUE
            AND max_invites IS NOT NULL
            AND invites_created < max_invites",
+        now_str,
+        creator_user_id,
     )
-    .bind(&now_str)
-    .bind(creator_user_id)
     .execute(&mut *tx)
     .await
     .map_err(AppError::Database)?;

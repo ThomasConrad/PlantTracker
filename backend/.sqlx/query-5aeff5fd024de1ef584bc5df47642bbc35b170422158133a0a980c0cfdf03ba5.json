@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM photos WHERE id = ? AND plant_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "5aeff5fd024de1ef584bc5df47642bbc35b170422158133a0a980c0cfdf03ba5"
+}

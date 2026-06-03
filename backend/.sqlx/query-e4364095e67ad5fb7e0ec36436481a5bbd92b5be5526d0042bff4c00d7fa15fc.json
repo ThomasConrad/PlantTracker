@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, plant_id, user_id, score, care_adherence as \"care_adherence?: f64\", overdue_penalty as \"overdue_penalty?: f64\", coach_sentiment as \"coach_sentiment?: f64\", scored_at, created_at\n         FROM plant_health_scores WHERE plant_id = ? AND user_id = ? ORDER BY scored_at DESC LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "plant_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "score",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "care_adherence?: f64",
+        "ordinal": 4,
+        "type_info": "Float"
+      },
+      {
+        "name": "overdue_penalty?: f64",
+        "ordinal": 5,
+        "type_info": "Float"
+      },
+      {
+        "name": "coach_sentiment?: f64",
+        "ordinal": 6,
+        "type_info": "Float"
+      },
+      {
+        "name": "scored_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e4364095e67ad5fb7e0ec36436481a5bbd92b5be5526d0042bff4c00d7fa15fc"
+}

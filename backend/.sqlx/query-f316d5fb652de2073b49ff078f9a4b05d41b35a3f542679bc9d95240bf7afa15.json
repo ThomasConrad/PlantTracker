@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE plant_memories SET fact_type = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "f316d5fb652de2073b49ff078f9a4b05d41b35a3f542679bc9d95240bf7afa15"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE reminder_deliveries\n             SET sent_at = ?, updated_at = ?\n             WHERE user_id = ?\n               AND plant_id = ?\n               AND care_task_id = ?\n               AND due_date = ?\n               AND sent_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "aae47a56b95a9275cd52bde4c7594c9e9ba2b1db11165a993a485755ec449f20"
+}

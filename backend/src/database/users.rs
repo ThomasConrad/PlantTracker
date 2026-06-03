@@ -3,7 +3,6 @@ use argon2::password_hash::{rand_core::OsRng, SaltString};
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::Utc;
 use serde_json::{json, Value};
-use sqlx::Row;
 use uuid::Uuid;
 use validator::{ValidationError, ValidationErrors};
 
@@ -96,21 +95,21 @@ pub async fn create_user_internal(
     let now = Utc::now().to_rfc3339();
     let role_str = role.to_string();
 
-    let result = sqlx::query(
+    let result = sqlx::query!(
         r#"
         INSERT INTO users (id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
         VALUES (?, ?, ?, 'monday', 'metric', ?, ?, ?, ?, 0, ?, ?)
         "#,
+        user_id,
+        request.email,
+        request.name,
+        password_hash,
+        role_str,
+        can_create_invites,
+        max_invites,
+        now,
+        now
     )
-    .bind(&user_id)
-    .bind(&request.email)
-    .bind(&request.name)
-    .bind(&password_hash)
-    .bind(&role_str)
-    .bind(can_create_invites)
-    .bind(max_invites)
-    .bind(&now)
-    .bind(&now)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -152,10 +151,11 @@ async fn get_max_total_users(pool: &DatabasePool) -> Result<i32, AppError> {
 }
 
 pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, AppError> {
-    let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, llm_base_url, llm_api_key, llm_model, created_at, updated_at FROM users WHERE id = ?"
+    let user_row = sqlx::query_as!(
+        UserRow,
+        r#"SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites as "max_invites: i32", invites_created as "invites_created: i32", llm_base_url, llm_api_key, llm_model, created_at, updated_at FROM users WHERE id = ?"#,
+        user_id
     )
-        .bind(user_id)
         .fetch_optional(pool)
         .await
         .map_err(|e| {
@@ -174,10 +174,11 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, 
 }
 
 pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User, AppError> {
-    let user_row = sqlx::query_as::<_, UserRow>(
-        "SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites, invites_created, llm_base_url, llm_api_key, llm_model, created_at, updated_at FROM users WHERE email = ?"
+    let user_row = sqlx::query_as!(
+        UserRow,
+        r#"SELECT id, email, name, first_day_of_week, preferred_units, password_hash, role, can_create_invites, max_invites as "max_invites: i32", invites_created as "invites_created: i32", llm_base_url, llm_api_key, llm_model, created_at, updated_at FROM users WHERE email = ?"#,
+        email
     )
-        .bind(email)
         .fetch_optional(pool)
         .await
         .map_err(|e| {
@@ -250,9 +251,7 @@ pub async fn update_user_profile(
     preferred_units: &PreferredUnits,
 ) -> Result<User, AppError> {
     let existing =
-        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM users WHERE email = ? AND id != ?")
-            .bind(email)
-            .bind(user_id)
+        sqlx::query_scalar!(r#"SELECT COUNT(*) FROM users WHERE email = ? AND id != ?"#, email, user_id)
             .fetch_one(pool)
             .await
             .map_err(AppError::Database)?;
@@ -262,15 +261,17 @@ pub async fn update_user_profile(
     }
 
     let now = Utc::now().to_rfc3339();
-    let updated = sqlx::query(
-        "UPDATE users SET name = ?, email = ?, first_day_of_week = ?, preferred_units = ?, updated_at = ? WHERE id = ?",
+    let first_day_str = first_day_of_week.to_string();
+    let units_str = preferred_units.to_string();
+    let updated = sqlx::query!(
+        r#"UPDATE users SET name = ?, email = ?, first_day_of_week = ?, preferred_units = ?, updated_at = ? WHERE id = ?"#,
+        name,
+        email,
+        first_day_str,
+        units_str,
+        now,
+        user_id
     )
-        .bind(name)
-        .bind(email)
-        .bind(first_day_of_week.to_string())
-        .bind(preferred_units.to_string())
-        .bind(now)
-        .bind(user_id)
         .execute(pool)
         .await
         .map_err(AppError::Database)?;
@@ -292,14 +293,14 @@ pub async fn update_user_llm_settings(
     model: Option<&str>,
 ) -> Result<User, AppError> {
     let now = Utc::now().to_rfc3339();
-    sqlx::query(
-        "UPDATE users SET llm_base_url = ?, llm_api_key = ?, llm_model = ?, updated_at = ? WHERE id = ?",
+    sqlx::query!(
+        r#"UPDATE users SET llm_base_url = ?, llm_api_key = ?, llm_model = ?, updated_at = ? WHERE id = ?"#,
+        base_url,
+        api_key,
+        model,
+        now,
+        user_id
     )
-    .bind(base_url)
-    .bind(api_key)
-    .bind(model)
-    .bind(&now)
-    .bind(user_id)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -314,13 +315,13 @@ pub async fn set_user_profile_picture(
     content_type: &str,
 ) -> Result<(), AppError> {
     let now = Utc::now().to_rfc3339();
-    let updated = sqlx::query(
-        "UPDATE users SET profile_picture_data = ?, profile_picture_content_type = ?, updated_at = ? WHERE id = ?",
+    let updated = sqlx::query!(
+        r#"UPDATE users SET profile_picture_data = ?, profile_picture_content_type = ?, updated_at = ? WHERE id = ?"#,
+        image_data,
+        content_type,
+        now,
+        user_id
     )
-    .bind(image_data)
-    .bind(content_type)
-    .bind(now)
-    .bind(user_id)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -338,10 +339,10 @@ pub async fn get_user_profile_picture(
     pool: &DatabasePool,
     user_id: &str,
 ) -> Result<Option<(Vec<u8>, String)>, AppError> {
-    let row = sqlx::query(
-        "SELECT profile_picture_data, profile_picture_content_type FROM users WHERE id = ?",
+    let row = sqlx::query!(
+        r#"SELECT profile_picture_data, profile_picture_content_type FROM users WHERE id = ?"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_optional(pool)
     .await
     .map_err(AppError::Database)?;
@@ -350,12 +351,8 @@ pub async fn get_user_profile_picture(
         resource: format!("User with id {user_id}"),
     })?;
 
-    let data = row
-        .try_get::<Option<Vec<u8>>, _>("profile_picture_data")
-        .map_err(AppError::Database)?;
-    let content_type = row
-        .try_get::<Option<String>, _>("profile_picture_content_type")
-        .map_err(AppError::Database)?;
+    let data = row.profile_picture_data;
+    let content_type = row.profile_picture_content_type;
 
     Ok(match (data, content_type) {
         (Some(data), Some(content_type)) => Some((data, content_type)),
@@ -368,11 +365,11 @@ pub async fn delete_user_profile_picture(
     user_id: &str,
 ) -> Result<(), AppError> {
     let now = Utc::now().to_rfc3339();
-    let updated = sqlx::query(
-        "UPDATE users SET profile_picture_data = NULL, profile_picture_content_type = NULL, updated_at = ? WHERE id = ?",
+    let updated = sqlx::query!(
+        r#"UPDATE users SET profile_picture_data = NULL, profile_picture_content_type = NULL, updated_at = ? WHERE id = ?"#,
+        now,
+        user_id
     )
-    .bind(now)
-    .bind(user_id)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -398,13 +395,15 @@ pub async fn change_user_password(
     let password_hash = hash_password(new_password)?;
     let now = Utc::now().to_rfc3339();
 
-    let updated = sqlx::query("UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?")
-        .bind(password_hash)
-        .bind(now)
-        .bind(user_id)
-        .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
+    let updated = sqlx::query!(
+        r#"UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?"#,
+        password_hash,
+        now,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     if updated.rows_affected() != 1 {
         return Err(AppError::NotFound {
@@ -416,10 +415,10 @@ pub async fn change_user_password(
 }
 
 pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Value, AppError> {
-    let user = sqlx::query(
-        "SELECT id, email, name, first_day_of_week, preferred_units, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?",
+    let user = sqlx::query!(
+        r#"SELECT id, email, name, first_day_of_week, preferred_units, role, can_create_invites, max_invites, invites_created, created_at, updated_at FROM users WHERE id = ?"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_optional(pool)
     .await
     .map_err(AppError::Database)?
@@ -427,43 +426,43 @@ pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Valu
         resource: format!("User with id {user_id}"),
     })?;
 
-    let plants = sqlx::query(
-        "SELECT id, name, genus, created_at, updated_at FROM plants WHERE user_id = ? ORDER BY created_at DESC",
+    let plants = sqlx::query!(
+        r#"SELECT id, name, genus, created_at, updated_at FROM plants WHERE user_id = ? ORDER BY created_at DESC"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await
     .map_err(AppError::Database)?;
 
-    let tracking_entries = sqlx::query(
-        "SELECT te.id, te.plant_id, te.timestamp, te.care_task_ids, te.measurements, te.notes, te.photo_ids, te.created_at, te.updated_at
+    let tracking_entries = sqlx::query!(
+        r#"SELECT te.id, te.plant_id, te.timestamp, te.care_task_ids, te.measurements, te.notes, te.photo_ids, te.created_at, te.updated_at
          FROM tracking_entries te
          JOIN plants p ON p.id = te.plant_id
          WHERE p.user_id = ?
-         ORDER BY te.timestamp DESC",
+         ORDER BY te.timestamp DESC"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await
     .map_err(AppError::Database)?;
 
-    let photos = sqlx::query(
-        "SELECT ph.id, ph.plant_id, ph.filename, ph.original_filename, ph.size, ph.content_type, ph.width, ph.height, ph.created_at
+    let photos = sqlx::query!(
+        r#"SELECT ph.id, ph.plant_id, ph.filename, ph.original_filename, ph.size, ph.content_type, ph.width, ph.height, ph.created_at
          FROM photos ph
          JOIN plants p ON p.id = ph.plant_id
          WHERE p.user_id = ?
-         ORDER BY ph.created_at DESC",
+         ORDER BY ph.created_at DESC"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await
     .map_err(AppError::Database)?;
 
-    let invites = sqlx::query(
-        "SELECT id, code, max_uses, current_uses, is_active, created_at, expires_at
-         FROM invite_codes WHERE created_by = ? ORDER BY created_at DESC",
+    let invites = sqlx::query!(
+        r#"SELECT id, code, max_uses, current_uses, is_active, created_at, expires_at
+         FROM invite_codes WHERE created_by = ? ORDER BY created_at DESC"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_all(pool)
     .await
     .map_err(AppError::Database)?;
@@ -471,53 +470,53 @@ pub async fn export_user_data(pool: &DatabasePool, user_id: &str) -> Result<Valu
     Ok(json!({
         "exported_at": Utc::now().to_rfc3339(),
         "user": {
-            "id": user.try_get::<String, _>("id").unwrap_or_default(),
-            "email": user.try_get::<String, _>("email").unwrap_or_default(),
-            "name": user.try_get::<String, _>("name").unwrap_or_default(),
-            "role": user.try_get::<String, _>("role").unwrap_or_else(|_| "user".to_string()),
-            "can_create_invites": user.try_get::<bool, _>("can_create_invites").unwrap_or(false),
-            "max_invites": user.try_get::<Option<i32>, _>("max_invites").ok().flatten(),
-            "invites_created": user.try_get::<i32, _>("invites_created").unwrap_or(0),
-            "created_at": user.try_get::<String, _>("created_at").unwrap_or_default(),
-            "updated_at": user.try_get::<String, _>("updated_at").unwrap_or_default(),
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "role": user.role,
+            "can_create_invites": user.can_create_invites,
+            "max_invites": user.max_invites,
+            "invites_created": user.invites_created,
+            "created_at": user.created_at,
+            "updated_at": user.updated_at,
         },
         "plants": plants.into_iter().map(|row| json!({
-            "id": row.try_get::<String, _>("id").unwrap_or_default(),
-            "name": row.try_get::<String, _>("name").unwrap_or_default(),
-            "genus": row.try_get::<String, _>("genus").unwrap_or_default(),
-            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
-            "updated_at": row.try_get::<String, _>("updated_at").unwrap_or_default(),
+            "id": row.id,
+            "name": row.name,
+            "genus": row.genus,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
         })).collect::<Vec<_>>(),
         "tracking_entries": tracking_entries.into_iter().map(|row| json!({
-            "id": row.try_get::<String, _>("id").unwrap_or_default(),
-            "plant_id": row.try_get::<String, _>("plant_id").unwrap_or_default(),
-            "timestamp": row.try_get::<String, _>("timestamp").unwrap_or_default(),
-            "care_task_ids": row.try_get::<Option<String>, _>("care_task_ids").ok().flatten(),
-            "measurements": row.try_get::<Option<String>, _>("measurements").ok().flatten(),
-            "notes": row.try_get::<Option<String>, _>("notes").ok().flatten(),
-            "photo_ids": row.try_get::<Option<String>, _>("photo_ids").ok().flatten(),
-            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
-            "updated_at": row.try_get::<String, _>("updated_at").unwrap_or_default(),
+            "id": row.id,
+            "plant_id": row.plant_id,
+            "timestamp": row.timestamp,
+            "care_task_ids": row.care_task_ids,
+            "measurements": row.measurements,
+            "notes": row.notes,
+            "photo_ids": row.photo_ids,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
         })).collect::<Vec<_>>(),
         "photos": photos.into_iter().map(|row| json!({
-            "id": row.try_get::<String, _>("id").unwrap_or_default(),
-            "plant_id": row.try_get::<String, _>("plant_id").unwrap_or_default(),
-            "filename": row.try_get::<String, _>("filename").unwrap_or_default(),
-            "original_filename": row.try_get::<String, _>("original_filename").unwrap_or_default(),
-            "size": row.try_get::<i64, _>("size").unwrap_or(0),
-            "content_type": row.try_get::<String, _>("content_type").unwrap_or_default(),
-            "width": row.try_get::<Option<i32>, _>("width").ok().flatten(),
-            "height": row.try_get::<Option<i32>, _>("height").ok().flatten(),
-            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
+            "id": row.id,
+            "plant_id": row.plant_id,
+            "filename": row.filename,
+            "original_filename": row.original_filename,
+            "size": row.size,
+            "content_type": row.content_type,
+            "width": row.width,
+            "height": row.height,
+            "created_at": row.created_at,
         })).collect::<Vec<_>>(),
         "invites": invites.into_iter().map(|row| json!({
-            "id": row.try_get::<String, _>("id").unwrap_or_default(),
-            "code": row.try_get::<String, _>("code").unwrap_or_default(),
-            "max_uses": row.try_get::<i32, _>("max_uses").unwrap_or(1),
-            "current_uses": row.try_get::<i32, _>("current_uses").unwrap_or(0),
-            "is_active": row.try_get::<bool, _>("is_active").unwrap_or(false),
-            "created_at": row.try_get::<String, _>("created_at").unwrap_or_default(),
-            "expires_at": row.try_get::<Option<String>, _>("expires_at").ok().flatten(),
+            "id": row.id,
+            "code": row.code,
+            "max_uses": row.max_uses,
+            "current_uses": row.current_uses,
+            "is_active": row.is_active,
+            "created_at": row.created_at,
+            "expires_at": row.expires_at,
         })).collect::<Vec<_>>(),
     }))
 }
@@ -530,8 +529,7 @@ pub async fn delete_user_account(
     let user = get_user_by_id(pool, user_id).await?;
     verify_password(pool, &user.email, current_password).await?;
 
-    let deleted = sqlx::query("DELETE FROM users WHERE id = ?")
-        .bind(user_id)
+    let deleted = sqlx::query!(r#"DELETE FROM users WHERE id = ?"#, user_id)
         .execute(pool)
         .await
         .map_err(AppError::Database)?;

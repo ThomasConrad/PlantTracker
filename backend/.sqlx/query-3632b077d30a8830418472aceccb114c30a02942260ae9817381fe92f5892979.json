@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM tracking_entries WHERE id = ? AND plant_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "3632b077d30a8830418472aceccb114c30a02942260ae9817381fe92f5892979"
+}

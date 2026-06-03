@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO user_reminder_preferences (user_id, enabled, reminder_time, timezone, browser_notifications_enabled, created_at, updated_at)\n         VALUES (?, FALSE, '09:00', 'UTC', FALSE, ?, ?)\n         ON CONFLICT(user_id) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "ed4470eefeef99642002ee7666e7a10741bb5e2717d6837a49c94fb6056993fe"
+}

@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT te.id, te.plant_id, te.timestamp, te.care_task_ids, te.measurements, te.notes, te.photo_ids, te.created_at, te.updated_at\n         FROM tracking_entries te\n         JOIN plants p ON p.id = te.plant_id\n         WHERE p.user_id = ?\n         ORDER BY te.timestamp DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "plant_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "timestamp",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "care_task_ids",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "measurements",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "notes",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "photo_ids",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "ffe5ff8678d4c6664827aebbb67512e4709ceb7a2cbbcc0c71a2035fd72aa77c"
+}

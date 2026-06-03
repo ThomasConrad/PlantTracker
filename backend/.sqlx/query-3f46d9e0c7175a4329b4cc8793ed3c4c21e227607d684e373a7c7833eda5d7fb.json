@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT ph.id, ph.plant_id, ph.filename, ph.original_filename, ph.size, ph.content_type, ph.width, ph.height, ph.created_at\n         FROM photos ph\n         JOIN plants p ON p.id = ph.plant_id\n         WHERE p.user_id = ?\n         ORDER BY ph.created_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "plant_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "filename",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "original_filename",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "size",
+        "ordinal": 4,
+        "type_info": "Int64"
+      },
+      {
+        "name": "content_type",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "width",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "height",
+        "ordinal": 7,
+        "type_info": "Int64"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "3f46d9e0c7175a4329b4cc8793ed3c4c21e227607d684e373a7c7833eda5d7fb"
+}

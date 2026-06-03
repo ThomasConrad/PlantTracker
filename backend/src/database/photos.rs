@@ -1,5 +1,4 @@
 use chrono::Utc;
-use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::DatabasePool;
@@ -27,11 +26,14 @@ pub async fn get_photos_for_plant_paginated(
     sort_desc: Option<bool>,
 ) -> Result<PhotosResponse, AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
-        .bind(plant_id.to_string())
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?;
+    let plant_id_str = plant_id.to_string();
+    let plant_exists = sqlx::query!(
+        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
+        plant_id_str,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -45,13 +47,15 @@ pub async fn get_photos_for_plant_paginated(
     let sort_desc = sort_desc.unwrap_or(true);
 
     // Get total count
-    let total_row = sqlx::query("SELECT COUNT(*) as count FROM photos WHERE plant_id = ?")
-        .bind(plant_id.to_string())
-        .fetch_one(pool)
-        .await?;
-    let total: i64 = total_row.get("count");
+    let total_row = sqlx::query!(
+        r#"SELECT COUNT(*) as count FROM photos WHERE plant_id = ?"#,
+        plant_id_str
+    )
+    .fetch_one(pool)
+    .await?;
+    let total: i64 = total_row.count.into();
 
-    // Build sort order
+    // Build sort order - dynamic query, cannot use macro
     let order_clause = if sort_desc {
         "ORDER BY created_at DESC"
     } else {
@@ -78,6 +82,7 @@ pub async fn get_photos_for_plant_paginated(
     let photos: Vec<Photo> = photos_rows
         .into_iter()
         .map(|row| {
+            use sqlx::Row;
             let id_str: String = row.get("id");
             let plant_id_str: String = row.get("plant_id");
             let created_at_str: String = row.get("created_at");
@@ -109,11 +114,14 @@ pub async fn get_photo_data(
     user_id: &str,
 ) -> Result<(Vec<u8>, String), AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
-        .bind(plant_id.to_string())
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?;
+    let plant_id_str = plant_id.to_string();
+    let plant_exists = sqlx::query!(
+        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
+        plant_id_str,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -122,17 +130,19 @@ pub async fn get_photo_data(
     }
 
     // Get photo data
-    let photo_row =
-        sqlx::query("SELECT data, content_type FROM photos WHERE id = ? AND plant_id = ?")
-            .bind(photo_id.to_string())
-            .bind(plant_id.to_string())
-            .fetch_optional(pool)
-            .await?;
+    let photo_id_str = photo_id.to_string();
+    let photo_row = sqlx::query!(
+        r#"SELECT data, content_type FROM photos WHERE id = ? AND plant_id = ?"#,
+        photo_id_str,
+        plant_id_str
+    )
+    .fetch_optional(pool)
+    .await?;
 
     match photo_row {
         Some(row) => {
-            let data: Vec<u8> = row.get("data");
-            let content_type: String = row.get("content_type");
+            let data: Vec<u8> = row.data;
+            let content_type: String = row.content_type;
             Ok((data, content_type))
         }
         None => Err(AppError::NotFound {
@@ -149,11 +159,14 @@ pub async fn create_photo(
     request: &UploadPhotoRequest,
 ) -> Result<Photo, AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
-        .bind(plant_id.to_string())
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?;
+    let plant_id_str = plant_id.to_string();
+    let plant_exists = sqlx::query!(
+        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
+        plant_id_str,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -176,20 +189,25 @@ pub async fn create_photo(
     let filename = format!("{}_{}.avif", plant_id, photo_id);
 
     // Store processed AVIF image data in database
-    sqlx::query(
-        "INSERT INTO photos (id, plant_id, filename, original_filename, size, content_type, data, width, height, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    let photo_id_str = photo_id.to_string();
+    let size = processed_image.data.len() as i64;
+    let width = processed_image.width as i32;
+    let height = processed_image.height as i32;
+    let created_at_str = now.to_rfc3339();
+    sqlx::query!(
+        r#"INSERT INTO photos (id, plant_id, filename, original_filename, size, content_type, data, width, height, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+        photo_id_str,
+        plant_id_str,
+        filename,
+        request.original_filename,
+        size,
+        processed_image.content_type,
+        processed_image.data,
+        width,
+        height,
+        created_at_str
     )
-    .bind(photo_id.to_string())
-    .bind(plant_id.to_string())
-    .bind(&filename)
-    .bind(&request.original_filename)
-    .bind(processed_image.data.len() as i64) // Use processed image size
-    .bind(&processed_image.content_type) // Always "image/avif"
-    .bind(&processed_image.data)
-    .bind(processed_image.width as i32)
-    .bind(processed_image.height as i32)
-    .bind(now.to_rfc3339())
     .execute(pool)
     .await?;
 
@@ -222,11 +240,14 @@ pub async fn delete_photo(
     user_id: &str,
 ) -> Result<(), AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
-        .bind(plant_id.to_string())
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await?;
+    let plant_id_str = plant_id.to_string();
+    let plant_exists = sqlx::query!(
+        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
+        plant_id_str,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -235,11 +256,14 @@ pub async fn delete_photo(
     }
 
     // Verify photo exists before deletion
-    let photo_row = sqlx::query("SELECT 1 FROM photos WHERE id = ? AND plant_id = ?")
-        .bind(photo_id.to_string())
-        .bind(plant_id.to_string())
-        .fetch_optional(pool)
-        .await?;
+    let photo_id_str = photo_id.to_string();
+    let photo_row = sqlx::query!(
+        r#"SELECT 1 as exists_flag FROM photos WHERE id = ? AND plant_id = ?"#,
+        photo_id_str,
+        plant_id_str
+    )
+    .fetch_optional(pool)
+    .await?;
 
     if photo_row.is_none() {
         return Err(AppError::NotFound {
@@ -251,17 +275,17 @@ pub async fn delete_photo(
 
     // Remove this photo reference from historical tracking entries so old activity rows do not
     // point to now-missing images.
-    let entries_with_photos = sqlx::query(
-        "SELECT id, photo_ids FROM tracking_entries WHERE plant_id = ? AND photo_ids IS NOT NULL",
+    let entries_with_photos = sqlx::query!(
+        r#"SELECT id, photo_ids FROM tracking_entries WHERE plant_id = ? AND photo_ids IS NOT NULL"#,
+        plant_id_str
     )
-    .bind(plant_id.to_string())
     .fetch_all(&mut *tx)
     .await?;
 
     let deleted_photo_id = photo_id.to_string();
     for row in entries_with_photos {
-        let entry_id: String = row.get("id");
-        let photo_ids_raw: Option<String> = row.get("photo_ids");
+        let entry_id: String = row.id;
+        let photo_ids_raw: Option<String> = row.photo_ids;
 
         let Some(photo_ids_raw) = photo_ids_raw else {
             continue;
@@ -285,24 +309,27 @@ pub async fn delete_photo(
                 Some(serde_json::to_string(&photo_ids).unwrap_or_default())
             };
 
-            sqlx::query(
-                "UPDATE tracking_entries SET photo_ids = ?, updated_at = ? WHERE id = ? AND plant_id = ?",
+            let updated_at = Utc::now().to_rfc3339();
+            sqlx::query!(
+                r#"UPDATE tracking_entries SET photo_ids = ?, updated_at = ? WHERE id = ? AND plant_id = ?"#,
+                updated_photo_ids,
+                updated_at,
+                entry_id,
+                plant_id_str
             )
-            .bind(updated_photo_ids)
-            .bind(Utc::now().to_rfc3339())
-            .bind(entry_id)
-            .bind(plant_id.to_string())
             .execute(&mut *tx)
             .await?;
         }
     }
 
     // Delete photo record (photo data is deleted with the row)
-    let result = sqlx::query("DELETE FROM photos WHERE id = ? AND plant_id = ?")
-        .bind(photo_id.to_string())
-        .bind(plant_id.to_string())
-        .execute(&mut *tx)
-        .await?;
+    let result = sqlx::query!(
+        r#"DELETE FROM photos WHERE id = ? AND plant_id = ?"#,
+        photo_id_str,
+        plant_id_str
+    )
+    .execute(&mut *tx)
+    .await?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound {
@@ -336,37 +363,47 @@ mod tests {
         let user_id = Uuid::new_v4().to_string();
         let plant_id = Uuid::new_v4();
         let now = Utc::now().to_rfc3339();
+        let plant_id_str = plant_id.to_string();
 
         // Create user
-        sqlx::query(
-            "INSERT INTO users (id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        let email = "test@example.com";
+        let name = "Test User";
+        let password_hash = "fake_hash";
+        let role = "user";
+        let can_create_invites = false;
+        let max_invites: i32 = 5;
+        let invites_created: i32 = 0;
+        sqlx::query!(
+            r#"INSERT INTO users (id, email, name, password_hash, role, can_create_invites, max_invites, invites_created, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+            user_id,
+            email,
+            name,
+            password_hash,
+            role,
+            can_create_invites,
+            max_invites,
+            invites_created,
+            now,
+            now
         )
-        .bind(&user_id)
-        .bind("test@example.com")
-        .bind("Test User")
-        .bind("fake_hash")
-        .bind("user")
-        .bind(false)
-        .bind(Some(5))
-        .bind(0)
-        .bind(&now)
-        .bind(&now)
         .execute(pool)
         .await
         .expect("Failed to create test user");
 
         // Create plant
-        sqlx::query(
-            "INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?)",
+        let plant_name = "Test Plant";
+        let genus = "Testus";
+        sqlx::query!(
+            r#"INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?)"#,
+            plant_id_str,
+            user_id,
+            plant_name,
+            genus,
+            now,
+            now
         )
-        .bind(plant_id.to_string())
-        .bind(&user_id)
-        .bind("Test Plant")
-        .bind("Testus")
-        .bind(&now)
-        .bind(&now)
         .execute(pool)
         .await
         .expect("Failed to create test plant");

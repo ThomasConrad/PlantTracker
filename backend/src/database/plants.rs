@@ -84,23 +84,19 @@ async fn load_custom_metrics_for_plant(
     pool: &DatabasePool,
     plant_id: &str,
 ) -> Result<Vec<CustomMetric>, AppError> {
-    let rows = sqlx::query(
-        "SELECT id, plant_id, name, unit, data_type FROM custom_metrics WHERE plant_id = ? ORDER BY name ASC",
+    let rows = sqlx::query!(
+        r#"SELECT id as "id!: String", plant_id as "plant_id!: String", name as "name!: String", unit, data_type as "data_type!: String" FROM custom_metrics WHERE plant_id = ? ORDER BY name ASC"#,
+        plant_id
     )
-    .bind(plant_id)
     .fetch_all(pool)
     .await
     .map_err(AppError::Database)?;
 
     rows.into_iter()
         .map(|row| {
-            let id = row.try_get::<String, _>("id").map_err(AppError::Database)?;
-            let plant_id = row
-                .try_get::<String, _>("plant_id")
-                .map_err(AppError::Database)?;
-            let data_type = row
-                .try_get::<String, _>("data_type")
-                .map_err(AppError::Database)?;
+            let id = row.id;
+            let plant_id = row.plant_id;
+            let data_type = row.data_type;
 
             Ok(CustomMetric {
                 id: Uuid::parse_str(&id).map_err(|_| AppError::Internal {
@@ -109,12 +105,8 @@ async fn load_custom_metrics_for_plant(
                 plant_id: Uuid::parse_str(&plant_id).map_err(|_| AppError::Internal {
                     message: "Invalid custom metric plant_id UUID in database".to_string(),
                 })?,
-                name: row
-                    .try_get::<String, _>("name")
-                    .map_err(AppError::Database)?,
-                unit: row
-                    .try_get::<String, _>("unit")
-                    .map_err(AppError::Database)?,
+                name: row.name,
+                unit: row.unit,
                 data_type: parse_metric_data_type(&data_type),
             })
         })
@@ -126,25 +118,29 @@ async fn replace_custom_metrics_for_plant(
     plant_id: &str,
     metrics: &[(Option<Uuid>, String, String, MetricDataType)],
 ) -> Result<(), AppError> {
-    sqlx::query("DELETE FROM custom_metrics WHERE plant_id = ?")
-        .bind(plant_id)
-        .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
+    sqlx::query!(
+        r#"DELETE FROM custom_metrics WHERE plant_id = ?"#,
+        plant_id
+    )
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     for (existing_id, name, unit, data_type) in metrics {
         let metric_id = existing_id.unwrap_or_else(Uuid::new_v4).to_string();
-        sqlx::query(
-            "INSERT INTO custom_metrics (id, plant_id, name, unit, data_type, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        let data_type_str = metric_data_type_to_str(data_type);
+        let now = Utc::now().to_rfc3339();
+        sqlx::query!(
+            r#"INSERT INTO custom_metrics (id, plant_id, name, unit, data_type, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)"#,
+            metric_id,
+            plant_id,
+            name,
+            unit,
+            data_type_str,
+            now,
+            now
         )
-        .bind(metric_id)
-        .bind(plant_id)
-        .bind(name)
-        .bind(unit)
-        .bind(metric_data_type_to_str(data_type))
-        .bind(Utc::now().to_rfc3339())
-        .bind(Utc::now().to_rfc3339())
         .execute(pool)
         .await
         .map_err(AppError::Database)?;
@@ -177,16 +173,16 @@ pub async fn create_plant(
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
 
-    sqlx::query(
-        "INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)",
+    sqlx::query!(
+        r#"INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?)"#,
+        plant_id_str,
+        user_id,
+        request.name,
+        request.genus,
+        now,
+        now
     )
-    .bind(&plant_id_str)
-    .bind(user_id)
-    .bind(&request.name)
-    .bind(&request.genus)
-    .bind(&now)
-    .bind(&now)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -229,14 +225,26 @@ pub async fn get_plant_by_id(
     plant_id: Uuid,
 ) -> Result<PlantResponse, AppError> {
     let plant_id_str = plant_id.to_string();
-    let plant_row = sqlx::query_as::<_, PlantRow>("SELECT * FROM plants WHERE id = ?")
-        .bind(plant_id_str)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to fetch plant: {}", e);
-            AppError::Database(e)
-        })?;
+    let plant_row = sqlx::query_as!(
+        PlantRow,
+        r#"SELECT
+            id as "id!: String",
+            user_id as "user_id!: String",
+            name as "name!: String",
+            genus as "genus!: String",
+            preview_id as "preview_id?: String",
+            archived_at as "archived_at?: String",
+            created_at as "created_at!: String",
+            updated_at as "updated_at!: String"
+        FROM plants WHERE id = ?"#,
+        plant_id_str
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to fetch plant: {}", e);
+        AppError::Database(e)
+    })?;
 
     let plant = plant_row.map_or_else(
         || {
@@ -412,15 +420,17 @@ pub async fn delete_plant(
 ) -> Result<(), AppError> {
     let plant_id_str = plant_id.to_string();
 
-    let result = sqlx::query("DELETE FROM plants WHERE id = ? AND user_id = ?")
-        .bind(&plant_id_str)
-        .bind(user_id)
-        .execute(pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to delete plant: {}", e);
-            AppError::Database(e)
-        })?;
+    let result = sqlx::query!(
+        r#"DELETE FROM plants WHERE id = ? AND user_id = ?"#,
+        plant_id_str,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to delete plant: {}", e);
+        AppError::Database(e)
+    })?;
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
@@ -439,13 +449,13 @@ pub async fn archive_plant(
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
 
-    let result = sqlx::query(
-        "UPDATE plants SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+    let result = sqlx::query!(
+        r#"UPDATE plants SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?"#,
+        now,
+        now,
+        plant_id_str,
+        user_id
     )
-    .bind(&now)
-    .bind(&now)
-    .bind(&plant_id_str)
-    .bind(user_id)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -470,12 +480,12 @@ pub async fn unarchive_plant(
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
 
-    let result = sqlx::query(
-        "UPDATE plants SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?",
+    let result = sqlx::query!(
+        r#"UPDATE plants SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?"#,
+        now,
+        plant_id_str,
+        user_id
     )
-    .bind(&now)
-    .bind(&plant_id_str)
-    .bind(user_id)
     .execute(pool)
     .await
     .map_err(|e| {
@@ -501,12 +511,14 @@ pub async fn set_plant_preview(
     let plant_id_str = plant_id.to_string();
     let photo_id_str = photo_id.to_string();
 
-    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
-        .bind(&plant_id_str)
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(AppError::Database)?;
+    let plant_exists = sqlx::query!(
+        r#"SELECT 1 as "one" FROM plants WHERE id = ? AND user_id = ?"#,
+        plant_id_str,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -514,12 +526,14 @@ pub async fn set_plant_preview(
         });
     }
 
-    let photo_exists = sqlx::query("SELECT 1 FROM photos WHERE id = ? AND plant_id = ?")
-        .bind(&photo_id_str)
-        .bind(&plant_id_str)
-        .fetch_optional(pool)
-        .await
-        .map_err(AppError::Database)?;
+    let photo_exists = sqlx::query!(
+        r#"SELECT 1 as "one" FROM photos WHERE id = ? AND plant_id = ?"#,
+        photo_id_str,
+        plant_id_str
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     if photo_exists.is_none() {
         return Err(AppError::NotFound {
@@ -528,14 +542,16 @@ pub async fn set_plant_preview(
     }
 
     let now = Utc::now().to_rfc3339();
-    sqlx::query("UPDATE plants SET preview_id = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-        .bind(&photo_id_str)
-        .bind(&now)
-        .bind(&plant_id_str)
-        .bind(user_id)
-        .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
+    sqlx::query!(
+        r#"UPDATE plants SET preview_id = ?, updated_at = ? WHERE id = ? AND user_id = ?"#,
+        photo_id_str,
+        now,
+        plant_id_str,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     get_plant_by_id(pool, plant_id).await
 }
@@ -547,12 +563,14 @@ pub async fn clear_plant_preview(
 ) -> Result<PlantResponse, AppError> {
     let plant_id_str = plant_id.to_string();
 
-    let plant_exists = sqlx::query("SELECT 1 FROM plants WHERE id = ? AND user_id = ?")
-        .bind(&plant_id_str)
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(AppError::Database)?;
+    let plant_exists = sqlx::query!(
+        r#"SELECT 1 as "one" FROM plants WHERE id = ? AND user_id = ?"#,
+        plant_id_str,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     if plant_exists.is_none() {
         return Err(AppError::NotFound {
@@ -561,13 +579,15 @@ pub async fn clear_plant_preview(
     }
 
     let now = Utc::now().to_rfc3339();
-    sqlx::query("UPDATE plants SET preview_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?")
-        .bind(&now)
-        .bind(&plant_id_str)
-        .bind(user_id)
-        .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
+    sqlx::query!(
+        r#"UPDATE plants SET preview_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?"#,
+        now,
+        plant_id_str,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     get_plant_by_id(pool, plant_id).await
 }

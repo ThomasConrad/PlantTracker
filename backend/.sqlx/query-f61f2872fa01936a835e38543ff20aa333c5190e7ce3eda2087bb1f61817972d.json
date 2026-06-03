@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT calendar_token FROM users WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "calendar_token",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "f61f2872fa01936a835e38543ff20aa333c5190e7ce3eda2087bb1f61817972d"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO plant_memories (id, plant_id, user_id, fact_type, content, confidence, source, source_message_id, created_at, updated_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "f95f42e729bc48e2398a0de3a624f6f2324edf1f8ac1c328bb46e0022dc456b2"
+}

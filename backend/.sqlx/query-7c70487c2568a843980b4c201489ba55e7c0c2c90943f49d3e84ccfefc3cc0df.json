@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO care_tasks (id, plant_id, user_id, name, icon, color, interval_days, amount, unit, notes, last_performed, sort_order, created_at, updated_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 14
+    },
+    "nullable": []
+  },
+  "hash": "7c70487c2568a843980b4c201489ba55e7c0c2c90943f49d3e84ccfefc3cc0df"
+}

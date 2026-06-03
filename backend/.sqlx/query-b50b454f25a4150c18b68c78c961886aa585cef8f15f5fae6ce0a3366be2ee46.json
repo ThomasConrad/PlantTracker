@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 as \"one\" FROM photos WHERE id = ? AND plant_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "one",
+        "ordinal": 0,
+        "type_info": "Int"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b50b454f25a4150c18b68c78c961886aa585cef8f15f5fae6ce0a3366be2ee46"
+}

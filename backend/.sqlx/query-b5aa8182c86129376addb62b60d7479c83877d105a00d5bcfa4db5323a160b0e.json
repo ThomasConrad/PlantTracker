@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO tracking_entries (id, plant_id, timestamp, care_task_ids, notes, photo_ids, created_at, updated_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "b5aa8182c86129376addb62b60d7479c83877d105a00d5bcfa4db5323a160b0e"
+}

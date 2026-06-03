@@ -15,12 +15,14 @@ pub async fn list_memories_for_plant(
     plant_id: &Uuid,
     user_id: &str,
 ) -> Result<PlantMemoriesResponse, AppError> {
-    let rows = sqlx::query_as::<_, MemoryRow>(
-        "SELECT id, plant_id, user_id, fact_type, content, confidence, source, source_message_id, created_at, updated_at
-         FROM plant_memories WHERE plant_id = ? AND user_id = ? ORDER BY fact_type, created_at",
+    let plant_id_str = plant_id.to_string();
+    let rows = sqlx::query_as!(
+        MemoryRow,
+        r#"SELECT id, plant_id, user_id, fact_type, content, confidence, source, source_message_id as "source_message_id?: String", created_at, updated_at
+         FROM plant_memories WHERE plant_id = ? AND user_id = ? ORDER BY fact_type, created_at"#,
+        plant_id_str,
+        user_id
     )
-    .bind(plant_id.to_string())
-    .bind(user_id)
     .fetch_all(pool)
     .await
     .map_err(AppError::Database)?;
@@ -38,12 +40,14 @@ pub async fn get_memory(
     memory_id: &Uuid,
     user_id: &str,
 ) -> Result<PlantMemory, AppError> {
-    let row = sqlx::query_as::<_, MemoryRow>(
-        "SELECT id, plant_id, user_id, fact_type, content, confidence, source, source_message_id, created_at, updated_at
-         FROM plant_memories WHERE id = ? AND user_id = ?",
+    let memory_id_str = memory_id.to_string();
+    let row = sqlx::query_as!(
+        MemoryRow,
+        r#"SELECT id, plant_id, user_id, fact_type, content, confidence, source, source_message_id as "source_message_id?: String", created_at, updated_at
+         FROM plant_memories WHERE id = ? AND user_id = ?"#,
+        memory_id_str,
+        user_id
     )
-    .bind(memory_id.to_string())
-    .bind(user_id)
     .fetch_optional(pool)
     .await
     .map_err(AppError::Database)?
@@ -66,21 +70,25 @@ pub async fn create_memory(
 ) -> Result<PlantMemory, AppError> {
     let id = Uuid::new_v4();
     let now = Utc::now().to_rfc3339();
+    let id_str = id.to_string();
+    let plant_id_str = plant_id.to_string();
+    let fact_type_str = fact_type.to_string();
+    let source_str = source.to_string();
 
-    sqlx::query(
-        "INSERT INTO plant_memories (id, plant_id, user_id, fact_type, content, confidence, source, source_message_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    sqlx::query!(
+        r#"INSERT INTO plant_memories (id, plant_id, user_id, fact_type, content, confidence, source, source_message_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+        id_str,
+        plant_id_str,
+        user_id,
+        fact_type_str,
+        content,
+        confidence,
+        source_str,
+        source_message_id,
+        now,
+        now
     )
-    .bind(id.to_string())
-    .bind(plant_id.to_string())
-    .bind(user_id)
-    .bind(fact_type.to_string())
-    .bind(content)
-    .bind(confidence)
-    .bind(source.to_string())
-    .bind(source_message_id)
-    .bind(&now)
-    .bind(&now)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -99,28 +107,30 @@ pub async fn update_memory(
     let _existing = get_memory(pool, memory_id, user_id).await?;
 
     let now = Utc::now().to_rfc3339();
+    let memory_id_str = memory_id.to_string();
 
     if let Some(content) = content {
-        sqlx::query(
-            "UPDATE plant_memories SET content = ?, confidence = 1.0, updated_at = ? WHERE id = ? AND user_id = ?",
+        sqlx::query!(
+            r#"UPDATE plant_memories SET content = ?, confidence = 1.0, updated_at = ? WHERE id = ? AND user_id = ?"#,
+            content,
+            now,
+            memory_id_str,
+            user_id
         )
-        .bind(content)
-        .bind(&now)
-        .bind(memory_id.to_string())
-        .bind(user_id)
         .execute(pool)
         .await
         .map_err(AppError::Database)?;
     }
 
     if let Some(ft) = fact_type {
-        sqlx::query(
-            "UPDATE plant_memories SET fact_type = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+        let ft_str = ft.to_string();
+        sqlx::query!(
+            r#"UPDATE plant_memories SET fact_type = ?, updated_at = ? WHERE id = ? AND user_id = ?"#,
+            ft_str,
+            now,
+            memory_id_str,
+            user_id
         )
-        .bind(ft.to_string())
-        .bind(&now)
-        .bind(memory_id.to_string())
-        .bind(user_id)
         .execute(pool)
         .await
         .map_err(AppError::Database)?;
@@ -134,12 +144,15 @@ pub async fn delete_memory(
     memory_id: &Uuid,
     user_id: &str,
 ) -> Result<(), AppError> {
-    let result = sqlx::query("DELETE FROM plant_memories WHERE id = ? AND user_id = ?")
-        .bind(memory_id.to_string())
-        .bind(user_id)
-        .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
+    let memory_id_str = memory_id.to_string();
+    let result = sqlx::query!(
+        r#"DELETE FROM plant_memories WHERE id = ? AND user_id = ?"#,
+        memory_id_str,
+        user_id
+    )
+    .execute(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound {
@@ -168,14 +181,17 @@ pub async fn store_extracted_facts(
         };
 
         // Check for existing fact of the same type with similar content
-        let existing = sqlx::query_as::<_, MemoryRow>(
-            "SELECT id, plant_id, user_id, fact_type, content, confidence, source, source_message_id, created_at, updated_at
+        let plant_id_str = plant_id.to_string();
+        let fact_type_str = fact_type.to_string();
+        let existing = sqlx::query_as!(
+            MemoryRow,
+            r#"SELECT id, plant_id, user_id, fact_type, content, confidence, source, source_message_id as "source_message_id?: String", created_at, updated_at
              FROM plant_memories WHERE plant_id = ? AND user_id = ? AND fact_type = ?
-             ORDER BY updated_at DESC LIMIT 5",
+             ORDER BY updated_at DESC LIMIT 5"#,
+            plant_id_str,
+            user_id,
+            fact_type_str
         )
-        .bind(plant_id.to_string())
-        .bind(user_id)
-        .bind(fact_type.to_string())
         .fetch_all(pool)
         .await
         .map_err(AppError::Database)?;
@@ -195,14 +211,15 @@ pub async fn store_extracted_facts(
             // Update existing with new content and bump confidence
             let now = Utc::now().to_rfc3339();
             let new_confidence = (fact.confidence).max(dup.confidence).min(1.0);
-            sqlx::query(
-                "UPDATE plant_memories SET content = ?, confidence = ?, source_message_id = ?, updated_at = ? WHERE id = ?",
+            let dup_id = &dup.id;
+            sqlx::query!(
+                r#"UPDATE plant_memories SET content = ?, confidence = ?, source_message_id = ?, updated_at = ? WHERE id = ?"#,
+                fact.content,
+                new_confidence,
+                source_message_id,
+                now,
+                dup_id
             )
-            .bind(&fact.content)
-            .bind(new_confidence)
-            .bind(source_message_id)
-            .bind(&now)
-            .bind(&dup.id)
             .execute(pool)
             .await
             .map_err(AppError::Database)?;
@@ -270,12 +287,14 @@ pub async fn get_latest_health_score(
     plant_id: &Uuid,
     user_id: &str,
 ) -> Result<Option<PlantHealthScore>, AppError> {
-    let row = sqlx::query_as::<_, HealthScoreRow>(
-        "SELECT id, plant_id, user_id, score, care_adherence, overdue_penalty, coach_sentiment, scored_at, created_at
-         FROM plant_health_scores WHERE plant_id = ? AND user_id = ? ORDER BY scored_at DESC LIMIT 1",
+    let plant_id_str = plant_id.to_string();
+    let row = sqlx::query_as!(
+        HealthScoreRow,
+        r#"SELECT id, plant_id, user_id, score, care_adherence as "care_adherence?: f64", overdue_penalty as "overdue_penalty?: f64", coach_sentiment as "coach_sentiment?: f64", scored_at, created_at
+         FROM plant_health_scores WHERE plant_id = ? AND user_id = ? ORDER BY scored_at DESC LIMIT 1"#,
+        plant_id_str,
+        user_id
     )
-    .bind(plant_id.to_string())
-    .bind(user_id)
     .fetch_optional(pool)
     .await
     .map_err(AppError::Database)?;
@@ -295,21 +314,23 @@ pub async fn store_health_score(
     let id = Uuid::new_v4();
     let now = Utc::now().to_rfc3339();
     let today = Utc::now().format("%Y-%m-%d").to_string();
+    let id_str = id.to_string();
+    let plant_id_str = plant_id.to_string();
 
     // Upsert: replace today's score if it exists
-    sqlx::query(
-        "INSERT OR REPLACE INTO plant_health_scores (id, plant_id, user_id, score, care_adherence, overdue_penalty, coach_sentiment, scored_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    sqlx::query!(
+        r#"INSERT OR REPLACE INTO plant_health_scores (id, plant_id, user_id, score, care_adherence, overdue_penalty, coach_sentiment, scored_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+        id_str,
+        plant_id_str,
+        user_id,
+        score,
+        care_adherence,
+        overdue_penalty,
+        coach_sentiment,
+        today,
+        now
     )
-    .bind(id.to_string())
-    .bind(plant_id.to_string())
-    .bind(user_id)
-    .bind(score)
-    .bind(care_adherence)
-    .bind(overdue_penalty)
-    .bind(coach_sentiment)
-    .bind(&today)
-    .bind(&now)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -323,7 +344,7 @@ pub async fn store_health_score(
 
 // ─── Row types ───────────────────────────────────────────────────────────────
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug)]
 struct MemoryRow {
     id: String,
     plant_id: String,
@@ -370,7 +391,7 @@ impl MemoryRow {
     }
 }
 
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug)]
 struct HealthScoreRow {
     id: String,
     plant_id: String,

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 as \"x\" FROM tracking_entries WHERE id = ? AND plant_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "x",
+        "ordinal": 0,
+        "type_info": "Int"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "03423ab0419f58b9655a7a37df6feb34e6203af5cf1393dc4cc6e36d7895b958"
+}

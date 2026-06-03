@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE care_tasks SET last_performed = ?, updated_at = ? WHERE id = ? AND plant_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "3f029d9df81cc2c3b7052064401d22666ed636749ad2a14f8251936700087410"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE care_tasks SET interval_days = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "e9c816a707e16e414e2df3811b548796f7dd5f422c1ee09dae3a43bfc95f2995"
+}

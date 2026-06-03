@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM plant_memories WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "196dba0bd92e78866a1db2a477d25b5fa32e9fe9b4e3d906b970c4a6c5a6b794"
+}

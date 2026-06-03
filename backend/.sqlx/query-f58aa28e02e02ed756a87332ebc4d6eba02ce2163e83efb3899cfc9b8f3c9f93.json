@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM care_tasks WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "f58aa28e02e02ed756a87332ebc4d6eba02ce2163e83efb3899cfc9b8f3c9f93"
+}

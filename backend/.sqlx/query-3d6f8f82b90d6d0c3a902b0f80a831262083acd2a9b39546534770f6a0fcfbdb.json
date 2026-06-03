@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE plants SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "3d6f8f82b90d6d0c3a902b0f80a831262083acd2a9b39546534770f6a0fcfbdb"
+}

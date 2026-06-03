@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT 1 as \"x\" FROM care_tasks WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "x",
+        "ordinal": 0,
+        "type_info": "Int"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "79e14d5ca9efad532f4265948a9e7ae700c37867ca12df19b2aec6fbce8c00ea"
+}

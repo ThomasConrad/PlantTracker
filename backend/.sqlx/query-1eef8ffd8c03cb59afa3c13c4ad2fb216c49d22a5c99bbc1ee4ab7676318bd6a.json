@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO custom_metrics (id, plant_id, name, unit, data_type, created_at, updated_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "1eef8ffd8c03cb59afa3c13c4ad2fb216c49d22a5c99bbc1ee4ab7676318bd6a"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE plant_memories SET content = ?, confidence = ?, source_message_id = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "e42befc2ab67595313fbb06446f6ba44d63d48194ebd288699d7fa9233d80f9c"
+}

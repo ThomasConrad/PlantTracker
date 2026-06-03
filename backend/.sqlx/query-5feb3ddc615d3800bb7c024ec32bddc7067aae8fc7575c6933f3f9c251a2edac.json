@@ -1,0 +1,104 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            id as \"id!: String\",\n            plant_id as \"plant_id!: String\",\n            user_id as \"user_id!: String\",\n            name as \"name!: String\",\n            icon,\n            color,\n            interval_days,\n            amount,\n            unit,\n            notes,\n            last_performed,\n            sort_order as \"sort_order!: i32\",\n            archived_at,\n            created_at as \"created_at!: String\",\n            updated_at as \"updated_at!: String\"\n        FROM care_tasks WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "plant_id!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id!: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "name!: String",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "icon",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "color",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "interval_days",
+        "ordinal": 6,
+        "type_info": "Int64"
+      },
+      {
+        "name": "amount",
+        "ordinal": 7,
+        "type_info": "Float"
+      },
+      {
+        "name": "unit",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "notes",
+        "ordinal": 9,
+        "type_info": "Text"
+      },
+      {
+        "name": "last_performed",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "sort_order!: i32",
+        "ordinal": 11,
+        "type_info": "Int64"
+      },
+      {
+        "name": "archived_at",
+        "ordinal": 12,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: String",
+        "ordinal": 13,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: String",
+        "ordinal": 14,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "5feb3ddc615d3800bb7c024ec32bddc7067aae8fc7575c6933f3f9c251a2edac"
+}

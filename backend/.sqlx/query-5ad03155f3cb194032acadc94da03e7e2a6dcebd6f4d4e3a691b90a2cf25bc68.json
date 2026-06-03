@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE care_tasks SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "5ad03155f3cb194032acadc94da03e7e2a6dcebd6f4d4e3a691b90a2cf25bc68"
+}

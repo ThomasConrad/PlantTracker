@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE tracking_entries SET photo_ids = ?, updated_at = ? WHERE id = ? AND plant_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "73626dce92412f2bec1370a9aedc61ca34a963af4ecb3b72b51061b692f0fa02"
+}

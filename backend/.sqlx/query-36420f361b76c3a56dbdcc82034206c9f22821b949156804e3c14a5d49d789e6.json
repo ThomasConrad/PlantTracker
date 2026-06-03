@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users SET llm_base_url = ?, llm_api_key = ?, llm_model = ?, updated_at = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "36420f361b76c3a56dbdcc82034206c9f22821b949156804e3c14a5d49d789e6"
+}

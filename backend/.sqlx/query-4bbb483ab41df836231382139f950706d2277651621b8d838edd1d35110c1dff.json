@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO reminder_deliveries\n             (id, user_id, plant_id, care_task_id, due_date, due_at, created_at, updated_at)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?)\n             ON CONFLICT(user_id, plant_id, care_task_id, due_date)\n             DO UPDATE SET updated_at = excluded.updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "4bbb483ab41df836231382139f950706d2277651621b8d838edd1d35110c1dff"
+}

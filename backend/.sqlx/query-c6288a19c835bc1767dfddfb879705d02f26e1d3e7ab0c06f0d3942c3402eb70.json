@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM custom_metrics WHERE plant_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "c6288a19c835bc1767dfddfb879705d02f26e1d3e7ab0c06f0d3942c3402eb70"
+}

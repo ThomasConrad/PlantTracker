@@ -1,5 +1,4 @@
 use chrono::Utc;
-use sqlx::Row;
 use uuid::Uuid;
 
 use crate::database::care_tasks as db_care_tasks;
@@ -13,41 +12,33 @@ pub async fn get_or_create_preferences(
 ) -> Result<ReminderPreferences> {
     let now = Utc::now().to_rfc3339();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO user_reminder_preferences (user_id, enabled, reminder_time, timezone, browser_notifications_enabled, created_at, updated_at)
          VALUES (?, FALSE, '09:00', 'UTC', FALSE, ?, ?)
          ON CONFLICT(user_id) DO NOTHING",
+        user_id,
+        now,
+        now,
     )
-    .bind(user_id)
-    .bind(&now)
-    .bind(&now)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
 
-    let row = sqlx::query(
+    let row = sqlx::query!(
         "SELECT enabled, reminder_time, timezone, browser_notifications_enabled
          FROM user_reminder_preferences
          WHERE user_id = ?",
+        user_id,
     )
-    .bind(user_id)
     .fetch_one(pool)
     .await
     .map_err(AppError::Database)?;
 
     Ok(ReminderPreferences {
-        enabled: row
-            .try_get::<bool, _>("enabled")
-            .map_err(AppError::Database)?,
-        reminder_time: row
-            .try_get::<String, _>("reminder_time")
-            .map_err(AppError::Database)?,
-        timezone: row
-            .try_get::<String, _>("timezone")
-            .map_err(AppError::Database)?,
-        browser_notifications_enabled: row
-            .try_get::<bool, _>("browser_notifications_enabled")
-            .map_err(AppError::Database)?,
+        enabled: row.enabled,
+        reminder_time: row.reminder_time,
+        timezone: row.timezone,
+        browser_notifications_enabled: row.browser_notifications_enabled,
     })
 }
 
@@ -58,7 +49,7 @@ pub async fn update_preferences(
 ) -> Result<ReminderPreferences> {
     let now = Utc::now().to_rfc3339();
 
-    sqlx::query(
+    sqlx::query!(
         "INSERT INTO user_reminder_preferences (user_id, enabled, reminder_time, timezone, browser_notifications_enabled, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(user_id) DO UPDATE
@@ -67,14 +58,14 @@ pub async fn update_preferences(
              timezone = excluded.timezone,
              browser_notifications_enabled = excluded.browser_notifications_enabled,
              updated_at = excluded.updated_at",
+        user_id,
+        request.enabled,
+        request.reminder_time,
+        request.timezone,
+        request.browser_notifications_enabled,
+        now,
+        now,
     )
-    .bind(user_id)
-    .bind(request.enabled)
-    .bind(&request.reminder_time)
-    .bind(&request.timezone)
-    .bind(request.browser_notifications_enabled)
-    .bind(&now)
-    .bind(&now)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -146,26 +137,26 @@ pub async fn dispatch_due_reminders(
     for reminder in due {
         let id = Uuid::new_v4().to_string();
 
-        sqlx::query(
+        sqlx::query!(
             "INSERT INTO reminder_deliveries
              (id, user_id, plant_id, care_task_id, due_date, due_at, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(user_id, plant_id, care_task_id, due_date)
              DO UPDATE SET updated_at = excluded.updated_at",
+            id,
+            user_id,
+            reminder.plant_id,
+            reminder.care_task_id,
+            reminder.due_date,
+            reminder.due_at,
+            now,
+            now,
         )
-        .bind(&id)
-        .bind(user_id)
-        .bind(&reminder.plant_id)
-        .bind(&reminder.care_task_id)
-        .bind(&reminder.due_date)
-        .bind(&reminder.due_at)
-        .bind(&now)
-        .bind(&now)
         .execute(&mut *tx)
         .await
         .map_err(AppError::Database)?;
 
-        let result = sqlx::query(
+        let result = sqlx::query!(
             "UPDATE reminder_deliveries
              SET sent_at = ?, updated_at = ?
              WHERE user_id = ?
@@ -173,13 +164,13 @@ pub async fn dispatch_due_reminders(
                AND care_task_id = ?
                AND due_date = ?
                AND sent_at IS NULL",
+            now,
+            now,
+            user_id,
+            reminder.plant_id,
+            reminder.care_task_id,
+            reminder.due_date,
         )
-        .bind(&now)
-        .bind(&now)
-        .bind(user_id)
-        .bind(&reminder.plant_id)
-        .bind(&reminder.care_task_id)
-        .bind(&reminder.due_date)
         .execute(&mut *tx)
         .await
         .map_err(AppError::Database)?;

@@ -6,7 +6,6 @@ use axum::{
     Router,
 };
 use serde::Deserialize;
-use sqlx::Row;
 
 use crate::app_state::AppState;
 use crate::auth::AuthSession;
@@ -60,16 +59,14 @@ pub struct CalendarQuery {
 }
 
 async fn get_or_create_calendar_token(pool: &sqlx::SqlitePool, user_id: &str) -> Result<String> {
-    let existing_token = sqlx::query("SELECT calendar_token FROM users WHERE id = ?")
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(AppError::Database)?
-        .and_then(|row| {
-            row.try_get::<Option<String>, _>("calendar_token")
-                .ok()
-                .flatten()
-        });
+    let existing_token = sqlx::query!(
+        "SELECT calendar_token FROM users WHERE id = ?",
+        user_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(AppError::Database)?
+    .and_then(|row| row.calendar_token);
 
     if let Some(token) = existing_token {
         return Ok(token);
@@ -78,13 +75,13 @@ async fn get_or_create_calendar_token(pool: &sqlx::SqlitePool, user_id: &str) ->
     let token = generate_calendar_token();
     let now = chrono::Utc::now().to_rfc3339();
 
-    let updated = sqlx::query(
+    let updated = sqlx::query!(
         "UPDATE users SET calendar_token = ?, calendar_token_updated_at = ?, updated_at = ? WHERE id = ?",
+        token,
+        now,
+        now,
+        user_id,
     )
-    .bind(&token)
-    .bind(&now)
-    .bind(&now)
-    .bind(user_id)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -102,13 +99,13 @@ async fn rotate_calendar_token(pool: &sqlx::SqlitePool, user_id: &str) -> Result
     let token = generate_calendar_token();
     let now = chrono::Utc::now().to_rfc3339();
 
-    let updated = sqlx::query(
+    let updated = sqlx::query!(
         "UPDATE users SET calendar_token = ?, calendar_token_updated_at = ?, updated_at = ? WHERE id = ?",
+        token,
+        now,
+        now,
+        user_id,
     )
-    .bind(&token)
-    .bind(&now)
-    .bind(&now)
-    .bind(user_id)
     .execute(pool)
     .await
     .map_err(AppError::Database)?;
@@ -127,16 +124,14 @@ async fn verify_calendar_token(
     user_id: &str,
     provided_token: &str,
 ) -> Result<bool> {
-    let stored_token = sqlx::query("SELECT calendar_token FROM users WHERE id = ?")
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
-        .map_err(AppError::Database)?
-        .and_then(|row| {
-            row.try_get::<Option<String>, _>("calendar_token")
-                .ok()
-                .flatten()
-        });
+    let stored_token = sqlx::query!(
+        "SELECT calendar_token FROM users WHERE id = ?",
+        user_id,
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(AppError::Database)?
+    .and_then(|row| row.calendar_token);
 
     Ok(stored_token.is_some_and(|token| token == provided_token))
 }

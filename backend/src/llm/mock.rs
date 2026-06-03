@@ -145,7 +145,7 @@ impl PlantCoach for MockCoach {
         // Simulate word-by-word streaming with small delays
         for word in response.text.split_inclusive(' ') {
             let _ = tx.send(word.to_string()).await;
-            tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
         }
         Ok(response)
     }

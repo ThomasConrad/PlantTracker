@@ -110,43 +110,43 @@ test-backend:
 test-e2e:
     @echo "🧪 Running E2E tests in parallel..."
     just setup-e2e-env
-    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -v -n auto
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -v -n 4
 
 # Run E2E authentication tests
 test-e2e-auth:
     @echo "🧪 Running authentication E2E tests..."
     just setup-e2e-env
-    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m auth -v  -n auto
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m auth -v  -n 4
 
 # Run E2E plant management tests
 test-e2e-plants:
     @echo "🧪 Running plant management E2E tests..."
     just setup-e2e-env
-    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m plants -v -n auto
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m plants -v -n 4
 
 # Run E2E calendar tests
 test-e2e-calendar:
     @echo "🧪 Running calendar E2E tests..."
     just setup-e2e-env
-    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "calendar" -v -n auto
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "calendar" -v -n 4
 
 # Run E2E tests with custom filter
 test-e2e-filter filter:
     @echo "🧪 Running E2E tests with filter: {{filter}}"
     just setup-e2e-env
-    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "{{filter}}" -v -n auto
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "{{filter}}" -v -n 4
 
 # Run E2E isolation tests
 test-e2e-isolation:
     @echo "🧪 Running user isolation E2E tests..."
     just setup-e2e-env
-    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m isolation -v -n auto
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m isolation -v -n 4
 
 # Run E2E coach tests (chat, streaming, memory)
 test-e2e-coach:
     @echo "🧪 Running coach E2E tests..."
     just setup-e2e-env
-    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "Coach or Memory" -v -n auto
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "Coach or Memory" -v -n 4
 
 # === GENERATE COMMANDS ===
 

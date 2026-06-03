@@ -142,6 +142,12 @@ test-e2e-isolation:
     just setup-e2e-env
     cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -m isolation -v -n auto
 
+# Run E2E coach tests (chat, streaming, memory)
+test-e2e-coach:
+    @echo "🧪 Running coach E2E tests..."
+    just setup-e2e-env
+    cd backend && venv-e2e/bin/pytest test_e2e_pytest.py -k "Coach or Memory" -v -n auto
+
 # === GENERATE COMMANDS ===
 
 # Generate OpenAPI spec and TypeScript types

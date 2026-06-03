@@ -135,4 +135,18 @@ impl PlantCoach for MockCoach {
             extracted_facts,
         })
     }
+
+    async fn stream_chat(
+        &self,
+        messages: Vec<ChatMessage>,
+        tx: tokio::sync::mpsc::Sender<String>,
+    ) -> Result<CoachResponse> {
+        let response = self.chat(messages).await?;
+        // Simulate word-by-word streaming with small delays
+        for word in response.text.split_inclusive(' ') {
+            let _ = tx.send(word.to_string()).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+        }
+        Ok(response)
+    }
 }

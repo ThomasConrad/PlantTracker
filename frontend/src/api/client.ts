@@ -77,7 +77,13 @@ interface DispatchRemindersResponse {
   sentCount: number;
 }
 
-// Since frontend is always served from backend, use relative URLs
+import {
+  enqueueRequest,
+  getCachedResponse,
+  cacheResponse,
+} from "@/utils/offlineQueue";
+
+// Frontend is always served by the backend — relative URL always works.
 const API_BASE_URL = "/api/v1";
 
 class ApiError extends Error {
@@ -98,6 +104,10 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   async request<T>(
     endpoint: string,
     options: Partial<{
@@ -107,43 +117,80 @@ class ApiClient {
     }> = {},
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const method = options.method || "GET";
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     };
 
-    const response = await fetch(url, {
-      method: options.method || "GET",
-      body: options.body,
-      headers,
-      credentials: "include", // Include cookies for session auth
-    });
+    try {
+      const response = await fetch(url, {
+        method,
+        body: options.body,
+        headers,
+        credentials: "include",
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          errorData.message || `HTTP ${response.status}`,
+          response.status,
+          errorData,
+        );
+      }
+
+      // Handle responses with no content (204 No Content, or empty response)
+      if (
+        response.status === 204 ||
+        response.headers.get("content-length") === "0"
+      ) {
+        // Cache successful GET responses
+        if (method === "GET") {
+          cacheResponse(url, "", response.status);
+        }
+        return undefined as T;
+      }
+
+      // Check if response has content to parse
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+        // Cache successful GET responses
+        if (method === "GET") {
+          cacheResponse(url, JSON.stringify(data), response.status);
+        }
+        return data;
+      }
+
+      return undefined as T;
+    } catch (error) {
+      // If it's an ApiError (server responded with an error), don't queue
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      // Network error — handle offline
+      if (method === "GET") {
+        // For reads, try to return cached data
+        const cached = await getCachedResponse(url);
+        if (cached) {
+          if (cached.body) {
+            return JSON.parse(cached.body) as T;
+          }
+          return undefined as T;
+        }
+        throw new ApiError("You appear to be offline", 0, {});
+      }
+
+      // For mutations, queue for later replay
+      await enqueueRequest(method, url, options.body || null, headers);
       throw new ApiError(
-        errorData.message || `HTTP ${response.status}`,
-        response.status,
-        errorData,
+        "You're offline. This action will sync when you reconnect.",
+        0,
+        { queued: true },
       );
     }
-
-    // Handle responses with no content (204 No Content, or empty response)
-    if (
-      response.status === 204 ||
-      response.headers.get("content-length") === "0"
-    ) {
-      return undefined as T;
-    }
-
-    // Check if response has content to parse
-    const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
-      return response.json();
-    }
-
-    // For non-JSON responses or empty responses, return undefined
-    return undefined as T;
   }
 
   async login(credentials: LoginRequest): Promise<AuthResponse> {

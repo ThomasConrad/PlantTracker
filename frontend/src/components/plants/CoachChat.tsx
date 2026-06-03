@@ -5,6 +5,7 @@ import {
   For,
   Show,
   onMount,
+  onCleanup,
 } from "solid-js";
 import { coachApi, CoachMessage, CoachSuggestion } from "@/api/coach";
 import { apiClient } from "@/api/client";
@@ -25,6 +26,7 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
   const [pendingImage, setPendingImage] = createSignal<string | undefined>();
   const [loading, setLoading] = createSignal(true);
   const [sending, setSending] = createSignal(false);
+  const [streamingText, setStreamingText] = createSignal("");
   const [error, setError] = createSignal<string | null>(null);
   const [showGallery, setShowGallery] = createSignal(false);
   const [galleryPhotos, setGalleryPhotos] = createSignal<Photo[]>([]);
@@ -32,6 +34,7 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
 
   let messagesEndRef: HTMLDivElement | undefined;
   let fileInputRef: HTMLInputElement | undefined;
+  let streamAbort: AbortController | undefined;
 
   const scrollToBottom = () => {
     messagesEndRef?.scrollIntoView({ behavior: "smooth" });
@@ -54,6 +57,10 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
     }
   });
 
+  onCleanup(() => {
+    streamAbort?.abort();
+  });
+
   const handleSend = async () => {
     const content = input().trim();
     const imageUrl = pendingImage();
@@ -62,6 +69,7 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
     setInput("");
     setPendingImage(undefined);
     setSending(true);
+    setStreamingText("");
     setError(null);
 
     // Optimistic user message
@@ -75,25 +83,34 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
     };
     setMessages((prev) => [...prev, tempMsg]);
 
-    try {
-      const response = await coachApi.sendMessage(
-        props.plantId,
-        content,
-        imageUrl,
-      );
-      // Replace temp message and add assistant response
-      setMessages((prev) => [
-        ...prev.filter((m) => m.id !== tempMsg.id),
-        { ...tempMsg, id: response.message.id.replace(/.*/, tempMsg.id) },
-        response.message,
-      ]);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to send message");
-      // Remove optimistic message on error
-      setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
-    } finally {
-      setSending(false);
-    }
+    streamAbort = coachApi.streamMessage(
+      props.plantId,
+      content,
+      imageUrl,
+      {
+        onToken: (text) => {
+          setStreamingText((prev) => prev + text);
+        },
+        onDone: (message) => {
+          setStreamingText("");
+          setSending(false);
+          setMessages((prev) => [
+            ...prev.filter((m) => m.id !== tempMsg.id),
+            { ...tempMsg, id: `user-${message.id}` },
+            message,
+          ]);
+          streamAbort = undefined;
+        },
+        onError: (errorMsg) => {
+          setStreamingText("");
+          setSending(false);
+          setError(errorMsg);
+          // Remove optimistic message on error
+          setMessages((prev) => prev.filter((m) => m.id !== tempMsg.id));
+          streamAbort = undefined;
+        },
+      },
+    );
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -203,6 +220,8 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
         return "Care Action";
       case "photo_request":
         return "Photo Request";
+      case "species_correction":
+        return "Species ID";
     }
   };
 
@@ -315,24 +334,35 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
           )}
         </For>
 
-        {/* Typing indicator */}
+        {/* Streaming response */}
         <Show when={sending()}>
           <div class="flex justify-start">
-            <div class="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-bl-md px-4 py-3">
-              <div class="flex gap-1">
-                <div
-                  class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style="animation-delay: 0ms"
+            <div class="max-w-[80%] bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-2.5">
+              <Show
+                when={streamingText()}
+                fallback={
+                  <div class="flex gap-1">
+                    <div
+                      class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style="animation-delay: 0ms"
+                    />
+                    <div
+                      class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style="animation-delay: 150ms"
+                    />
+                    <div
+                      class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style="animation-delay: 300ms"
+                    />
+                  </div>
+                }
+              >
+                <p
+                  class="whitespace-pre-wrap text-sm"
+                  innerHTML={renderMarkdown(streamingText())}
                 />
-                <div
-                  class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style="animation-delay: 150ms"
-                />
-                <div
-                  class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                  style="animation-delay: 300ms"
-                />
-              </div>
+                <span class="inline-block w-0.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-text-bottom" />
+              </Show>
             </div>
           </div>
         </Show>

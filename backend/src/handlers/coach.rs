@@ -1,10 +1,15 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::Json,
+    response::{
+        sse::{Event, KeepAlive, Sse},
+        Json,
+    },
     routing::{get, post},
     Router,
 };
+use futures_util::stream::Stream;
+use std::convert::Infallible;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
@@ -21,6 +26,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/plants/:plant_id/messages",
             get(get_messages).post(send_message),
+        )
+        .route(
+            "/plants/:plant_id/messages/stream",
+            post(stream_message),
         )
         .route(
             "/suggestions/:suggestion_id/accept",
@@ -635,4 +644,265 @@ pub async fn dismiss_suggestion(
         status: row.status,
         applied_at: row.applied_at,
     }))
+}
+
+/// SSE streaming endpoint for coach messages.
+/// Streams text tokens as `event: token` and sends the final structured response as `event: done`.
+/// On error, sends `event: error` with the error message.
+pub async fn stream_message(
+    auth_session: AuthSession,
+    State(app_state): State<AppState>,
+    Path(plant_id): Path<Uuid>,
+    ValidatedJson(payload): ValidatedJson<SendCoachMessageRequest>,
+) -> Result<Sse<impl Stream<Item = std::result::Result<Event, Infallible>>>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    // Verify plant belongs to user
+    let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;
+    if plant.user_id != user.id {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    // Resolve coach
+    let coach: Box<dyn crate::llm::PlantCoach> = match crate::llm::create_coach_for_user(
+        user.llm_base_url.as_deref(),
+        user.llm_api_key.as_deref(),
+        user.llm_model.as_deref(),
+    ) {
+        Some(Ok(c)) => c,
+        Some(Err(e)) => {
+            return Err(AppError::External {
+                message: format!("Failed to initialize your LLM settings: {e}"),
+            });
+        }
+        None => {
+            let global = app_state.coach.as_ref().ok_or(AppError::External {
+                message: "No AI coach configured.".to_string(),
+            })?;
+            Box::new(ArcCoachWrapper(global.clone()))
+        }
+    };
+
+    let conversation =
+        db_coach::get_or_create_conversation(&app_state.pool, &plant_id.to_string(), &user.id)
+            .await
+            .map_err(|e| AppError::Internal {
+                message: e.to_string(),
+            })?;
+
+    // Insert user message
+    let _user_msg = db_coach::insert_message(
+        &app_state.pool,
+        &conversation.id,
+        "user",
+        &payload.content,
+        payload.image_url.as_deref(),
+    )
+    .await
+    .map_err(|e| AppError::Internal {
+        message: e.to_string(),
+    })?;
+
+    // Build LLM messages
+    let memory_context =
+        crate::database::memory::get_memory_context(&app_state.pool, &plant_id, &user.id)
+            .await
+            .unwrap_or_default();
+    let system_prompt = format!(
+        "{}{}{}",
+        crate::llm::COACH_SYSTEM_PROMPT,
+        crate::llm::build_plant_context(&plant),
+        memory_context
+    );
+    let mut llm_messages = vec![ChatMessage {
+        role: "system".to_string(),
+        content: vec![ContentPart::Text {
+            text: system_prompt,
+        }],
+    }];
+
+    let history = db_coach::get_messages(&app_state.pool, &conversation.id)
+        .await
+        .map_err(|e| AppError::Internal {
+            message: e.to_string(),
+        })?;
+
+    let last_idx = history.len().saturating_sub(1);
+    for (i, msg) in history.iter().enumerate() {
+        let mut parts: Vec<ContentPart> = vec![ContentPart::Text {
+            text: msg.content.clone(),
+        }];
+        if let Some(url) = &msg.image_url {
+            if i == last_idx {
+                parts.push(ContentPart::ImageUrl {
+                    image_url: crate::llm::ImageUrlContent { url: url.clone() },
+                });
+            } else {
+                parts.push(ContentPart::Text {
+                    text: "[User attached a photo — see assistant's analysis in the next message]"
+                        .to_string(),
+                });
+            }
+        }
+        llm_messages.push(ChatMessage {
+            role: msg.role.clone(),
+            content: parts,
+        });
+    }
+
+    // Single channel for all SSE events (tokens, done, error)
+    let (event_tx, event_rx) = tokio::sync::mpsc::channel::<StreamEvent>(64);
+
+    let pool = app_state.pool.clone();
+    let conv_id = conversation.id.clone();
+    let user_id = user.id.clone();
+
+    tokio::spawn(async move {
+        // Token channel: provider sends text chunks here
+        let (token_tx, mut token_rx) = tokio::sync::mpsc::channel::<String>(64);
+
+        let event_tx_fwd = event_tx.clone();
+        // Forward tokens → SSE events
+        let forwarder = tokio::spawn(async move {
+            while let Some(token) = token_rx.recv().await {
+                if event_tx_fwd.send(StreamEvent::Token(token)).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        let result = coach.stream_chat(llm_messages, token_tx).await;
+        // Wait for all tokens to be forwarded before sending done/error
+        forwarder.await.ok();
+
+        match result {
+            Ok(response) => {
+                // Persist assistant message
+                let assistant_msg = db_coach::insert_message(
+                    &pool,
+                    &conv_id,
+                    "assistant",
+                    &response.text,
+                    None,
+                )
+                .await;
+
+                if let Ok(assistant_msg) = assistant_msg {
+                    // Store extracted facts
+                    if !response.extracted_facts.is_empty() {
+                        let facts: Vec<crate::models::memory::ExtractedFact> = response
+                            .extracted_facts
+                            .iter()
+                            .map(|f| crate::models::memory::ExtractedFact {
+                                fact_type: f.fact_type.clone(),
+                                content: f.content.clone(),
+                                confidence: f.confidence,
+                            })
+                            .collect();
+                        let _ = crate::database::memory::store_extracted_facts(
+                            &pool,
+                            &plant_id,
+                            &user_id,
+                            &facts,
+                            Some(&assistant_msg.id),
+                        )
+                        .await;
+                    }
+
+                    // Insert suggestions
+                    let mut suggestions = Vec::new();
+                    for s in &response.suggestions {
+                        if let Ok(row) = db_coach::insert_suggestion(
+                            &pool,
+                            &assistant_msg.id,
+                            &plant_id.to_string(),
+                            &s.suggestion_type,
+                            &s.description,
+                            &s.payload,
+                        )
+                        .await
+                        {
+                            suggestions.push(CoachSuggestion {
+                                id: row.id,
+                                suggestion_type: row.suggestion_type,
+                                description: row.description,
+                                payload: serde_json::from_str(&row.payload).unwrap_or_default(),
+                                status: row.status,
+                                applied_at: row.applied_at,
+                            });
+                        }
+                    }
+
+                    let message = CoachMessage {
+                        id: assistant_msg.id,
+                        role: "assistant".to_string(),
+                        content: response.text,
+                        image_url: None,
+                        suggestions,
+                        created_at: assistant_msg.created_at,
+                    };
+                    let _ = event_tx.send(StreamEvent::Done(message)).await;
+                } else {
+                    let _ = event_tx
+                        .send(StreamEvent::Error("Failed to store message".to_string()))
+                        .await;
+                }
+            }
+            Err(e) => {
+                let _ = event_tx
+                    .send(StreamEvent::Error(format!("AI coach error: {e}")))
+                    .await;
+            }
+        }
+    });
+
+    let stream = futures_util::stream::unfold(event_rx, |mut rx| async move {
+        match rx.recv().await {
+            Some(StreamEvent::Token(text)) => {
+                let event = Event::default().event("token").data(text);
+                Some((Ok(event), rx))
+            }
+            Some(StreamEvent::Done(message)) => {
+                let json = serde_json::to_string(&message).unwrap_or_default();
+                let event = Event::default().event("done").data(json);
+                Some((Ok(event), rx))
+            }
+            Some(StreamEvent::Error(msg)) => {
+                let event = Event::default().event("error").data(msg);
+                Some((Ok(event), rx))
+            }
+            None => None,
+        }
+    });
+
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
+}
+
+#[derive(Debug)]
+enum StreamEvent {
+    Token(String),
+    Done(CoachMessage),
+    Error(String),
+}
+
+/// Wrapper to use an Arc<dyn PlantCoach> as an owned PlantCoach
+struct ArcCoachWrapper(std::sync::Arc<dyn crate::llm::PlantCoach>);
+
+#[async_trait::async_trait]
+impl crate::llm::PlantCoach for ArcCoachWrapper {
+    async fn chat(&self, messages: Vec<ChatMessage>) -> anyhow::Result<crate::llm::CoachResponse> {
+        self.0.chat(messages).await
+    }
+
+    async fn stream_chat(
+        &self,
+        messages: Vec<ChatMessage>,
+        tx: tokio::sync::mpsc::Sender<String>,
+    ) -> anyhow::Result<crate::llm::CoachResponse> {
+        self.0.stream_chat(messages, tx).await
+    }
 }

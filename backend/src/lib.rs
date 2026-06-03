@@ -87,6 +87,7 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::google_tasks::get_google_tasks_status,
         crate::handlers::google_tasks::disconnect_google_tasks,
         crate::handlers::google_tasks::sync_plant_tasks,
+        crate::handlers::google_tasks::poll_completions,
         crate::handlers::google_tasks::create_task,
         crate::handlers::reminders::get_preferences,
         crate::handlers::reminders::update_preferences,

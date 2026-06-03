@@ -36,6 +36,18 @@ export const CalendarSettingsPage: Component = () => {
   const [googleLoading, setGoogleLoading] = createSignal(false);
   const [googleError, setGoogleError] = createSignal<string | null>(null);
   const [syncing, setSyncing] = createSignal(false);
+  const [polling, setPolling] = createSignal(false);
+
+  // Toast notification
+  const [toast, setToast] = createSignal<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const loadSubscriptionInfo = async () => {
     try {
@@ -82,7 +94,6 @@ export const CalendarSettingsPage: Component = () => {
         method: "POST",
       });
 
-      // Update the subscription info with the new URL
       const currentInfo = subscriptionInfo();
       if (currentInfo) {
         setSubscriptionInfo({
@@ -91,8 +102,8 @@ export const CalendarSettingsPage: Component = () => {
         });
       }
 
-      // Show success message
-      setCopied(false); // Reset copy state
+      setCopied(false);
+      showToast("Calendar URL regenerated successfully");
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to regenerate token";
@@ -133,7 +144,6 @@ export const CalendarSettingsPage: Component = () => {
         state: string;
       }>("/google-tasks/auth-url");
 
-      // Redirect to Google OAuth
       window.location.href = response.auth_url;
     } catch (err: unknown) {
       const errorMessage =
@@ -155,6 +165,7 @@ export const CalendarSettingsPage: Component = () => {
       });
 
       setGoogleStatus({ connected: false });
+      showToast("Google Tasks disconnected");
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error
@@ -175,22 +186,45 @@ export const CalendarSettingsPage: Component = () => {
         success: boolean;
         message: string;
         tasks_created: number;
+        tasks_skipped: number;
       }>("/google-tasks/sync-tasks", {
         method: "POST",
-        body: JSON.stringify({
-          days_ahead: 365,
-          replace_existing: false,
-        }),
+        body: JSON.stringify({ days_ahead: 365 }),
       });
 
-      // Show success message
-      alert(`Success! ${response.message}`);
+      showToast(response.message);
     } catch (err: unknown) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to sync plant tasks";
       setGoogleError(errorMessage);
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const pollCompletions = async () => {
+    try {
+      setPolling(true);
+      setGoogleError(null);
+
+      const response = await apiClient.request<{
+        success: boolean;
+        message: string;
+        completed: number;
+        checked: number;
+      }>("/google-tasks/poll-completions", {
+        method: "POST",
+      });
+
+      showToast(response.message);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Failed to poll task completions";
+      setGoogleError(errorMessage);
+    } finally {
+      setPolling(false);
     }
   };
 
@@ -201,11 +235,26 @@ export const CalendarSettingsPage: Component = () => {
 
   return (
     <div class="max-w-4xl mx-auto px-4 py-8">
+      {/* Toast notification */}
+      <Show when={toast()}>
+        {(t) => (
+          <div
+            class={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+              t().type === "success"
+                ? "bg-green-600 text-white"
+                : "bg-red-600 text-white"
+            }`}
+          >
+            {t().message}
+          </div>
+        )}
+      </Show>
+
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 mb-4">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
           Calendar & Task Integration
         </h1>
-        <p class="text-lg text-gray-600">
+        <p class="text-lg text-gray-600 dark:text-gray-400">
           Connect with Google Tasks for actionable plant care reminders, or
           subscribe to an iCalendar feed for your calendar application.
         </p>
@@ -218,24 +267,24 @@ export const CalendarSettingsPage: Component = () => {
       </Show>
 
       <Show when={error()}>
-        <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
           <div class="flex">
             <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">Error</h3>
-              <div class="mt-2 text-sm text-red-700">{error()}</div>
+              <h3 class="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
+              <div class="mt-2 text-sm text-red-700 dark:text-red-400">{error()}</div>
             </div>
           </div>
         </div>
       </Show>
 
       {/* Google Tasks Integration */}
-      <div class="bg-white shadow rounded-lg p-6">
+      <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h2 class="text-xl font-semibold text-gray-900">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
               Google Tasks Integration
             </h2>
-            <p class="text-sm text-gray-600 mt-1">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Automatically create plant care tasks in your Google Tasks that
               you can check off when completed
             </p>
@@ -244,12 +293,12 @@ export const CalendarSettingsPage: Component = () => {
             <Show
               when={googleStatus()?.connected}
               fallback={
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
                   Not Connected
                 </span>
               }
             >
-              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                 ✓ Connected
               </span>
             </Show>
@@ -257,8 +306,8 @@ export const CalendarSettingsPage: Component = () => {
         </div>
 
         <Show when={googleError()}>
-          <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-            <div class="text-sm text-red-700">{googleError()}</div>
+          <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-4">
+            <div class="text-sm text-red-700 dark:text-red-400">{googleError()}</div>
           </div>
         </Show>
 
@@ -285,15 +334,15 @@ export const CalendarSettingsPage: Component = () => {
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
                   <div class="flex-1">
-                    <h3 class="text-lg font-medium text-gray-900">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
                       Connect with Google Tasks
                     </h3>
-                    <p class="text-sm text-gray-600 mt-1">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       Connect your Google Tasks to automatically create
                       actionable plant care tasks. This provides better task
                       management than calendar events, allowing you to:
                     </p>
-                    <ul class="mt-2 text-sm text-gray-600 space-y-1">
+                    <ul class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
                       <li>• Check off completed tasks</li>
                       <li>• Get task notifications on your devices</li>
                       <li>• Organize tasks in dedicated plant care lists</li>
@@ -317,7 +366,7 @@ export const CalendarSettingsPage: Component = () => {
             <div class="space-y-4">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-sm text-gray-600">
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
                     Connected on{" "}
                     {googleStatus()?.connected_at
                       ? new Date(
@@ -326,7 +375,7 @@ export const CalendarSettingsPage: Component = () => {
                       : "Unknown"}
                   </p>
                   <Show when={googleStatus()?.expires_at}>
-                    <p class="text-xs text-gray-500">
+                    <p class="text-xs text-gray-500 dark:text-gray-500">
                       Access expires:{" "}
                       {new Date(googleStatus()!.expires_at!).toLocaleDateString(
                         "en-GB",
@@ -338,40 +387,50 @@ export const CalendarSettingsPage: Component = () => {
                   onClick={disconnectGoogleTasks}
                   variant="outline"
                   disabled={googleLoading()}
-                  class="text-red-600 border-red-300 hover:bg-red-50"
+                  class="text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   Disconnect
                 </Button>
               </div>
 
-              <div class="flex space-x-4">
+              <div class="flex flex-wrap gap-3">
                 <Button
                   onClick={syncPlantTasks}
                   disabled={syncing()}
-                  class="flex-1 sm:flex-none"
                 >
                   <Show when={syncing()} fallback="Sync Plant Tasks">
                     <LoadingSpinner size="sm" class="mr-2" />
                     Syncing...
                   </Show>
                 </Button>
+                <Button
+                  onClick={pollCompletions}
+                  disabled={polling()}
+                  variant="outline"
+                >
+                  <Show when={polling()} fallback="Check Completions">
+                    <LoadingSpinner size="sm" class="mr-2" />
+                    Checking...
+                  </Show>
+                </Button>
               </div>
 
-              <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-blue-900 mb-2">
+              <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
                   How it works:
                 </h4>
-                <ul class="text-sm text-blue-800 space-y-1">
+                <ul class="text-sm text-blue-800 dark:text-blue-300 space-y-1">
                   <li>
-                    • Click "Sync Plant Tasks" to create actionable tasks for
-                    the next year
+                    • Click "Sync Plant Tasks" to create tasks for the next year
+                    (skips already-synced tasks)
                   </li>
                   <li>• Tasks will appear in your Google Tasks immediately</li>
                   <li>
                     • Check off tasks when you complete plant care activities
                   </li>
                   <li>
-                    • Re-sync anytime to update your tasks with new plants
+                    • Click "Check Completions" to sync completed tasks back to
+                    Planty
                   </li>
                   <li>• Tasks include plant details and care instructions</li>
                 </ul>
@@ -383,24 +442,24 @@ export const CalendarSettingsPage: Component = () => {
 
       <Show when={subscriptionInfo()}>
         {(info) => (
-          <div class="space-y-8">
+          <div class="space-y-8 mt-8">
             {/* iCalendar Subscription */}
-            <div class="bg-white shadow rounded-lg p-6">
-              <h2 class="text-xl font-semibold text-gray-900 mb-2">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 iCalendar Subscription
               </h2>
-              <p class="text-sm text-gray-600 mb-4">
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Alternative method: Subscribe to an iCalendar feed in any
                 calendar application
               </p>
 
-              <h3 class="text-lg font-medium text-gray-900 mb-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
                 Your Calendar Feed
               </h3>
 
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Calendar Subscription URL
                   </label>
                   <div class="flex space-x-2">
@@ -408,7 +467,7 @@ export const CalendarSettingsPage: Component = () => {
                       type="text"
                       value={info().feedUrl}
                       readonly
-                      class="flex-1 min-w-0 block w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      class="flex-1 min-w-0 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-gray-50 dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <Button
                       onClick={copyToClipboard}
@@ -436,7 +495,7 @@ export const CalendarSettingsPage: Component = () => {
                   </Button>
                 </div>
 
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
                   Keep this URL private. If you think it has been compromised,
                   regenerate it above.
                 </p>
@@ -444,8 +503,8 @@ export const CalendarSettingsPage: Component = () => {
             </div>
 
             {/* Features */}
-            <div class="bg-white shadow rounded-lg p-6">
-              <h2 class="text-xl font-semibold text-gray-900 mb-4">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 What You'll Get
               </h2>
               <ul class="space-y-3">
@@ -462,54 +521,54 @@ export const CalendarSettingsPage: Component = () => {
                         clip-rule="evenodd"
                       />
                     </svg>
-                    <span class="text-gray-700">{feature}</span>
+                    <span class="text-gray-700 dark:text-gray-300">{feature}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
             {/* Instructions */}
-            <div class="bg-white shadow rounded-lg p-6">
-              <h2 class="text-xl font-semibold text-gray-900 mb-4">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 How to Subscribe
               </h2>
 
               <div class="mb-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-2">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                   General Instructions
                 </h3>
-                <p class="text-gray-700">{info().instructions.general}</p>
+                <p class="text-gray-700 dark:text-gray-300">{info().instructions.general}</p>
               </div>
 
               <div class="grid md:grid-cols-2 gap-6">
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 mb-2">📱 iOS</h3>
-                  <p class="text-sm text-gray-700">{info().instructions.iOS}</p>
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">📱 iOS</h3>
+                  <p class="text-sm text-gray-700 dark:text-gray-300">{info().instructions.iOS}</p>
                 </div>
 
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 mb-2">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     🤖 Android
                   </h3>
-                  <p class="text-sm text-gray-700">
+                  <p class="text-sm text-gray-700 dark:text-gray-300">
                     {info().instructions.android}
                   </p>
                 </div>
 
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 mb-2">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     🖥️ Outlook
                   </h3>
-                  <p class="text-sm text-gray-700">
+                  <p class="text-sm text-gray-700 dark:text-gray-300">
                     {info().instructions.outlook}
                   </p>
                 </div>
 
                 <div>
-                  <h3 class="text-lg font-medium text-gray-900 mb-2">
+                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                     🍎 Apple Calendar
                   </h3>
-                  <p class="text-sm text-gray-700">
+                  <p class="text-sm text-gray-700 dark:text-gray-300">
                     {info().instructions.apple}
                   </p>
                 </div>
@@ -517,11 +576,11 @@ export const CalendarSettingsPage: Component = () => {
             </div>
 
             {/* Help */}
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
-              <h4 class="text-sm font-medium text-blue-900 mb-2">
+            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
+              <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
                 📋 Quick Setup
               </h4>
-              <ol class="list-decimal list-inside space-y-1 text-sm text-blue-800">
+              <ol class="list-decimal list-inside space-y-1 text-sm text-blue-800 dark:text-blue-300">
                 <li>Copy the calendar subscription URL above</li>
                 <li>Open your calendar application</li>
                 <li>
@@ -534,8 +593,8 @@ export const CalendarSettingsPage: Component = () => {
                 </li>
               </ol>
 
-              <div class="mt-3 pt-3 border-t border-blue-200">
-                <p class="text-xs text-blue-700">
+              <div class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                <p class="text-xs text-blue-700 dark:text-blue-400">
                   <strong>Note:</strong> Events will be created for the next 365
                   days and will update automatically when you modify your plant
                   care schedules.

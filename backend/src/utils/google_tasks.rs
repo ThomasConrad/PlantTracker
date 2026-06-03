@@ -7,6 +7,18 @@ use crate::models::google_oauth::GoogleOAuthToken;
 use crate::models::plant::PlantResponse;
 use crate::utils::errors::{AppError, Result};
 
+/// The base URL for Google Tasks API. Overridable via GOOGLE_TASKS_API_BASE_URL for testing.
+pub fn tasks_api_base_url() -> String {
+    std::env::var("GOOGLE_TASKS_API_BASE_URL")
+        .unwrap_or_else(|_| "https://tasks.googleapis.com".to_string())
+}
+
+/// The base URL for Google OAuth token endpoint. Overridable via GOOGLE_OAUTH_TOKEN_URL for testing.
+pub fn oauth_token_url() -> String {
+    std::env::var("GOOGLE_OAUTH_TOKEN_URL")
+        .unwrap_or_else(|_| "https://oauth2.googleapis.com/token".to_string())
+}
+
 /// Configuration for Google Tasks API
 #[derive(Debug, Clone)]
 pub struct GoogleTasksConfig {
@@ -39,11 +51,7 @@ impl GoogleTasksConfig {
     }
 }
 
-/// Create an HTTP client for Google Tasks API calls
-async fn create_http_client() -> Result<reqwest::Client> {
-    let client = reqwest::Client::new();
-    Ok(client)
-}
+
 
 /// Generate Google OAuth authorization URL
 pub fn generate_auth_url(config: &GoogleTasksConfig, state: &str) -> String {
@@ -81,7 +89,7 @@ pub async fn exchange_code_for_tokens(
     ];
 
     let response = client
-        .post("https://oauth2.googleapis.com/token")
+        .post(&oauth_token_url())
         .form(&params)
         .send()
         .await
@@ -148,7 +156,7 @@ pub async fn refresh_access_token(
     ];
 
     let response = client
-        .post("https://oauth2.googleapis.com/token")
+        .post(&oauth_token_url())
         .form(&params)
         .send()
         .await
@@ -256,7 +264,7 @@ pub async fn create_plant_care_task(
         plant.id
     );
 
-    let client = create_http_client().await?;
+    let client = reqwest::Client::new();
 
     let task_data = serde_json::json!({
         "title": title,
@@ -267,7 +275,8 @@ pub async fn create_plant_care_task(
 
     let response = client
         .post(format!(
-            "https://tasks.googleapis.com/tasks/v1/lists/{}/tasks",
+            "{}/tasks/v1/lists/{}/tasks",
+            tasks_api_base_url(),
             task_list_id
         ))
         .header("Authorization", format!("Bearer {}", token.access_token))
@@ -315,11 +324,11 @@ pub async fn create_plant_care_task(
 
 /// Get or create a task list for plant care
 pub async fn get_or_create_plant_care_task_list(token: &GoogleOAuthToken) -> Result<String> {
-    let client = create_http_client().await?;
+    let client = reqwest::Client::new();
 
     // First, try to find existing "Plant Care" task list
     let response = client
-        .get("https://tasks.googleapis.com/tasks/v1/users/@me/lists")
+        .get(format!("{}/tasks/v1/users/@me/lists", tasks_api_base_url()))
         .header("Authorization", format!("Bearer {}", token.access_token))
         .send()
         .await
@@ -365,7 +374,7 @@ pub async fn get_or_create_plant_care_task_list(token: &GoogleOAuthToken) -> Res
     });
 
     let response = client
-        .post("https://tasks.googleapis.com/tasks/v1/users/@me/lists")
+        .post(format!("{}/tasks/v1/users/@me/lists", tasks_api_base_url()))
         .header("Authorization", format!("Bearer {}", token.access_token))
         .header("Content-Type", "application/json")
         .json(&task_list_data)
@@ -415,4 +424,50 @@ pub fn generate_oauth_state() -> String {
         .unwrap_or(0)
         .hash(&mut hasher);
     format!("{:x}", hasher.finish())
+}
+
+/// Get the status of a specific Google Task (returns "needsAction" or "completed")
+pub async fn get_task_status(
+    token: &GoogleOAuthToken,
+    task_list_id: &str,
+    task_id: &str,
+) -> Result<String> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(format!(
+            "{}/tasks/v1/lists/{}/tasks/{}",
+            tasks_api_base_url(),
+            task_list_id, task_id
+        ))
+        .header("Authorization", format!("Bearer {}", token.access_token))
+        .send()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to get task status: {}", e);
+            AppError::External {
+                message: "Failed to get Google Task status".to_string(),
+            }
+        })?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        tracing::error!("Google Tasks API error ({}): {}", status, error_text);
+        return Err(AppError::External {
+            message: format!("Google Tasks API returned {}", status),
+        });
+    }
+
+    let result: Value = response.json().await.map_err(|e| {
+        tracing::error!("Failed to parse Google Tasks response: {}", e);
+        AppError::External {
+            message: "Invalid response from Google Tasks".to_string(),
+        }
+    })?;
+
+    Ok(result["status"]
+        .as_str()
+        .unwrap_or("needsAction")
+        .to_string())
 }

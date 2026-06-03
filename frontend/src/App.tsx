@@ -33,6 +33,7 @@ import { PrivacyPage } from "@/routes/PrivacyPage";
 import { TermsPage } from "@/routes/TermsPage";
 import { ContactPage } from "@/routes/ContactPage";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { OfflineIndicator } from "@/components/ui/OfflineIndicator";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import {
   buildLoginRedirectPath,
@@ -102,6 +103,7 @@ const App: Component = () => {
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="planty-theme">
+      <OfflineIndicator />
       <Show
         when={!authStore.loading}
         fallback={

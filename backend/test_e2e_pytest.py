@@ -1968,6 +1968,337 @@ class TestCoachSuggestions:
         assert len(photo_tasks) == 1  # No duplicate
 
 
+@pytest.mark.coach
+class TestCoachStreaming:
+    """Test SSE streaming endpoint for coach messages"""
+
+    def _setup(self, client, test_users):
+        """Helper: register, login, create plant"""
+        client.request("POST", "/auth/register", json=test_users["user1"])
+        client.request("POST", "/auth/login", json={
+            "email": test_users["user1"]["email"],
+            "password": test_users["user1"]["password"]
+        })
+        response = client.request("POST", "/plants", json={
+            "name": "Stream Test Plant",
+            "genus": "Ficus",
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7}
+            ]
+        })
+        assert response.status_code == 201
+        return response.json()
+
+    def test_stream_returns_sse_events(self, client, test_users):
+        """Streaming endpoint returns SSE with token and done events"""
+        plant = self._setup(client, test_users)
+
+        # Use raw requests to read SSE stream
+        url = f"{client.base_url}{client.api_prefix}/coach/plants/{plant['id']}/messages/stream"
+        response = client.session.post(
+            url,
+            json={"content": "Hello coach"},
+            headers={"Content-Type": "application/json"},
+            stream=True,
+        )
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
+
+        events = []
+        for line in response.iter_lines(decode_unicode=True):
+            if line and line.startswith("event: "):
+                events.append({"event": line[7:]})
+            elif line and line.startswith("data: ") and events:
+                events[-1]["data"] = line[6:]
+
+        # Should have at least one token event and one done event
+        event_types = [e["event"] for e in events]
+        assert "token" in event_types, f"Expected 'token' event, got: {event_types}"
+        assert "done" in event_types, f"Expected 'done' event, got: {event_types}"
+
+    def test_stream_done_event_contains_message(self, client, test_users):
+        """The 'done' SSE event contains a valid CoachMessage with id and suggestions"""
+        plant = self._setup(client, test_users)
+
+        url = f"{client.base_url}{client.api_prefix}/coach/plants/{plant['id']}/messages/stream"
+        response = client.session.post(
+            url,
+            json={"content": "I think I need to change the schedule"},
+            headers={"Content-Type": "application/json"},
+            stream=True,
+        )
+        assert response.status_code == 200
+
+        import json as json_mod
+        done_data = None
+        current_event = ""
+        for line in response.iter_lines(decode_unicode=True):
+            if line and line.startswith("event: "):
+                current_event = line[7:]
+            elif line and line.startswith("data: ") and current_event == "done":
+                done_data = json_mod.loads(line[6:])
+
+        assert done_data is not None, "No 'done' event received"
+        assert done_data["role"] == "assistant"
+        assert "id" in done_data
+        assert "content" in done_data
+        assert "suggestions" in done_data
+        # With 'schedule' keyword, mock should produce a suggestion
+        assert len(done_data["suggestions"]) >= 1
+
+    def test_stream_tokens_form_complete_text(self, client, test_users):
+        """Token events concatenated should match the final message content"""
+        plant = self._setup(client, test_users)
+
+        url = f"{client.base_url}{client.api_prefix}/coach/plants/{plant['id']}/messages/stream"
+        response = client.session.post(
+            url,
+            json={"content": "How is my plant?"},
+            headers={"Content-Type": "application/json"},
+            stream=True,
+        )
+        assert response.status_code == 200
+
+        import json as json_mod
+        tokens = []
+        done_data = None
+        current_event = ""
+        for line in response.iter_lines(decode_unicode=True):
+            if line and line.startswith("event: "):
+                current_event = line[7:]
+            elif line and line.startswith("data: "):
+                data = line[6:]
+                if current_event == "token":
+                    tokens.append(data)
+                elif current_event == "done":
+                    done_data = json_mod.loads(data)
+
+        assert done_data is not None
+        streamed_text = "".join(tokens)
+        # The streamed text should match the final content
+        assert streamed_text.strip() == done_data["content"].strip()
+
+    def test_stream_persists_messages(self, client, test_users):
+        """Streaming endpoint persists both user and assistant messages"""
+        plant = self._setup(client, test_users)
+
+        # Send via stream
+        url = f"{client.base_url}{client.api_prefix}/coach/plants/{plant['id']}/messages/stream"
+        response = client.session.post(
+            url,
+            json={"content": "Hello via stream"},
+            headers={"Content-Type": "application/json"},
+            stream=True,
+        )
+        # Consume the stream
+        for _ in response.iter_lines(decode_unicode=True):
+            pass
+
+        # Verify messages are persisted
+        msgs_resp = client.request("GET", f"/coach/plants/{plant['id']}/messages")
+        assert msgs_resp.status_code == 200
+        messages = msgs_resp.json()["messages"]
+        assert len(messages) >= 2
+        user_msgs = [m for m in messages if m["role"] == "user"]
+        asst_msgs = [m for m in messages if m["role"] == "assistant"]
+        assert any("Hello via stream" in m["content"] for m in user_msgs)
+        assert len(asst_msgs) >= 1
+
+    def test_stream_unauthorized_returns_error(self, client, test_users):
+        """Streaming without auth returns 401"""
+        # Create a fresh client with no session
+        fresh_client = APIClient(client.base_url, client.api_prefix)
+        url = f"{fresh_client.base_url}{fresh_client.api_prefix}/coach/plants/00000000-0000-0000-0000-000000000000/messages/stream"
+        response = fresh_client.session.post(
+            url,
+            json={"content": "Hello"},
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 401
+
+
+@pytest.mark.memory
+class TestPlantMemory:
+    """Test plant memory system: CRUD and automatic extraction from coach"""
+
+    def _setup(self, client, test_users):
+        """Helper: register, login, create plant"""
+        client.request("POST", "/auth/register", json=test_users["user1"])
+        client.request("POST", "/auth/login", json={
+            "email": test_users["user1"]["email"],
+            "password": test_users["user1"]["password"]
+        })
+        response = client.request("POST", "/plants", json={
+            "name": "Memory Test Plant",
+            "genus": "Pothos",
+            "careTasks": [
+                {"name": "Water", "icon": "💧", "intervalDays": 7}
+            ]
+        })
+        assert response.status_code == 201
+        return response.json()
+
+    def test_memories_initially_empty(self, client, test_users):
+        """A new plant has no memories"""
+        plant = self._setup(client, test_users)
+        response = client.request("GET", f"/coach/plants/{plant['id']}/memories")
+        assert response.status_code == 200
+        assert response.json()["memories"] == []
+
+    def test_create_memory_manually(self, client, test_users):
+        """Can create a plant memory manually"""
+        plant = self._setup(client, test_users)
+        response = client.request("POST", f"/coach/plants/{plant['id']}/memories", json={
+            "factType": "location",
+            "content": "East-facing windowsill",
+            "confidence": 0.95,
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["factType"] == "location"
+        assert data["content"] == "East-facing windowsill"
+        assert data["confidence"] == 1.0  # User-created facts always get confidence 1.0
+        assert data["source"] == "user"
+
+    def test_list_memories(self, client, test_users):
+        """Can list all memories for a plant"""
+        plant = self._setup(client, test_users)
+        client.request("POST", f"/coach/plants/{plant['id']}/memories", json={
+            "factType": "location",
+            "content": "Kitchen window",
+            "confidence": 0.9,
+        })
+        client.request("POST", f"/coach/plants/{plant['id']}/memories", json={
+            "factType": "pot",
+            "content": "6 inch ceramic pot",
+            "confidence": 0.85,
+        })
+
+        response = client.request("GET", f"/coach/plants/{plant['id']}/memories")
+        assert response.status_code == 200
+        memories = response.json()["memories"]
+        assert len(memories) == 2
+        fact_types = {m["factType"] for m in memories}
+        assert "location" in fact_types
+        assert "pot" in fact_types
+
+    def test_update_memory(self, client, test_users):
+        """Can update a memory's content"""
+        plant = self._setup(client, test_users)
+        create_resp = client.request("POST", f"/coach/plants/{plant['id']}/memories", json={
+            "factType": "location",
+            "content": "North window",
+            "confidence": 0.7,
+        })
+        memory_id = create_resp.json()["id"]
+
+        update_resp = client.request("PUT", f"/coach/plants/{plant['id']}/memories/{memory_id}", json={
+            "content": "South window — moved recently",
+            "confidence": 0.95,
+        })
+        assert update_resp.status_code == 200
+        assert update_resp.json()["content"] == "South window — moved recently"
+
+    def test_delete_memory(self, client, test_users):
+        """Can delete a memory"""
+        plant = self._setup(client, test_users)
+        create_resp = client.request("POST", f"/coach/plants/{plant['id']}/memories", json={
+            "factType": "general",
+            "content": "Test fact to delete",
+            "confidence": 0.5,
+        })
+        memory_id = create_resp.json()["id"]
+
+        delete_resp = client.request("DELETE", f"/coach/plants/{plant['id']}/memories/{memory_id}")
+        assert delete_resp.status_code in (200, 204)
+
+        # Verify it's gone
+        list_resp = client.request("GET", f"/coach/plants/{plant['id']}/memories")
+        assert all(m["id"] != memory_id for m in list_resp.json()["memories"])
+
+    def test_coach_extracts_facts_automatically(self, client, test_users):
+        """Sending a message with keywords triggers fact extraction into memories"""
+        plant = self._setup(client, test_users)
+
+        # The mock extracts a 'location' fact when 'window' is mentioned
+        client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "My plant is sitting by the south window"
+        })
+
+        # Check that a memory was created
+        response = client.request("GET", f"/coach/plants/{plant['id']}/memories")
+        assert response.status_code == 200
+        memories = response.json()["memories"]
+        assert len(memories) >= 1
+        location_memories = [m for m in memories if m["factType"] == "location"]
+        assert len(location_memories) >= 1
+        assert location_memories[0]["source"] == "coach"
+
+    def test_coach_extracts_pot_fact(self, client, test_users):
+        """Mock extracts 'pot' fact when pot/terracotta mentioned"""
+        plant = self._setup(client, test_users)
+
+        client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "I just repotted into a terracotta pot"
+        })
+
+        response = client.request("GET", f"/coach/plants/{plant['id']}/memories")
+        memories = response.json()["memories"]
+        pot_memories = [m for m in memories if m["factType"] == "pot"]
+        assert len(pot_memories) >= 1
+
+    def test_memory_deduplication(self, client, test_users):
+        """Sending similar facts doesn't create duplicates"""
+        plant = self._setup(client, test_users)
+
+        # Send twice with 'window' keyword — should only create one location memory
+        client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "It's near the window"
+        })
+        client.request("POST", f"/coach/plants/{plant['id']}/messages", json={
+            "content": "Yes, it's by the window still"
+        })
+
+        response = client.request("GET", f"/coach/plants/{plant['id']}/memories")
+        memories = response.json()["memories"]
+        location_memories = [m for m in memories if m["factType"] == "location"]
+        # Should be deduplicated (same fact_type + similar content)
+        assert len(location_memories) == 1
+
+    def test_health_score_endpoint(self, client, test_users):
+        """Health score endpoint returns valid data"""
+        plant = self._setup(client, test_users)
+        response = client.request("GET", f"/coach/plants/{plant['id']}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert "score" in data
+        assert "hearts" in data
+        assert 0.0 <= data["score"] <= 1.0
+        assert 0.0 <= data["hearts"] <= 5.0
+
+    def test_memory_isolation_between_plants(self, client, test_users):
+        """Memories for one plant don't appear on another"""
+        plant1 = self._setup(client, test_users)
+        # Create second plant
+        resp2 = client.request("POST", "/plants", json={
+            "name": "Other Plant",
+            "genus": "Dracaena",
+            "careTasks": []
+        })
+        plant2 = resp2.json()
+
+        # Add memory to plant1
+        client.request("POST", f"/coach/plants/{plant1['id']}/memories", json={
+            "factType": "location",
+            "content": "Bedroom",
+            "confidence": 0.9,
+        })
+
+        # plant2 should have no memories
+        resp = client.request("GET", f"/coach/plants/{plant2['id']}/memories")
+        assert resp.json()["memories"] == []
+
+
 if __name__ == "__main__":
     # Run tests when script is executed directly
     pytest.main([__file__, "-v"])

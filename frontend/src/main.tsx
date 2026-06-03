@@ -1,6 +1,7 @@
 import { render } from "solid-js/web";
 import { Router } from "@solidjs/router";
 import { registerSW } from "virtual:pwa-register";
+import { initOfflineSync } from "@/utils/offlineQueue";
 import "./index.css";
 import App from "./App";
 
@@ -18,6 +19,8 @@ if (
 registerSW({
   immediate: true,
 });
+
+initOfflineSync();
 
 render(
   () => (

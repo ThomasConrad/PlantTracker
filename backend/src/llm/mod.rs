@@ -61,6 +61,19 @@ fn default_confidence() -> f64 {
 #[async_trait::async_trait]
 pub trait PlantCoach: Send + Sync {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse>;
+
+    /// Stream tokens through the sender, then return the final parsed response.
+    /// Default implementation falls back to non-streaming chat.
+    async fn stream_chat(
+        &self,
+        messages: Vec<ChatMessage>,
+        tx: tokio::sync::mpsc::Sender<String>,
+    ) -> Result<CoachResponse> {
+        let response = self.chat(messages).await?;
+        // Send the text as a single chunk
+        let _ = tx.send(response.text.clone()).await;
+        Ok(response)
+    }
 }
 
 /// Factory: create the coach from environment config

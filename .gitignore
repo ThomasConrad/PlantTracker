@@ -34,3 +34,4 @@ node_modules
 
 # Package locks (auto-generated)
 package-lock.json
+backend/__pycache__

@@ -12,6 +12,10 @@ export const RemindersPage: Component = () => {
     reminderTime: "09:00",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
     browserNotificationsEnabled: false,
+    pushHealthAlerts: true,
+    pushDailySummary: true,
+    pushCoachSuggestions: true,
+    pushReminders: true,
   });
   const [dueReminders, setDueReminders] = createSignal<DueReminder[]>([]);
   const [loading, setLoading] = createSignal(false);

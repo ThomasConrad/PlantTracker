@@ -10,6 +10,9 @@ export default defineConfig({
   plugins: [
     solid(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
@@ -43,37 +46,8 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        skipWaiting: true,
-        clientsClaim: true,
-        runtimeCaching: [
-          {
-            // Cache API GET requests with network-first strategy
-            urlPattern: /\/api\/v1\/.*/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              },
-              networkTimeoutSeconds: 5,
-            }
-          },
-          {
-            // Cache plant photos with cache-first (they don't change)
-            urlPattern: /\/api\/photos\/.*\/(file|thumbnail)/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'photo-cache',
-              expiration: {
-                maxEntries: 500,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-              },
-            }
-          }
-        ]
       }
     })
   ],

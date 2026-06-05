@@ -6,6 +6,10 @@ export interface ReminderPreferences {
   reminderTime: string;
   timezone: string;
   browserNotificationsEnabled: boolean;
+  pushHealthAlerts: boolean;
+  pushDailySummary: boolean;
+  pushCoachSuggestions: boolean;
+  pushReminders: boolean;
 }
 
 export interface DueReminder {

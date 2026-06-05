@@ -21,6 +21,20 @@ use crate::models::memory::{
 };
 use crate::utils::errors::AppError;
 
+/// Result of a health assessment — returned so callers can decide
+/// whether to fire push notifications or other side effects.
+#[derive(Debug, Clone)]
+pub struct HealthAssessmentResult {
+    /// Blended 0.0-1.0 score (stored in DB)
+    pub blended_score: f64,
+    /// Raw AI score 1-5
+    pub raw_ai_score: u8,
+    /// AI reasoning text
+    pub reasoning: String,
+    /// The plant name (for notification messages)
+    pub plant_name: String,
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route(
@@ -452,13 +466,19 @@ pub fn trigger_background_assessment(
     coach: std::sync::Arc<dyn crate::llm::PlantCoach>,
 ) {
     tokio::spawn(async move {
-        if let Err(e) = run_health_assessment(&app_state, &plant_id, &user_id, coach.as_ref())
-            .await
-        {
-            warn!(
-                "Background health assessment failed for plant {}: {}",
-                plant_id, e
-            );
+        match run_health_assessment(&app_state, &plant_id, &user_id, coach.as_ref()).await {
+            Ok(result) => {
+                // Send push notification if health is concerning (score <= 2 out of 5)
+                if result.raw_ai_score <= 2 {
+                    send_health_alert_push(&app_state, &user_id, &result).await;
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Background health assessment failed for plant {}: {}",
+                    plant_id, e
+                );
+            }
         }
     });
 }
@@ -470,7 +490,7 @@ pub async fn run_health_assessment(
     plant_id: &Uuid,
     user_id: &str,
     coach: &dyn crate::llm::PlantCoach,
-) -> Result<(), AppError> {
+) -> Result<HealthAssessmentResult, AppError> {
     // Get plant info
     let plant = crate::database::plants::get_plant_by_id(&app_state.pool, *plant_id).await?;
 
@@ -548,5 +568,119 @@ pub async fn run_health_assessment(
         plant_id, clamped_score
     );
 
-    Ok(())
+    Ok(HealthAssessmentResult {
+        blended_score,
+        raw_ai_score: clamped_score as u8,
+        reasoning: assessment.reasoning,
+        plant_name: plant.name,
+    })
+}
+
+// ─── Push Notification Helpers ──────────────────────────────────────────────
+
+/// Send a push notification alerting the user about a low health score.
+async fn send_health_alert_push(
+    app_state: &AppState,
+    user_id: &str,
+    result: &HealthAssessmentResult,
+) {
+    use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
+
+    let hearts = result.raw_ai_score;
+    let title = format!("{} needs attention", result.plant_name);
+    let body = if hearts <= 1 {
+        format!(
+            "Health critical ({}/5): {}",
+            hearts,
+            truncate_reasoning(&result.reasoning, 100)
+        )
+    } else {
+        format!(
+            "Health declining ({}/5): {}",
+            hearts,
+            truncate_reasoning(&result.reasoning, 100)
+        )
+    };
+
+    let payload = PushPayload {
+        title,
+        body,
+        url: Some("/plants".to_string()),
+        icon: None,
+        tag: Some(format!(
+            "health-alert-{}",
+            result.plant_name.to_lowercase().replace(' ', "-")
+        )),
+    };
+
+    let sent = send_push_if_allowed(&app_state.pool, user_id, PushCategory::HealthAlert, &payload).await;
+    if sent > 0 {
+        info!(
+            "Sent {} health alert push notification(s) for {}",
+            sent, result.plant_name
+        );
+    }
+}
+
+/// Truncate a string to max_len chars, adding "..." if truncated.
+fn truncate_reasoning(s: &str, max_len: usize) -> &str {
+    if s.len() <= max_len {
+        s
+    } else {
+        // Find a safe char boundary
+        let mut end = max_len;
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        &s[..end]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn truncate_reasoning_short_string_unchanged() {
+        assert_eq!(truncate_reasoning("hello", 10), "hello");
+    }
+
+    #[test]
+    fn truncate_reasoning_exact_length_unchanged() {
+        assert_eq!(truncate_reasoning("hello", 5), "hello");
+    }
+
+    #[test]
+    fn truncate_reasoning_long_string_truncated() {
+        let result = truncate_reasoning("hello world this is long", 11);
+        assert_eq!(result, "hello world");
+    }
+
+    #[test]
+    fn truncate_reasoning_handles_multibyte_chars() {
+        // "café" is 5 bytes in UTF-8 (é = 2 bytes)
+        let s = "café latte";
+        let result = truncate_reasoning(s, 5);
+        // Should not split in the middle of 'é', so truncates to "caf" (4 bytes) or "café" (5 bytes)
+        assert!(result.len() <= 5);
+        assert!(result.is_char_boundary(result.len()));
+    }
+
+    #[test]
+    fn truncate_reasoning_empty_string() {
+        assert_eq!(truncate_reasoning("", 10), "");
+    }
+
+    #[test]
+    fn health_assessment_result_struct_fields() {
+        let result = HealthAssessmentResult {
+            blended_score: 0.75,
+            raw_ai_score: 4,
+            reasoning: "Looks healthy".to_string(),
+            plant_name: "Fern".to_string(),
+        };
+        assert_eq!(result.raw_ai_score, 4);
+        assert_eq!(result.plant_name, "Fern");
+        assert!(result.blended_score > 0.0 && result.blended_score <= 1.0);
+    }
 }

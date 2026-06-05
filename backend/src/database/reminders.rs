@@ -25,7 +25,8 @@ pub async fn get_or_create_preferences(
     .map_err(AppError::Database)?;
 
     let row = sqlx::query!(
-        "SELECT enabled, reminder_time, timezone, browser_notifications_enabled
+        "SELECT enabled, reminder_time, timezone, browser_notifications_enabled,
+                push_health_alerts, push_daily_summary, push_coach_suggestions, push_reminders
          FROM user_reminder_preferences
          WHERE user_id = ?",
         user_id,
@@ -39,6 +40,10 @@ pub async fn get_or_create_preferences(
         reminder_time: row.reminder_time,
         timezone: row.timezone,
         browser_notifications_enabled: row.browser_notifications_enabled,
+        push_health_alerts: row.push_health_alerts,
+        push_daily_summary: row.push_daily_summary,
+        push_coach_suggestions: row.push_coach_suggestions,
+        push_reminders: row.push_reminders,
     })
 }
 
@@ -50,19 +55,28 @@ pub async fn update_preferences(
     let now = Utc::now().to_rfc3339();
 
     sqlx::query!(
-        "INSERT INTO user_reminder_preferences (user_id, enabled, reminder_time, timezone, browser_notifications_enabled, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+        "INSERT INTO user_reminder_preferences (user_id, enabled, reminder_time, timezone, browser_notifications_enabled,
+            push_health_alerts, push_daily_summary, push_coach_suggestions, push_reminders, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(user_id) DO UPDATE
          SET enabled = excluded.enabled,
              reminder_time = excluded.reminder_time,
              timezone = excluded.timezone,
              browser_notifications_enabled = excluded.browser_notifications_enabled,
+             push_health_alerts = excluded.push_health_alerts,
+             push_daily_summary = excluded.push_daily_summary,
+             push_coach_suggestions = excluded.push_coach_suggestions,
+             push_reminders = excluded.push_reminders,
              updated_at = excluded.updated_at",
         user_id,
         request.enabled,
         request.reminder_time,
         request.timezone,
         request.browser_notifications_enabled,
+        request.push_health_alerts,
+        request.push_daily_summary,
+        request.push_coach_suggestions,
+        request.push_reminders,
         now,
         now,
     )

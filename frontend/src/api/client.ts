@@ -55,6 +55,10 @@ interface ReminderPreferences {
   reminderTime: string;
   timezone: string;
   browserNotificationsEnabled: boolean;
+  pushHealthAlerts: boolean;
+  pushDailySummary: boolean;
+  pushCoachSuggestions: boolean;
+  pushReminders: boolean;
 }
 
 interface DueReminder {
@@ -638,6 +642,52 @@ class ApiClient {
       `/plants/species-search?q=${encoded}`,
     );
   }
+
+  // ─── Push Notifications ───────────────────────────────────────────────────
+
+  async getVapidPublicKey(): Promise<{ publicKey: string }> {
+    return this.request<{ publicKey: string }>("/push/vapid-key");
+  }
+
+  async subscribePush(subscription: PushSubscription): Promise<void> {
+    const key = subscription.getKey("p256dh");
+    const auth = subscription.getKey("auth");
+    if (!key || !auth) throw new Error("Invalid push subscription keys");
+
+    await this.request("/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify({
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: arrayBufferToBase64Url(key),
+          auth: arrayBufferToBase64Url(auth),
+        },
+      }),
+    });
+  }
+
+  async unsubscribePush(endpoint: string): Promise<void> {
+    await this.request("/push/unsubscribe", {
+      method: "DELETE",
+      body: JSON.stringify({ endpoint }),
+    });
+  }
+
+  async testPush(): Promise<{ sent: number }> {
+    return this.request<{ sent: number }>("/push/test", {
+      method: "POST",
+    });
+  }
+}
+
+/** Convert ArrayBuffer to URL-safe base64 (no padding) */
+function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 export const apiClient = new ApiClient();

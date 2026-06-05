@@ -168,31 +168,16 @@ pub async fn identify_plant(
     }
 
     // Resolve LLM coach: per-user settings take priority
-    let user_coach: Option<Box<dyn crate::llm::PlantCoach>> =
-        match crate::llm::create_coach_for_user(
-            user.llm_base_url.as_deref(),
-            user.llm_api_key.as_deref(),
-            user.llm_model.as_deref(),
-        ) {
-            Some(Ok(c)) => Some(c),
-            Some(Err(e)) => {
-                return Err(AppError::External {
-                    message: format!("Failed to initialize your LLM settings: {e}"),
-                });
-            }
-            None => None,
-        };
-
-    let coach_ref: &dyn crate::llm::PlantCoach = match &user_coach {
-        Some(c) => c.as_ref(),
-        None => app_state
-            .coach
-            .as_ref()
-            .ok_or(AppError::External {
-                message: "No AI service configured. Set up your LLM provider in Settings to use plant identification.".to_string(),
-            })?
-            .as_ref(),
-    };
+    let coach = crate::llm::resolve_coach_for_request(
+        user.llm_base_url.as_deref(),
+        user.llm_api_key.as_deref(),
+        user.llm_model.as_deref(),
+        app_state.coach.as_ref(),
+    )
+    .map_err(|_| AppError::External {
+        message: "No AI service configured. Set up your LLM provider in Settings to use plant identification.".to_string(),
+    })?;
+    let coach_ref: &dyn crate::llm::PlantCoach = coach.as_ref();
 
     // Build the identification prompt
     let system_message = ChatMessage {

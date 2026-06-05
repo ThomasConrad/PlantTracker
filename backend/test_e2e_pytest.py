@@ -120,7 +120,7 @@ class APIClient:
             endpoint = f"/{endpoint}"
         
         # For API endpoints, add the v1 prefix
-        if endpoint.startswith('/auth') or endpoint.startswith('/plants') or endpoint.startswith('/photos') or endpoint.startswith('/tracking') or endpoint.startswith('/calendar') or endpoint.startswith('/coach'):
+        if endpoint.startswith('/auth') or endpoint.startswith('/plants') or endpoint.startswith('/photos') or endpoint.startswith('/tracking') or endpoint.startswith('/calendar') or endpoint.startswith('/coach') or endpoint.startswith('/push') or endpoint.startswith('/reminders') or endpoint.startswith('/admin'):
             endpoint = f"{self.api_prefix}{endpoint}"
             
         url = f"{self.base_url}{endpoint}"
@@ -2264,6 +2264,230 @@ class TestPlantMemory:
         # plant2 should have no memories
         resp = client.request("GET", f"/coach/plants/{plant2['id']}/memories")
         assert resp.json()["memories"] == []
+
+
+class TestPushNotifications:
+    """Tests for push notification subscription endpoints"""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, client, test_users):
+        """Register and authenticate user for push tests"""
+        # Register user
+        resp = client.request("POST", "/auth/register", json={
+            "email": test_users["user1"]["email"],
+            "password": test_users["user1"]["password"],
+            "name": test_users["user1"]["name"]
+        })
+        if resp.status_code == 409:
+            # Already registered, just login
+            resp = client.request("POST", "/auth/login", json={
+                "email": test_users["user1"]["email"],
+                "password": test_users["user1"]["password"]
+            })
+        assert resp.status_code in (200, 201)
+
+    def test_get_vapid_public_key(self, client, test_users):
+        """GET /push/vapid-key returns public key when configured"""
+        resp = client.request("GET", "/push/vapid-key")
+        # May return 503 if VAPID not configured in test env, or 200 if it is
+        if resp.status_code == 200:
+            data = resp.json()
+            assert "publicKey" in data
+            assert len(data["publicKey"]) > 0
+        else:
+            # 503 is acceptable — means push not configured on server
+            assert resp.status_code == 503
+
+    def test_subscribe_push(self, client, test_users):
+        """POST /push/subscribe saves a subscription"""
+        resp = client.request("POST", "/push/subscribe", json={
+            "endpoint": "https://fcm.googleapis.com/fcm/send/test-subscription-123",
+            "keys": {
+                "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWMk",
+                "auth": "tBHItJI5svbpC7-FqhMhSQ"
+            }
+        })
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is True
+
+    def test_subscribe_push_upsert(self, client, test_users):
+        """POST /push/subscribe with same endpoint updates existing subscription"""
+        endpoint = "https://fcm.googleapis.com/fcm/send/test-upsert-456"
+        keys1 = {
+            "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWMk",
+            "auth": "tBHItJI5svbpC7-FqhMhSQ"
+        }
+        keys2 = {
+            "p256dh": "BLdR5qOkXTBbGaSoC6k1fCjSEX1rP5VvYxJsOK1J2bLzw3wA5OLfg-3gGnUn7Dd_mVPH5J1qDT9M8aOmZOr3P8",
+            "auth": "newAuthKeyHere123"
+        }
+
+        # First subscribe
+        resp = client.request("POST", "/push/subscribe", json={
+            "endpoint": endpoint,
+            "keys": keys1
+        })
+        assert resp.status_code == 200
+
+        # Subscribe again with same endpoint but different keys (upsert)
+        resp = client.request("POST", "/push/subscribe", json={
+            "endpoint": endpoint,
+            "keys": keys2
+        })
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+    def test_unsubscribe_push(self, client, test_users):
+        """DELETE /push/unsubscribe removes a subscription"""
+        endpoint = "https://fcm.googleapis.com/fcm/send/test-unsub-789"
+
+        # Subscribe first
+        resp = client.request("POST", "/push/subscribe", json={
+            "endpoint": endpoint,
+            "keys": {
+                "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWMk",
+                "auth": "tBHItJI5svbpC7-FqhMhSQ"
+            }
+        })
+        assert resp.status_code == 200
+
+        # Unsubscribe
+        resp = client.request("DELETE", "/push/unsubscribe", json={
+            "endpoint": endpoint
+        })
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+    def test_unsubscribe_nonexistent_endpoint_succeeds(self, client, test_users):
+        """DELETE /push/unsubscribe with unknown endpoint still returns ok"""
+        resp = client.request("DELETE", "/push/unsubscribe", json={
+            "endpoint": "https://example.com/nonexistent"
+        })
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+    def test_subscribe_push_unauthenticated(self, client, test_users):
+        """POST /push/subscribe without auth returns 401"""
+        # Create a fresh client without session cookies
+        import requests
+        fresh_session = requests.Session()
+        url = f"{client.base_url}{client.api_prefix}/push/subscribe"
+        resp = fresh_session.post(url, json={
+            "endpoint": "https://example.com/endpoint",
+            "keys": {
+                "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWMk",
+                "auth": "tBHItJI5svbpC7-FqhMhSQ"
+            }
+        })
+        assert resp.status_code == 401
+
+    def test_subscribe_push_invalid_payload(self, client, test_users):
+        """POST /push/subscribe with missing keys returns 422"""
+        resp = client.request("POST", "/push/subscribe", json={
+            "endpoint": "https://example.com/endpoint"
+            # Missing 'keys' field
+        })
+        assert resp.status_code == 422
+
+    def test_test_push_no_subscription(self, client, test_users):
+        """POST /push/test with no active subscription returns error"""
+        # Create a fresh user with no subscriptions
+        fresh_email = f"pushtest_{uuid.uuid4().hex[:8]}@example.com"
+        resp = client.request("POST", "/auth/register", json={
+            "email": fresh_email,
+            "password": "TestPass123!",
+            "name": "Push Tester"
+        })
+        assert resp.status_code in (200, 201)
+
+        # Test push should fail gracefully (503 or similar) since no subscriptions exist
+        resp = client.request("POST", "/push/test")
+        # Either 503 (VAPID not configured) or 500-level (no subscriptions)
+        assert resp.status_code >= 400
+
+    def test_test_push_with_subscription(self, client, test_users):
+        """POST /push/test with active subscription attempts notification"""
+        # Subscribe first
+        resp = client.request("POST", "/push/subscribe", json={
+            "endpoint": "https://fcm.googleapis.com/fcm/send/test-push-endpoint",
+            "keys": {
+                "p256dh": "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWMk",
+                "auth": "tBHItJI5svbpC7-FqhMhSQ"
+            }
+        })
+        assert resp.status_code == 200
+
+        # Try sending a test push
+        resp = client.request("POST", "/push/test")
+        # In test env: 503 if VAPID not configured, 502 if delivery to fake
+        # endpoint fails, 200 if somehow succeeds
+        assert resp.status_code in (200, 502, 503)
+
+
+class TestNotificationPreferences:
+    """Tests for push notification category preferences"""
+
+    @pytest.fixture(autouse=True)
+    def setup(self, client, test_users):
+        """Register and authenticate user"""
+        resp = client.request("POST", "/auth/register", json={
+            "email": test_users["user1"]["email"],
+            "password": test_users["user1"]["password"],
+            "name": test_users["user1"]["name"]
+        })
+        if resp.status_code == 409:
+            resp = client.request("POST", "/auth/login", json={
+                "email": test_users["user1"]["email"],
+                "password": test_users["user1"]["password"]
+            })
+        assert resp.status_code in (200, 201)
+
+    def test_get_preferences_includes_push_fields(self, client, test_users):
+        """GET /reminders/preferences returns push notification category fields"""
+        resp = client.request("GET", "/reminders/preferences")
+        assert resp.status_code == 200
+        data = resp.json()
+        # New push preference fields should exist with defaults
+        assert "pushHealthAlerts" in data
+        assert "pushDailySummary" in data
+        assert "pushCoachSuggestions" in data
+        assert "pushReminders" in data
+        # Defaults are all true
+        assert data["pushHealthAlerts"] is True
+        assert data["pushDailySummary"] is True
+        assert data["pushCoachSuggestions"] is True
+        assert data["pushReminders"] is True
+
+    def test_update_push_preferences(self, client, test_users):
+        """PUT /reminders/preferences updates push category preferences"""
+        # Get current prefs first
+        resp = client.request("GET", "/reminders/preferences")
+        prefs = resp.json()
+
+        # Disable health alerts and daily summary
+        prefs["pushHealthAlerts"] = False
+        prefs["pushDailySummary"] = False
+        resp = client.request("PUT", "/reminders/preferences", json=prefs)
+        assert resp.status_code == 200
+        updated = resp.json()
+        assert updated["pushHealthAlerts"] is False
+        assert updated["pushDailySummary"] is False
+        assert updated["pushCoachSuggestions"] is True
+        assert updated["pushReminders"] is True
+
+    def test_push_preferences_persist(self, client, test_users):
+        """Push preferences persist across requests"""
+        # Get and update
+        resp = client.request("GET", "/reminders/preferences")
+        prefs = resp.json()
+        prefs["pushReminders"] = False
+        client.request("PUT", "/reminders/preferences", json=prefs)
+
+        # Read again and verify
+        resp = client.request("GET", "/reminders/preferences")
+        data = resp.json()
+        assert data["pushReminders"] is False
 
 
 if __name__ == "__main__":

@@ -452,7 +452,7 @@ pub fn trigger_background_assessment(
     coach: std::sync::Arc<dyn crate::llm::PlantCoach>,
 ) {
     tokio::spawn(async move {
-        if let Err(e) = run_background_assessment(&app_state, &plant_id, &user_id, coach.as_ref())
+        if let Err(e) = run_health_assessment(&app_state, &plant_id, &user_id, coach.as_ref())
             .await
         {
             warn!(
@@ -463,7 +463,9 @@ pub fn trigger_background_assessment(
     });
 }
 
-async fn run_background_assessment(
+/// Run a health assessment for a single plant. Used by both the background
+/// photo-upload trigger and the daily scheduled health check.
+pub async fn run_health_assessment(
     app_state: &AppState,
     plant_id: &Uuid,
     user_id: &str,

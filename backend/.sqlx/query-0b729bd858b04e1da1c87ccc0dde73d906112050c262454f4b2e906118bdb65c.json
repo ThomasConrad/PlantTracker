@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE plant_attributes SET label = ?, value = ?, icon = ?, category = ?, source = ?, sort_order = ?, updated_at = ?\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "0b729bd858b04e1da1c87ccc0dde73d906112050c262454f4b2e906118bdb65c"
+}

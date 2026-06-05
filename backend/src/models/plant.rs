@@ -6,6 +6,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::models::care_task::CareTaskWithStatus;
+use crate::models::plant_attribute::{CreatePlantAttributeRequest, PlantAttribute};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -37,6 +38,8 @@ pub struct CreatePlantRequest {
     /// Initial care tasks to create with the plant
     #[validate(nested)]
     pub care_tasks: Option<Vec<CreatePlantCareTaskInput>>,
+    /// Initial plant attributes (requirements/characteristics) to create with the plant
+    pub attributes: Option<Vec<CreatePlantAttributeRequest>>,
 }
 
 /// Inline care task definition used when creating a plant
@@ -100,6 +103,7 @@ pub struct PlantResponse {
     pub archived_at: Option<DateTime<Utc>>,
     pub custom_metrics: Vec<CustomMetric>,
     pub care_tasks: Vec<CareTaskWithStatus>,
+    pub attributes: Vec<PlantAttribute>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub user_id: String,

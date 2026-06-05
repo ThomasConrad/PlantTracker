@@ -13,9 +13,9 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { apiClient } from "@/api/client";
 import type { PlantCandidate, IdentifyPlantResponse } from "@/api/client";
 import { plantsStore } from "@/stores/plants";
-import type { PlantFormData, CareTaskFormData } from "@/types";
+import type { PlantFormData, CareTaskFormData, PlantAttributeFormData } from "@/types";
 
-type WizardStep = "capture" | "analyzing" | "candidates" | "form";
+type WizardStep = "capture" | "analyzing" | "candidates" | "creating" | "form";
 
 interface Props {
   /** If true, the user has no AI configured — show manual-only */
@@ -182,9 +182,10 @@ export const PlantCreationWizard: Component<Props> = (props) => {
       setIdentifyResult(result);
 
       if (result.auto_select && result.candidates.length > 0) {
-        // High confidence single match — go directly to form
-        setSelectedCandidate(result.candidates[0]);
-        setStep("form");
+        // High confidence single match — auto-create the plant
+        const candidate = result.candidates[0];
+        setSelectedCandidate(candidate);
+        await autoCreatePlant(candidate);
       } else if (result.candidates.length === 0) {
         // No identification possible
         setError(
@@ -201,6 +202,82 @@ export const PlantCreationWizard: Component<Props> = (props) => {
       setError(msg);
       setStep("form"); // Fall through to manual
     }
+  };
+
+  // ─── Auto-create plant from AI identification ───────────────────────────────
+
+  const autoCreatePlant = async (candidate: PlantCandidate) => {
+    setStep("creating");
+    setError(null);
+
+    try {
+      const formData = buildPlantDataFromCandidate(candidate);
+      const submitData = {
+        ...formData,
+        previewFile: imageFile() || undefined,
+      };
+      const plant = await plantsStore.createPlant(submitData);
+      navigate(`/plants/${plant.id}`);
+    } catch (err) {
+      console.error("Auto-create failed, falling back to form:", err);
+      setError(
+        "Auto-creation failed. You can review and submit manually.",
+      );
+      setStep("form");
+    }
+  };
+
+  // ─── Build plant data from a candidate ──────────────────────────────────────
+
+  const buildPlantDataFromCandidate = (candidate: PlantCandidate) => {
+    const careTasks: CareTaskFormData[] = [];
+    const care = candidate.suggested_care;
+
+    if (care.watering_interval_days) {
+      careTasks.push({
+        name: "Water",
+        icon: "\uD83D\uDCA7",
+        intervalDays: care.watering_interval_days,
+        notes: care.additional_notes || undefined,
+      });
+    }
+    if (care.fertilizing_interval_days) {
+      careTasks.push({
+        name: "Fertilize",
+        icon: "\uD83C\uDF31",
+        intervalDays: care.fertilizing_interval_days,
+      });
+    }
+
+    // Build attributes from suggested_care.attributes
+    const attributes: PlantAttributeFormData[] = (care.attributes || []).map(
+      (attr) => ({
+        key: attr.key,
+        label: attr.label,
+        value: attr.value,
+        icon: attr.icon,
+        category: attr.category,
+        source: "identification" as const,
+      }),
+    );
+
+    const displayName =
+      candidate.common_name ||
+      candidate.scientific_name.split(" ")[0];
+
+    return {
+      name: displayName,
+      genus: candidate.scientific_name,
+      careTasks:
+        careTasks.length > 0
+          ? careTasks
+          : [
+              { name: "Water", icon: "\uD83D\uDCA7", intervalDays: 7 },
+              { name: "Fertilize", icon: "\uD83C\uDF31", intervalDays: 14 },
+            ],
+      customMetrics: [],
+      attributes,
+    };
   };
 
   // ─── Form Submission ────────────────────────────────────────────────────────
@@ -228,43 +305,7 @@ export const PlantCreationWizard: Component<Props> = (props) => {
   const candidateFormData = (): PlantFormData | undefined => {
     const candidate = selectedCandidate();
     if (!candidate) return undefined;
-
-    const careTasks: CareTaskFormData[] = [];
-    const care = candidate.suggested_care;
-
-    if (care.watering_interval_days) {
-      careTasks.push({
-        name: "Water",
-        icon: "\uD83D\uDCA7",
-        intervalDays: care.watering_interval_days,
-        notes: care.additional_notes || undefined,
-      });
-    }
-    if (care.fertilizing_interval_days) {
-      careTasks.push({
-        name: "Fertilize",
-        icon: "\uD83C\uDF31",
-        intervalDays: care.fertilizing_interval_days,
-      });
-    }
-
-    // Derive a friendly name from the common name or genus
-    const displayName =
-      candidate.common_name ||
-      candidate.scientific_name.split(" ")[0];
-
-    return {
-      name: displayName,
-      genus: candidate.scientific_name,
-      careTasks:
-        careTasks.length > 0
-          ? careTasks
-          : [
-              { name: "Water", icon: "\uD83D\uDCA7", intervalDays: 7 },
-              { name: "Fertilize", icon: "\uD83C\uDF31", intervalDays: 14 },
-            ],
-      customMetrics: [],
-    };
+    return buildPlantDataFromCandidate(candidate);
   };
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -309,6 +350,9 @@ export const PlantCreationWizard: Component<Props> = (props) => {
                   <Match when={step() === "candidates"}>
                     Select the best match
                   </Match>
+                  <Match when={step() === "creating"}>
+                    Setting up your plant...
+                  </Match>
                   <Match when={step() === "form"}>
                     Review and customize details
                   </Match>
@@ -329,22 +373,23 @@ export const PlantCreationWizard: Component<Props> = (props) => {
                 completed={
                   step() === "analyzing" ||
                   step() === "candidates" ||
+                  step() === "creating" ||
                   step() === "form"
                 }
                 label="Photo"
               />
               <StepLine
                 completed={
-                  step() === "candidates" || step() === "form"
+                  step() === "candidates" || step() === "creating" || step() === "form"
                 }
               />
               <StepDot
                 active={step() === "analyzing" || step() === "candidates"}
-                completed={step() === "form"}
+                completed={step() === "creating" || step() === "form"}
                 label="Identify"
               />
-              <StepLine completed={step() === "form"} />
-              <StepDot active={step() === "form"} completed={false} label="Details" />
+              <StepLine completed={step() === "creating" || step() === "form"} />
+              <StepDot active={step() === "creating" || step() === "form"} completed={false} label={step() === "creating" ? "Creating" : "Details"} />
             </div>
           </div>
         </div>
@@ -551,7 +596,7 @@ export const PlantCreationWizard: Component<Props> = (props) => {
           </Show>
 
           {/* ─── STEP: Analyzing ──────────────────────────────────────────── */}
-          <Show when={step() === "analyzing"}>
+          <Show when={step() === "analyzing" || step() === "creating"}>
             <div class="bg-white shadow-sm rounded-xl border border-gray-200 p-8 sm:p-12">
               <div class="flex flex-col items-center text-center">
                 {/* Show the captured image */}
@@ -567,11 +612,14 @@ export const PlantCreationWizard: Component<Props> = (props) => {
 
                 <LoadingSpinner size="lg" />
                 <h2 class="text-lg font-semibold text-gray-900 mt-4 mb-2">
-                  Identifying your plant...
+                  {step() === "creating"
+                    ? `Adding ${selectedCandidate()?.common_name || selectedCandidate()?.genus || "your plant"}...`
+                    : "Identifying your plant..."}
                 </h2>
                 <p class="text-sm text-gray-500 max-w-sm">
-                  Analyzing leaf shape, growth pattern, and other features to
-                  find the best match.
+                  {step() === "creating"
+                    ? "Setting up care schedules and saving plant details."
+                    : "Analyzing leaf shape, growth pattern, and other features to find the best match."}
                 </p>
               </div>
             </div>
@@ -584,7 +632,7 @@ export const PlantCreationWizard: Component<Props> = (props) => {
               analysisNotes={identifyResult()?.analysis_notes || ""}
               onSelect={(candidate) => {
                 setSelectedCandidate(candidate);
-                setStep("form");
+                autoCreatePlant(candidate);
               }}
               onSkip={() => setStep("form")}
             />

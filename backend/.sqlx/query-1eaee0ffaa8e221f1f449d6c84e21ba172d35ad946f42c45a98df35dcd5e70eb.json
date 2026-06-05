@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR REPLACE INTO plant_health_scores (id, plant_id, user_id, score, care_adherence, overdue_penalty, coach_sentiment, reasoning, scored_at, created_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 10
+    },
+    "nullable": []
+  },
+  "hash": "1eaee0ffaa8e221f1f449d6c84e21ba172d35ad946f42c45a98df35dcd5e70eb"
+}

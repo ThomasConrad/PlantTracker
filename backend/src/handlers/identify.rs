@@ -79,6 +79,23 @@ pub struct SuggestedCare {
     pub temperature_notes: Option<String>,
     /// Additional care notes from AI
     pub additional_notes: Option<String>,
+    /// Suggested plant attributes (extensible metadata like soil type, toxicity, growth rate, etc.)
+    #[serde(default)]
+    pub attributes: Vec<SuggestedAttribute>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SuggestedAttribute {
+    /// Normalized key (e.g., "soil_type", "toxicity", "growth_rate", "mature_size")
+    pub key: String,
+    /// Display label (e.g., "Soil Type", "Toxicity", "Growth Rate")
+    pub label: String,
+    /// The value (e.g., "Well-draining, slightly acidic", "Toxic to cats and dogs")
+    pub value: String,
+    /// Optional emoji icon
+    pub icon: Option<String>,
+    /// Category for grouping (e.g., "environment", "soil", "safety", "growth")
+    pub category: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -131,6 +148,19 @@ struct AiCareSuggestions {
     humidity_notes: Option<String>,
     temperature_notes: Option<String>,
     additional_notes: Option<String>,
+    #[serde(default)]
+    attributes: Vec<AiSuggestedAttribute>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AiSuggestedAttribute {
+    key: String,
+    label: String,
+    value: String,
+    #[serde(default)]
+    icon: Option<String>,
+    #[serde(default)]
+    category: Option<String>,
 }
 
 // ─── Handlers ───────────────────────────────────────────────────────────────
@@ -258,6 +288,22 @@ pub async fn identify_plant(
                     .care_suggestions
                     .as_ref()
                     .and_then(|c| c.additional_notes.clone()),
+                attributes: ai_candidate
+                    .care_suggestions
+                    .as_ref()
+                    .map(|c| {
+                        c.attributes
+                            .iter()
+                            .map(|a| SuggestedAttribute {
+                                key: a.key.clone(),
+                                label: a.label.clone(),
+                                value: a.value.clone(),
+                                icon: a.icon.clone(),
+                                category: a.category.clone(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
             },
             trefle_slug: None,
         };
@@ -323,6 +369,9 @@ pub async fn identify_plant(
                 }
             }
         }
+
+        // Ensure well-known fields are also present as attributes for the frontend
+        ensure_standard_attributes(&mut candidate);
 
         candidates.push(candidate);
     }
@@ -429,6 +478,84 @@ fn extract_genus(scientific_name: &str) -> String {
         .to_string()
 }
 
+/// Ensures that well-known SuggestedCare fields (light, humidity, temperature) are also
+/// present as attributes so the frontend can store them uniformly.
+fn ensure_standard_attributes(candidate: &mut PlantCandidate) {
+    let light = candidate.suggested_care.light_requirement.clone();
+    let humidity = candidate.suggested_care.humidity_notes.clone();
+    let temp = candidate.suggested_care.temperature_notes.clone();
+
+    // Light requirement -> attribute
+    if let Some(light_val) = light {
+        if !candidate.suggested_care.attributes.iter().any(|a| a.key == "light") {
+            candidate.suggested_care.attributes.insert(
+                0,
+                SuggestedAttribute {
+                    key: "light".to_string(),
+                    label: "Light".to_string(),
+                    value: light_val,
+                    icon: Some("\u{2600}\u{FE0F}".to_string()),
+                    category: Some("environment".to_string()),
+                },
+            );
+        }
+    }
+
+    // Humidity -> attribute
+    if let Some(humidity_val) = humidity {
+        if !candidate.suggested_care.attributes.iter().any(|a| a.key == "humidity") {
+            let pos = candidate
+                .suggested_care
+                .attributes
+                .iter()
+                .position(|a| a.key == "light")
+                .map(|i| i + 1)
+                .unwrap_or(0);
+            candidate.suggested_care.attributes.insert(
+                pos,
+                SuggestedAttribute {
+                    key: "humidity".to_string(),
+                    label: "Humidity".to_string(),
+                    value: humidity_val,
+                    icon: Some("\u{1F4A8}".to_string()),
+                    category: Some("environment".to_string()),
+                },
+            );
+        }
+    }
+
+    // Temperature -> attribute
+    if let Some(temp_val) = temp {
+        if !candidate.suggested_care.attributes.iter().any(|a| a.key == "temperature") {
+            let pos = candidate
+                .suggested_care
+                .attributes
+                .iter()
+                .position(|a| a.key == "humidity")
+                .map(|i| i + 1)
+                .or_else(|| {
+                    candidate
+                        .suggested_care
+                        .attributes
+                        .iter()
+                        .position(|a| a.key == "light")
+                        .map(|i| i + 1)
+                })
+                .unwrap_or(0);
+            candidate.suggested_care.attributes.insert(
+                pos,
+                SuggestedAttribute {
+                    key: "temperature".to_string(),
+                    label: "Temperature".to_string(),
+                    value: temp_val,
+                    icon: Some("\u{1F321}\u{FE0F}".to_string()),
+                    category: Some("environment".to_string()),
+                },
+            );
+        }
+    }
+}
+
 // ─── System Prompt ──────────────────────────────────────────────────────────
 
 const IDENTIFY_SYSTEM_PROMPT: &str = r#"You are an expert botanist and plant identification specialist. Analyze the provided photo and identify the plant species.
@@ -447,7 +574,13 @@ RESPONSE FORMAT — respond with a single JSON object:
         "light_requirement": "bright indirect light",
         "humidity_notes": "prefers moderate to high humidity",
         "temperature_notes": "18-27°C",
-        "additional_notes": "any other relevant care info"
+        "additional_notes": "any other relevant care info",
+        "attributes": [
+          { "key": "soil_type", "label": "Soil", "value": "Well-draining potting mix with perlite", "icon": "🪴", "category": "soil" },
+          { "key": "toxicity", "label": "Toxicity", "value": "Toxic to cats and dogs", "icon": "⚠️", "category": "safety" },
+          { "key": "growth_rate", "label": "Growth Rate", "value": "Moderate, 15-30cm per year", "icon": "📈", "category": "growth" },
+          { "key": "mature_size", "label": "Mature Size", "value": "Up to 1.5m indoors", "icon": "📐", "category": "growth" }
+        ]
       }
     }
   ],
@@ -464,6 +597,16 @@ RULES:
 - care_suggestions should reflect typical indoor care for that species.
 - watering_interval_days: typical days between waterings for indoor plants.
 - For "reasoning", mention specific visual features: leaf shape, variegation, growth pattern, stem structure, flower type, etc.
+- attributes: include any that are explicitly applicable to this specific plant. Only include an attribute if you're confident it's relevant — don't pad with generic info. Common keys when applicable:
+  * soil_type (category: soil) — preferred soil composition
+  * toxicity (category: safety) — toxicity to pets/humans
+  * growth_rate (category: growth) — growth speed description
+  * mature_size (category: growth) — typical indoor mature dimensions
+  * dormancy (category: growth) — dormancy period if any
+  * propagation (category: care) — easiest propagation method
+  * common_issues (category: health) — most common problems
+  * native_habitat (category: info) — natural habitat description
+  You may invent additional relevant keys if useful for this specific plant.
 - Respond ONLY with the JSON object. No markdown fences, no extra text outside the JSON.
 "#;
 
@@ -489,7 +632,21 @@ fn identify_response_schema() -> serde_json::Value {
                                 "light_requirement": { "type": "string" },
                                 "humidity_notes": { "type": "string" },
                                 "temperature_notes": { "type": "string" },
-                                "additional_notes": { "type": "string" }
+                                "additional_notes": { "type": "string" },
+                                "attributes": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "key": { "type": "string" },
+                                            "label": { "type": "string" },
+                                            "value": { "type": "string" },
+                                            "icon": { "type": "string" },
+                                            "category": { "type": "string" }
+                                        },
+                                        "required": ["key", "label", "value"]
+                                    }
+                                }
                             }
                         }
                     },

@@ -30,7 +30,7 @@ mod utils;
 use app_state::AppState;
 use handlers::{
     admin as admin_handlers, auth as auth_handlers, calendar, coach, google_tasks, identify,
-    invites, memory, plants, reminders,
+    invites, memory, plant_attributes, plants, reminders,
 };
 use planty_api::ApiDoc;
 use utils::{
@@ -190,6 +190,7 @@ async fn main() -> anyhow::Result<()> {
         .nest("/invites", invites::routes())
         .nest("/plants", plants::routes())
         .nest("/plants", identify::routes())
+        .nest("/plants", plant_attributes::routes())
         .nest("/coach", coach::routes())
         .nest("/coach", memory::routes())
         .nest("/calendar", calendar::routes())

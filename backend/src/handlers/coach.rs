@@ -186,10 +186,15 @@ pub async fn send_message(
         crate::database::memory::get_memory_context(&app_state.pool, &plant_id, &user.id)
             .await
             .unwrap_or_default();
+    let attributes_context =
+        crate::database::plant_attributes::get_attributes_context(&app_state.pool, &plant_id, &user.id)
+            .await
+            .unwrap_or_default();
     let system_prompt = format!(
-        "{}{}{}",
+        "{}{}{}{}",
         crate::llm::COACH_SYSTEM_PROMPT,
         crate::llm::build_plant_context(&plant),
+        attributes_context,
         memory_context
     );
     let mut llm_messages = vec![ChatMessage {
@@ -686,6 +691,40 @@ pub async fn accept_suggestion(
                 .await;
             }
         }
+        "update_attribute" => {
+            // Create or update a plant attribute
+            let plant_uuid = uuid::Uuid::parse_str(plant_id).map_err(|_| AppError::Internal {
+                message: "Invalid plant_id".to_string(),
+            })?;
+            if let (Some(key), Some(label), Some(value)) = (
+                payload.get("key").and_then(|v| v.as_str()),
+                payload.get("label").and_then(|v| v.as_str()),
+                payload.get("value").and_then(|v| v.as_str()),
+            ) {
+                let req = crate::models::plant_attribute::CreatePlantAttributeRequest {
+                    key: key.to_string(),
+                    label: label.to_string(),
+                    value: value.to_string(),
+                    icon: payload
+                        .get("icon")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    category: payload
+                        .get("category")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string()),
+                    source: Some(crate::models::plant_attribute::AttributeSource::Coach),
+                    sort_order: None,
+                };
+                let _ = crate::database::plant_attributes::upsert_attribute(
+                    &app_state.pool,
+                    &plant_uuid,
+                    &user.id,
+                    &req,
+                )
+                .await;
+            }
+        }
         _ => {}
     }
 
@@ -792,10 +831,15 @@ pub async fn stream_message(
         crate::database::memory::get_memory_context(&app_state.pool, &plant_id, &user.id)
             .await
             .unwrap_or_default();
+    let attributes_context =
+        crate::database::plant_attributes::get_attributes_context(&app_state.pool, &plant_id, &user.id)
+            .await
+            .unwrap_or_default();
     let system_prompt = format!(
-        "{}{}{}",
+        "{}{}{}{}",
         crate::llm::COACH_SYSTEM_PROMPT,
         crate::llm::build_plant_context(&plant),
+        attributes_context,
         memory_context
     );
     let mut llm_messages = vec![ChatMessage {

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO user_reminder_preferences (user_id, enabled, reminder_time, timezone, browser_notifications_enabled,\n            push_health_alerts, push_daily_summary, push_coach_suggestions, push_reminders, created_at, updated_at)\n         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n         ON CONFLICT(user_id) DO UPDATE\n         SET enabled = excluded.enabled,\n             reminder_time = excluded.reminder_time,\n             timezone = excluded.timezone,\n             browser_notifications_enabled = excluded.browser_notifications_enabled,\n             push_health_alerts = excluded.push_health_alerts,\n             push_daily_summary = excluded.push_daily_summary,\n             push_coach_suggestions = excluded.push_coach_suggestions,\n             push_reminders = excluded.push_reminders,\n             updated_at = excluded.updated_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 11
+    },
+    "nullable": []
+  },
+  "hash": "217adf35b7d191c7d77d6474eb4c0ff95ec847da5e0168785a4cfee8ad3f7823"
+}

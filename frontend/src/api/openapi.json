@@ -1295,6 +1295,94 @@
         ]
       }
     },
+    "/plants/identify": {
+      "post": {
+        "tags": [
+          "plants"
+        ],
+        "summary": "Identify a plant from a photo using AI vision + Trefle.io enrichment.",
+        "operationId": "identify_plant",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentifyPlantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Plant identification results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifyPlantResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Invalid image data"
+          },
+          "502": {
+            "description": "AI service or Trefle.io unavailable"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/species-search": {
+      "get": {
+        "tags": [
+          "plants"
+        ],
+        "summary": "Search species via Trefle.io (proxy endpoint to keep API token server-side).",
+        "operationId": "search_species",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Species search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSpeciesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "502": {
+            "description": "Trefle.io unavailable"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/plants/{id}": {
       "get": {
         "tags": [
@@ -1515,6 +1603,207 @@
           },
           "500": {
             "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{plant_id}/attributes": {
+      "get": {
+        "tags": [
+          "plant_attributes"
+        ],
+        "operationId": "list_attributes",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plant attributes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantAttributesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "plant_attributes"
+        ],
+        "operationId": "create_attribute",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlantAttributeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Attribute created/updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantAttribute"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Plant not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/plants/{plant_id}/attributes/{attribute_id}": {
+      "put": {
+        "tags": [
+          "plant_attributes"
+        ],
+        "operationId": "update_attribute",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attribute_id",
+            "in": "path",
+            "description": "Attribute ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlantAttributeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Attribute updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlantAttribute"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Attribute not found"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "plant_attributes"
+        ],
+        "operationId": "delete_attribute",
+        "parameters": [
+          {
+            "name": "plant_id",
+            "in": "path",
+            "description": "Plant ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "attribute_id",
+            "in": "path",
+            "description": "Attribute ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Attribute deleted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Attribute not found"
           }
         },
         "security": [
@@ -2280,6 +2569,14 @@
           }
         }
       },
+      "AttributeSource": {
+        "type": "string",
+        "enum": [
+          "identification",
+          "coach",
+          "user"
+        ]
+      },
       "AuthResponse": {
         "type": "object",
         "required": [
@@ -2683,6 +2980,46 @@
           }
         }
       },
+      "CreatePlantAttributeRequest": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "value"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttributeSource"
+              }
+            ],
+            "nullable": true
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
       "CreatePlantCareTaskInput": {
         "type": "object",
         "description": "Inline care task definition used when creating a plant",
@@ -2733,6 +3070,14 @@
           "genus"
         ],
         "properties": {
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreatePlantAttributeRequest"
+            },
+            "description": "Initial plant attributes (requirements/characteristics) to create with the plant",
+            "nullable": true
+          },
           "careTasks": {
             "type": "array",
             "items": {
@@ -3049,6 +3394,11 @@
             "format": "double",
             "description": "0.0–5.0, rounded to nearest 0.5"
           },
+          "reasoning": {
+            "type": "string",
+            "description": "AI-generated explanation of health status",
+            "nullable": true
+          },
           "score": {
             "type": "number",
             "format": "double"
@@ -3057,6 +3407,48 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          }
+        }
+      },
+      "IdentifyPlantRequest": {
+        "type": "object",
+        "required": [
+          "image_url"
+        ],
+        "properties": {
+          "context": {
+            "type": "string",
+            "description": "Optional context from the user (e.g., \"indoor plant on my desk\")",
+            "nullable": true
+          },
+          "image_url": {
+            "type": "string",
+            "description": "Base64-encoded image data URL (e.g., \"data:image/jpeg;base64,...\")"
+          }
+        }
+      },
+      "IdentifyPlantResponse": {
+        "type": "object",
+        "required": [
+          "candidates",
+          "auto_select",
+          "analysis_notes"
+        ],
+        "properties": {
+          "analysis_notes": {
+            "type": "string",
+            "description": "General observations from the AI about the photo"
+          },
+          "auto_select": {
+            "type": "boolean",
+            "description": "Whether the top candidate is confident enough for auto-selection"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlantCandidate"
+            },
+            "description": "List of candidate species, sorted by confidence (highest first)"
           }
         }
       },
@@ -3318,6 +3710,126 @@
           }
         }
       },
+      "PlantAttribute": {
+        "type": "object",
+        "required": [
+          "id",
+          "plantId",
+          "key",
+          "label",
+          "value",
+          "source",
+          "sortOrder",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "plantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "source": {
+            "$ref": "#/components/schemas/AttributeSource"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "PlantAttributesResponse": {
+        "type": "object",
+        "required": [
+          "attributes"
+        ],
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlantAttribute"
+            }
+          }
+        }
+      },
+      "PlantCandidate": {
+        "type": "object",
+        "required": [
+          "scientific_name",
+          "genus",
+          "confidence",
+          "reasoning",
+          "reference_images",
+          "suggested_care"
+        ],
+        "properties": {
+          "common_name": {
+            "type": "string",
+            "description": "Common name (if known)",
+            "nullable": true
+          },
+          "confidence": {
+            "type": "number",
+            "format": "double",
+            "description": "AI confidence 0.0-1.0"
+          },
+          "genus": {
+            "type": "string",
+            "description": "Genus only"
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "Why the AI thinks this is the species"
+          },
+          "reference_images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Reference images from Trefle.io (URLs)"
+          },
+          "scientific_name": {
+            "type": "string",
+            "description": "Scientific name (genus + species)"
+          },
+          "suggested_care": {
+            "$ref": "#/components/schemas/SuggestedCare"
+          },
+          "trefle_slug": {
+            "type": "string",
+            "description": "Trefle species slug (for further lookups)",
+            "nullable": true
+          }
+        }
+      },
       "PlantHealthScore": {
         "type": "object",
         "required": [
@@ -3354,6 +3866,11 @@
           "plantId": {
             "type": "string",
             "format": "uuid"
+          },
+          "reasoning": {
+            "type": "string",
+            "description": "AI reasoning about the plant's health condition",
+            "nullable": true
           },
           "score": {
             "type": "number",
@@ -3436,6 +3953,7 @@
           "genus",
           "customMetrics",
           "careTasks",
+          "attributes",
           "createdAt",
           "updatedAt",
           "userId"
@@ -3445,6 +3963,12 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlantAttribute"
+            }
           },
           "careTasks": {
             "type": "array",
@@ -3532,13 +4056,30 @@
           "enabled",
           "reminderTime",
           "timezone",
-          "browserNotificationsEnabled"
+          "browserNotificationsEnabled",
+          "pushHealthAlerts",
+          "pushDailySummary",
+          "pushCoachSuggestions",
+          "pushReminders"
         ],
         "properties": {
           "browserNotificationsEnabled": {
             "type": "boolean"
           },
           "enabled": {
+            "type": "boolean"
+          },
+          "pushCoachSuggestions": {
+            "type": "boolean"
+          },
+          "pushDailySummary": {
+            "type": "boolean"
+          },
+          "pushHealthAlerts": {
+            "type": "boolean",
+            "description": "Push notification preferences (per-category)"
+          },
+          "pushReminders": {
             "type": "boolean"
           },
           "reminderTime": {
@@ -3565,6 +4106,20 @@
           }
         }
       },
+      "SearchSpeciesResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpeciesSearchResult"
+            }
+          }
+        }
+      },
       "SendCoachMessageRequest": {
         "type": "object",
         "required": [
@@ -3577,6 +4132,37 @@
           "imageUrl": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "SpeciesSearchResult": {
+        "type": "object",
+        "required": [
+          "scientific_name",
+          "slug"
+        ],
+        "properties": {
+          "common_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "family": {
+            "type": "string",
+            "nullable": true
+          },
+          "genus": {
+            "type": "string",
+            "nullable": true
+          },
+          "image_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "scientific_name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
           }
         }
       },
@@ -3599,6 +4185,82 @@
           "refresh_token": {
             "type": "string",
             "description": "The refresh token from Google OAuth (optional)",
+            "nullable": true
+          }
+        }
+      },
+      "SuggestedAttribute": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "value"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "description": "Category for grouping (e.g., \"environment\", \"soil\", \"safety\", \"growth\")",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "description": "Optional emoji icon",
+            "nullable": true
+          },
+          "key": {
+            "type": "string",
+            "description": "Normalized key (e.g., \"soil_type\", \"toxicity\", \"growth_rate\", \"mature_size\")"
+          },
+          "label": {
+            "type": "string",
+            "description": "Display label (e.g., \"Soil Type\", \"Toxicity\", \"Growth Rate\")"
+          },
+          "value": {
+            "type": "string",
+            "description": "The value (e.g., \"Well-draining, slightly acidic\", \"Toxic to cats and dogs\")"
+          }
+        }
+      },
+      "SuggestedCare": {
+        "type": "object",
+        "properties": {
+          "additional_notes": {
+            "type": "string",
+            "description": "Additional care notes from AI",
+            "nullable": true
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SuggestedAttribute"
+            },
+            "description": "Suggested plant attributes (extensible metadata like soil type, toxicity, growth rate, etc.)"
+          },
+          "fertilizing_interval_days": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Suggested fertilizing interval in days",
+            "nullable": true
+          },
+          "humidity_notes": {
+            "type": "string",
+            "description": "Humidity notes",
+            "nullable": true
+          },
+          "light_requirement": {
+            "type": "string",
+            "description": "Light requirement description",
+            "nullable": true
+          },
+          "temperature_notes": {
+            "type": "string",
+            "description": "Temperature range description",
+            "nullable": true
+          },
+          "watering_interval_days": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Suggested watering interval in days",
             "nullable": true
           }
         }
@@ -3848,6 +4510,27 @@
           }
         }
       },
+      "UpdatePlantAttributeRequest": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "nullable": true
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "value": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "UpdatePlantRequest": {
         "type": "object",
         "properties": {
@@ -3881,6 +4564,19 @@
             "type": "boolean"
           },
           "enabled": {
+            "type": "boolean"
+          },
+          "pushCoachSuggestions": {
+            "type": "boolean"
+          },
+          "pushDailySummary": {
+            "type": "boolean"
+          },
+          "pushHealthAlerts": {
+            "type": "boolean",
+            "description": "Push notification preferences (per-category)"
+          },
+          "pushReminders": {
             "type": "boolean"
           },
           "reminderTime": {

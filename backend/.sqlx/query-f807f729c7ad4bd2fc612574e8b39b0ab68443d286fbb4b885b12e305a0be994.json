@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: String\", endpoint as \"endpoint!: String\", p256dh as \"p256dh!: String\", auth as \"auth!: String\"\n         FROM push_subscriptions WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "endpoint!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "p256dh!: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "auth!: String",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f807f729c7ad4bd2fc612574e8b39b0ab68443d286fbb4b885b12e305a0be994"
+}

@@ -14,6 +14,7 @@ import { ActivityLog } from "@/components/plants/ActivityLog";
 import { PhotoGallery } from "@/components/plants/PhotoGallery";
 import { PlantHistoryTimeline } from "@/components/plants/PlantHistoryTimeline";
 import { PlantMemories } from "@/components/plants/PlantMemories";
+import { PlantAttributes } from "@/components/plants/PlantAttributes";
 import { calculateDaysUntil, formatDate, isOverdue } from "@/utils/date";
 import {
   makeTransformScheduler,
@@ -621,6 +622,8 @@ export const PlantDetailPage: Component = () => {
                         fullTimelineHref={`/plants/${plant.id}/photos`}
                       />
 
+                      <PlantAttributes plantId={plant.id} />
+
                       <PlantMemories plantId={plant.id} />
 
                       <details class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
@@ -857,6 +860,8 @@ export const PlantDetailPage: Component = () => {
                       mode="preview"
                       fullTimelineHref={`/plants/${plant.id}/photos`}
                     />
+
+                    <PlantAttributes plantId={plant.id} />
 
                     <PlantMemories plantId={plant.id} />
 

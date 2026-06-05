@@ -45,6 +45,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        skipWaiting: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             // Cache API GET requests with network-first strategy

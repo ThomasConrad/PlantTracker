@@ -5,14 +5,6 @@ import { apiClient } from "@/api/client";
 
 interface CalendarSubscriptionInfo {
   feedUrl: string;
-  instructions: {
-    general: string;
-    iOS: string;
-    android: string;
-    outlook: string;
-    apple: string;
-  };
-  features: string[];
 }
 
 interface GoogleTasksStatus {
@@ -251,13 +243,9 @@ export const CalendarSettingsPage: Component = () => {
       </Show>
 
       <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
           Calendar & Task Integration
         </h1>
-        <p class="text-lg text-gray-600 dark:text-gray-400">
-          Connect with Google Tasks for actionable plant care reminders, or
-          subscribe to an iCalendar feed for your calendar application.
-        </p>
       </div>
 
       <Show when={loading()}>
@@ -282,11 +270,10 @@ export const CalendarSettingsPage: Component = () => {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
-              Google Tasks Integration
+              Google Tasks
             </h2>
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Automatically create plant care tasks in your Google Tasks that
-              you can check off when completed
+              Create plant care tasks in Google Tasks and sync completions back
             </p>
           </div>
           <div class="flex items-center">
@@ -299,7 +286,7 @@ export const CalendarSettingsPage: Component = () => {
               }
             >
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                ✓ Connected
+                Connected
               </span>
             </Show>
           </div>
@@ -321,46 +308,16 @@ export const CalendarSettingsPage: Component = () => {
           <Show
             when={googleStatus()?.connected}
             fallback={
-              <div class="space-y-4">
-                <div class="flex items-start space-x-3">
-                  <svg
-                    class="h-8 w-8 text-blue-500 mt-1"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                  <div class="flex-1">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
-                      Connect with Google Tasks
-                    </h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      Connect your Google Tasks to automatically create
-                      actionable plant care tasks. This provides better task
-                      management than calendar events, allowing you to:
-                    </p>
-                    <ul class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                      <li>• Check off completed tasks</li>
-                      <li>• Get task notifications on your devices</li>
-                      <li>• Organize tasks in dedicated plant care lists</li>
-                      <li>• Access tasks from any Google service</li>
-                    </ul>
-                  </div>
-                </div>
-                <Button
-                  onClick={connectGoogleTasks}
-                  disabled={googleLoading()}
-                  class="w-full sm:w-auto"
-                >
-                  <Show when={googleLoading()} fallback="Connect Google Tasks">
-                    <LoadingSpinner size="sm" class="mr-2" />
-                    Connecting...
-                  </Show>
-                </Button>
-              </div>
+              <Button
+                onClick={connectGoogleTasks}
+                disabled={googleLoading()}
+                class="w-full sm:w-auto"
+              >
+                <Show when={googleLoading()} fallback="Connect Google Tasks">
+                  <LoadingSpinner size="sm" class="mr-2" />
+                  Connecting...
+                </Show>
+              </Button>
             }
           >
             <div class="space-y-4">
@@ -414,27 +371,6 @@ export const CalendarSettingsPage: Component = () => {
                   </Show>
                 </Button>
               </div>
-
-              <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
-                  How it works:
-                </h4>
-                <ul class="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                  <li>
-                    • Click "Sync Plant Tasks" to create tasks for the next year
-                    (skips already-synced tasks)
-                  </li>
-                  <li>• Tasks will appear in your Google Tasks immediately</li>
-                  <li>
-                    • Check off tasks when you complete plant care activities
-                  </li>
-                  <li>
-                    • Click "Check Completions" to sync completed tasks back to
-                    Planty
-                  </li>
-                  <li>• Tasks include plant details and care instructions</li>
-                </ul>
-              </div>
             </div>
           </Show>
         </Show>
@@ -442,25 +378,20 @@ export const CalendarSettingsPage: Component = () => {
 
       <Show when={subscriptionInfo()}>
         {(info) => (
-          <div class="space-y-8 mt-8">
+          <div class="mt-8">
             {/* iCalendar Subscription */}
             <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
               <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                iCalendar Subscription
+                iCalendar Feed
               </h2>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Alternative method: Subscribe to an iCalendar feed in any
-                calendar application
+                Subscribe to this URL in any calendar app to see plant care events
               </p>
-
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">
-                Your Calendar Feed
-              </h3>
 
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Calendar Subscription URL
+                    Subscription URL
                   </label>
                   <div class="flex space-x-2">
                     <input
@@ -475,130 +406,28 @@ export const CalendarSettingsPage: Component = () => {
                       class="px-4 py-2"
                     >
                       <Show when={copied()} fallback="Copy">
-                        ✓ Copied!
+                        Copied!
                       </Show>
                     </Button>
                   </div>
                 </div>
 
-                <div class="flex space-x-4">
+                <div class="flex items-center justify-between">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    Keep this URL private. Regenerate if compromised.
+                  </p>
                   <Button
                     onClick={regenerateToken}
                     variant="outline"
                     disabled={regenerating()}
                     class="px-4 py-2"
                   >
-                    <Show when={regenerating()} fallback="Regenerate URL">
+                    <Show when={regenerating()} fallback="Regenerate">
                       <LoadingSpinner size="sm" class="mr-2" />
                       Regenerating...
                     </Show>
                   </Button>
                 </div>
-
-                <p class="text-sm text-gray-600 dark:text-gray-400">
-                  Keep this URL private. If you think it has been compromised,
-                  regenerate it above.
-                </p>
-              </div>
-            </div>
-
-            {/* Features */}
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-              <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                What You'll Get
-              </h2>
-              <ul class="space-y-3">
-                {info().features.map((feature) => (
-                  <li class="flex items-start">
-                    <svg
-                      class="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
-                    <span class="text-gray-700 dark:text-gray-300">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Instructions */}
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-              <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                How to Subscribe
-              </h2>
-
-              <div class="mb-6">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                  General Instructions
-                </h3>
-                <p class="text-gray-700 dark:text-gray-300">{info().instructions.general}</p>
-              </div>
-
-              <div class="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">📱 iOS</h3>
-                  <p class="text-sm text-gray-700 dark:text-gray-300">{info().instructions.iOS}</p>
-                </div>
-
-                <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    🤖 Android
-                  </h3>
-                  <p class="text-sm text-gray-700 dark:text-gray-300">
-                    {info().instructions.android}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    🖥️ Outlook
-                  </h3>
-                  <p class="text-sm text-gray-700 dark:text-gray-300">
-                    {info().instructions.outlook}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-                    🍎 Apple Calendar
-                  </h3>
-                  <p class="text-sm text-gray-700 dark:text-gray-300">
-                    {info().instructions.apple}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Help */}
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-6">
-              <h4 class="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
-                📋 Quick Setup
-              </h4>
-              <ol class="list-decimal list-inside space-y-1 text-sm text-blue-800 dark:text-blue-300">
-                <li>Copy the calendar subscription URL above</li>
-                <li>Open your calendar application</li>
-                <li>
-                  Look for "Add Calendar", "Subscribe to Calendar", or "Import
-                  Calendar"
-                </li>
-                <li>Paste the URL when prompted</li>
-                <li>
-                  Your plant care reminders will now appear in your calendar!
-                </li>
-              </ol>
-
-              <div class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                <p class="text-xs text-blue-700 dark:text-blue-400">
-                  <strong>Note:</strong> Events will be created for the next 365
-                  days and will update automatically when you modify your plant
-                  care schedules.
-                </p>
               </div>
             </div>
           </div>

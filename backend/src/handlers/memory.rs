@@ -65,7 +65,6 @@ async fn list_memories(
     AuthenticatedUser(user): AuthenticatedUser,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<PlantMemoriesResponse>, AppError> {
-
     let response = db::list_memories_for_plant(&app_state.pool, &plant_id, &user.id).await?;
     Ok(Json(response))
 }
@@ -87,7 +86,6 @@ async fn create_memory(
     Path(plant_id): Path<Uuid>,
     Json(payload): Json<CreateMemoryRequest>,
 ) -> Result<(StatusCode, Json<PlantMemory>), AppError> {
-
     let memory = db::create_memory(
         &app_state.pool,
         &plant_id,
@@ -124,7 +122,6 @@ async fn update_memory(
     Path((_plant_id, memory_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<UpdateMemoryRequest>,
 ) -> Result<Json<PlantMemory>, AppError> {
-
     let memory = db::update_memory(
         &app_state.pool,
         &memory_id,
@@ -156,7 +153,6 @@ async fn delete_memory(
     AuthenticatedUser(user): AuthenticatedUser,
     Path((_plant_id, memory_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, AppError> {
-
     db::delete_memory(&app_state.pool, &memory_id, &user.id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -176,7 +172,6 @@ async fn get_health(
     AuthenticatedUser(user): AuthenticatedUser,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<HealthHearts>, AppError> {
-
     // Get latest score, or compute a basic one from care task adherence
     let score = db::get_latest_health_score(&app_state.pool, &plant_id, &user.id).await?;
 
@@ -292,7 +287,6 @@ async fn assess_health(
     AuthenticatedUser(user): AuthenticatedUser,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<HealthHearts>, AppError> {
-
     // Get plant info for context
     let plant = crate::database::plants::get_plant_by_id(&app_state.pool, plant_id).await?;
 
@@ -304,9 +298,15 @@ async fn assess_health(
     }
 
     // Get latest photo data
-    let photos_resp =
-        db_photos::get_photos_for_plant_paginated(&app_state.pool, &plant_id, &user.id, Some(1), None, Some(true))
-            .await?;
+    let photos_resp = db_photos::get_photos_for_plant_paginated(
+        &app_state.pool,
+        &plant_id,
+        &user.id,
+        Some(1),
+        None,
+        Some(true),
+    )
+    .await?;
 
     let latest_photo = photos_resp.photos.first().ok_or(AppError::NotFound {
         resource: "No photos available for health assessment".to_string(),
@@ -331,9 +331,7 @@ async fn assess_health(
 
     let user_content = vec![
         ContentPart::ImageUrl {
-            image_url: ImageUrlContent {
-                url: data_url,
-            },
+            image_url: ImageUrlContent { url: data_url },
         },
         ContentPart::Text {
             text: format!(
@@ -472,9 +470,15 @@ pub async fn run_health_assessment(
     let plant = crate::database::plants::get_plant_by_id(&app_state.pool, *plant_id).await?;
 
     // Get latest photo
-    let photos_resp =
-        db_photos::get_photos_for_plant_paginated(&app_state.pool, plant_id, user_id, Some(1), None, Some(true))
-            .await?;
+    let photos_resp = db_photos::get_photos_for_plant_paginated(
+        &app_state.pool,
+        plant_id,
+        user_id,
+        Some(1),
+        None,
+        Some(true),
+    )
+    .await?;
 
     let latest_photo = photos_resp.photos.first().ok_or(AppError::NotFound {
         resource: "No photos".to_string(),
@@ -561,7 +565,7 @@ async fn send_health_alert_push(
     user_id: &str,
     result: &HealthAssessmentResult,
 ) {
-    use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
+    use crate::utils::push::{send_push_if_allowed, PushCategory, PushPayload};
 
     let hearts = result.raw_ai_score;
     let title = format!("{} needs attention", result.plant_name);
@@ -590,7 +594,13 @@ async fn send_health_alert_push(
         )),
     };
 
-    let sent = send_push_if_allowed(&app_state.pool, user_id, PushCategory::HealthAlert, &payload).await;
+    let sent = send_push_if_allowed(
+        &app_state.pool,
+        user_id,
+        PushCategory::HealthAlert,
+        &payload,
+    )
+    .await;
     if sent > 0 {
         info!(
             "Sent {} health alert push notification(s) for {}",

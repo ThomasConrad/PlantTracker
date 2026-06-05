@@ -6,7 +6,7 @@ use serde_json::json;
 use std::time::Duration;
 use tracing::error;
 
-use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, coach_response_schema};
+use super::{coach_response_schema, ChatMessage, CoachResponse, ContentPart, PlantCoach};
 
 pub struct OpenAICoach {
     client: Client,
@@ -50,10 +50,7 @@ impl OpenAICoach {
     }
 
     fn build_url(&self) -> String {
-        format!(
-            "{}/chat/completions",
-            self.base_url.trim_end_matches('/')
-        )
+        format!("{}/chat/completions", self.base_url.trim_end_matches('/'))
     }
 }
 
@@ -186,16 +183,15 @@ impl PlantCoach for OpenAICoach {
             .unwrap_or(content_trimmed)
             .trim();
 
-        let coach_response: CoachResponse =
-            serde_json::from_str(content_trimmed).map_err(|e| {
-                error!(
-                    "Failed to parse coach response. Error: {}. Raw content ({} bytes): {}",
-                    e,
-                    content.len(),
-                    &content[..content.len().min(500)]
-                );
-                anyhow::anyhow!("Failed to parse coach response JSON: {e}")
-            })?;
+        let coach_response: CoachResponse = serde_json::from_str(content_trimmed).map_err(|e| {
+            error!(
+                "Failed to parse coach response. Error: {}. Raw content ({} bytes): {}",
+                e,
+                content.len(),
+                &content[..content.len().min(500)]
+            );
+            anyhow::anyhow!("Failed to parse coach response JSON: {e}")
+        })?;
 
         Ok(coach_response)
     }
@@ -356,16 +352,15 @@ impl PlantCoach for OpenAICoach {
             .unwrap_or(content);
         let content = content.strip_suffix("```").unwrap_or(content).trim();
 
-        let coach_response: CoachResponse = serde_json::from_str(content)
-            .map_err(|e| {
-                error!(
-                    "Failed to parse streamed coach response. Error: {}. Raw content ({} bytes): {}",
-                    e,
-                    content.len(),
-                    &content[..content.len().min(500)]
-                );
-                anyhow::anyhow!("Failed to parse streamed coach response JSON: {e}")
-            })?;
+        let coach_response: CoachResponse = serde_json::from_str(content).map_err(|e| {
+            error!(
+                "Failed to parse streamed coach response. Error: {}. Raw content ({} bytes): {}",
+                e,
+                content.len(),
+                &content[..content.len().min(500)]
+            );
+            anyhow::anyhow!("Failed to parse streamed coach response JSON: {e}")
+        })?;
 
         Ok(coach_response)
     }
@@ -379,12 +374,17 @@ impl PlantCoach for OpenAICoach {
 #[derive(Debug)]
 enum ExtractorState {
     /// Scanning for the key `"text"` in the JSON stream
-    LookingForKey { ring: [u8; 6], ring_len: usize },
+    LookingForKey {
+        ring: [u8; 6],
+        ring_len: usize,
+    },
     /// Found the key, now looking for `:` then opening `"`
     WaitingForColon,
     WaitingForOpenQuote,
     /// Inside the string value, emitting decoded characters
-    InsideValue { escaped: bool },
+    InsideValue {
+        escaped: bool,
+    },
     /// Done — text field fully extracted, ignore rest
     Done,
 }
@@ -549,4 +549,3 @@ mod tests {
         assert_eq!(result, "Hi there!");
     }
 }
-

@@ -42,14 +42,8 @@ impl TestCtx {
         login_user(&app, email, TEST_PASSWORD).await;
         let plant = create_test_plant(&app, "Test Plant", "Testus plantus").await;
         let plant_id = plant["id"].as_str().unwrap().to_string();
-        let care_task_id = plant["careTasks"][0]["id"]
-            .as_str()
-            .unwrap()
-            .to_string();
-        let care_task_id_2 = plant["careTasks"][1]["id"]
-            .as_str()
-            .unwrap()
-            .to_string();
+        let care_task_id = plant["careTasks"][0]["id"].as_str().unwrap().to_string();
+        let care_task_id_2 = plant["careTasks"][1]["id"].as_str().unwrap().to_string();
         Self {
             app,
             user_id,
@@ -311,7 +305,13 @@ async fn test_user_isolation() {
 
     // User1 syncs a task
     google_task_sync::insert_synced_task(
-        &app.db_pool, u1_id, p1_id, ct1, "gtask-u1", "list-1", "2026-06-01",
+        &app.db_pool,
+        u1_id,
+        p1_id,
+        ct1,
+        "gtask-u1",
+        "list-1",
+        "2026-06-01",
     )
     .await
     .unwrap();
@@ -324,7 +324,13 @@ async fn test_user_isolation() {
 
     // User2 syncs their own task (same date is fine)
     google_task_sync::insert_synced_task(
-        &app.db_pool, u2_id, p2_id, ct2, "gtask-u2", "list-2", "2026-06-01",
+        &app.db_pool,
+        u2_id,
+        p2_id,
+        ct2,
+        "gtask-u2",
+        "list-2",
+        "2026-06-01",
     )
     .await
     .unwrap();
@@ -438,7 +444,9 @@ async fn test_poll_completions_with_mock_google_api() {
 
     // Mock: GET task status — return "completed"
     Mock::given(method("GET"))
-        .and(path("/tasks/v1/lists/mock-list-id/tasks/google-task-poll-1"))
+        .and(path(
+            "/tasks/v1/lists/mock-list-id/tasks/google-task-poll-1",
+        ))
         .and(header("Authorization", "Bearer fake_access_token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
             "id": "google-task-poll-1",

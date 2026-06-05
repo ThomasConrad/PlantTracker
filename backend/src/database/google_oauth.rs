@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 
 use crate::models::google_oauth::GoogleOAuthToken;
+use crate::utils::db_traits::LogDbError;
 use crate::utils::errors::{AppError, Result};
 
 /// Save or update Google OAuth token for a user
@@ -37,10 +38,7 @@ pub async fn save_oauth_token(
     )
     .execute(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to save OAuth token for user {}: {}", user_id, e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("save OAuth token")?;
 
     // Fetch the inserted/updated token
     let token = get_oauth_token(pool, user_id)
@@ -73,10 +71,7 @@ pub async fn get_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<Option<
     )
     .fetch_optional(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to get OAuth token for user {}: {}", user_id, e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("get OAuth token")?;
 
     let token = if let Some(row) = row {
         Some(GoogleOAuthToken {
@@ -122,10 +117,7 @@ pub async fn update_access_token(
     )
     .execute(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to update access token for user {}: {}", user_id, e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("update access token")?;
 
     tracing::info!("Updated access token for user: {}", user_id);
     Ok(())
@@ -136,10 +128,7 @@ pub async fn delete_oauth_token(pool: &SqlitePool, user_id: &str) -> Result<()> 
     let result = sqlx::query!("DELETE FROM google_oauth_tokens WHERE user_id = ?", user_id)
         .execute(pool)
         .await
-        .map_err(|e| {
-            tracing::error!("Failed to delete OAuth token for user {}: {}", user_id, e);
-            AppError::Database(e)
-        })?;
+        .log_db_err("delete OAuth token")?;
 
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound {
@@ -178,10 +167,7 @@ pub async fn get_users_with_google_tasks(pool: &SqlitePool) -> Result<Vec<String
     let user_ids = sqlx::query_scalar!("SELECT user_id FROM google_oauth_tokens")
         .fetch_all(pool)
         .await
-        .map_err(|e| {
-            tracing::error!("Failed to get users with Google Tasks: {}", e);
-            AppError::Database(e)
-        })?;
+        .log_db_err("get users with Google Tasks")?;
 
     Ok(user_ids)
 }
@@ -210,10 +196,7 @@ pub async fn get_tokens_needing_refresh(pool: &SqlitePool) -> Result<Vec<GoogleO
     )
     .fetch_all(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to get tokens needing refresh: {}", e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("get tokens needing refresh")?;
 
     let tokens = rows
         .into_iter()
@@ -252,10 +235,7 @@ pub async fn get_next_token_expiration(pool: &SqlitePool) -> Result<Option<DateT
     )
     .fetch_one(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to get next token expiration: {}", e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("get next token expiration")?;
 
     let next_expiration = row
         .next_expiration

@@ -48,8 +48,9 @@ pub fn routes() -> Router<AppState> {
         ("session" = [])
     )
 )]
-pub async fn get_google_auth_url(AuthenticatedUser(user): AuthenticatedUser) -> Result<impl IntoResponse> {
-
+pub async fn get_google_auth_url(
+    AuthenticatedUser(user): AuthenticatedUser,
+) -> Result<impl IntoResponse> {
     let config = GoogleTasksConfig::from_env()?;
     // Include user ID in the state parameter
     let state = format!("{}:{}", generate_oauth_state(), user.id);
@@ -168,7 +169,6 @@ pub async fn store_google_tokens(
     AuthenticatedUser(user): AuthenticatedUser,
     Json(request): Json<StoreTokensRequest>,
 ) -> Result<impl IntoResponse> {
-
     let expires_at = if request.expires_at > 0 {
         Some(chrono::DateTime::from_timestamp(request.expires_at, 0).unwrap_or_else(Utc::now))
     } else {
@@ -227,7 +227,6 @@ pub async fn get_google_tasks_status(
     State(app_state): State<AppState>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<impl IntoResponse> {
-
     let token = google_oauth::get_oauth_token(&app_state.pool, &user.id).await?;
 
     let status = match token {
@@ -283,7 +282,6 @@ pub async fn disconnect_google_tasks(
     State(app_state): State<AppState>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<impl IntoResponse> {
-
     google_oauth::delete_oauth_token(&app_state.pool, &user.id).await?;
 
     tracing::info!("Disconnected Google Tasks for user: {}", user.id);
@@ -315,7 +313,6 @@ pub async fn sync_plant_tasks(
     AuthenticatedUser(user): AuthenticatedUser,
     Json(request): Json<SyncPlantTasksRequest>,
 ) -> Result<impl IntoResponse> {
-
     let config = GoogleTasksConfig::from_env()?;
     let token = ensure_valid_token(&app_state.pool, &user.id, &config).await?;
 
@@ -435,7 +432,6 @@ pub async fn poll_completions(
     State(app_state): State<AppState>,
     AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<impl IntoResponse> {
-
     // Check for incomplete tasks first (avoids needing Google config if nothing to do)
     let incomplete = google_task_sync::get_incomplete_tasks(&app_state.pool, &user.id).await?;
 
@@ -529,7 +525,6 @@ pub async fn create_task(
     AuthenticatedUser(user): AuthenticatedUser,
     Json(request): Json<CreateGoogleTaskRequest>,
 ) -> Result<impl IntoResponse> {
-
     let config = GoogleTasksConfig::from_env()?;
     let token = ensure_valid_token(&app_state.pool, &user.id, &config).await?;
 

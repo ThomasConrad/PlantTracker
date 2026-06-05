@@ -285,7 +285,6 @@ async fn upload_profile_picture(
     State(app_state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<serde_json::Value>)> {
-
     let mut file_data: Option<Vec<u8>> = None;
     let mut content_type: Option<String> = None;
 

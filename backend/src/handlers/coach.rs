@@ -27,14 +27,8 @@ pub fn routes() -> Router<AppState> {
             "/plants/:plant_id/messages",
             get(get_messages).post(send_message),
         )
-        .route(
-            "/plants/:plant_id/messages/stream",
-            post(stream_message),
-        )
-        .route(
-            "/plants/:plant_id/suggestions",
-            get(get_plant_suggestions),
-        )
+        .route("/plants/:plant_id/messages/stream", post(stream_message))
+        .route("/plants/:plant_id/suggestions", get(get_plant_suggestions))
         .route("/suggestions/pending", get(get_all_pending_suggestions))
         .route(
             "/suggestions/:suggestion_id/accept",
@@ -67,7 +61,6 @@ pub async fn get_messages(
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<CoachMessagesResponse>> {
-
     // Verify plant belongs to user
     let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;
     if plant.user_id != user.id {
@@ -149,7 +142,6 @@ pub async fn send_message(
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<SendCoachMessageRequest>,
 ) -> Result<(StatusCode, Json<CoachMessageResponse>)> {
-
     // At least one of content or image must be provided
     if payload.content.is_empty() && payload.image_url.is_none() {
         return Err(AppError::Parse {
@@ -368,7 +360,6 @@ async fn get_all_pending_suggestions(
     AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
 ) -> Result<Json<PendingSuggestionsResponse>> {
-
     let rows = db_coach::get_all_pending_suggestions_for_user(&app_state.pool, &user.id)
         .await
         .map_err(|e| AppError::Internal {
@@ -417,7 +408,6 @@ async fn get_plant_suggestions(
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<PendingSuggestionsResponse>> {
-
     // Verify plant ownership
     let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;
     if plant.user_id != user.id {
@@ -426,12 +416,11 @@ async fn get_plant_suggestions(
         });
     }
 
-    let rows =
-        db_coach::get_pending_suggestions(&app_state.pool, &plant_id.to_string(), &user.id)
-            .await
-            .map_err(|e| AppError::Internal {
-                message: e.to_string(),
-            })?;
+    let rows = db_coach::get_pending_suggestions(&app_state.pool, &plant_id.to_string(), &user.id)
+        .await
+        .map_err(|e| AppError::Internal {
+            message: e.to_string(),
+        })?;
 
     let suggestions: Vec<PendingSuggestion> = rows
         .into_iter()
@@ -470,7 +459,6 @@ pub async fn accept_suggestion(
     State(app_state): State<AppState>,
     Path(suggestion_id): Path<String>,
 ) -> Result<Json<CoachSuggestion>> {
-
     let row =
         db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "accepted")
             .await
@@ -732,7 +720,6 @@ pub async fn dismiss_suggestion(
     State(app_state): State<AppState>,
     Path(suggestion_id): Path<String>,
 ) -> Result<Json<CoachSuggestion>> {
-
     let row =
         db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "dismissed")
             .await
@@ -762,7 +749,6 @@ pub async fn stream_message(
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<SendCoachMessageRequest>,
 ) -> Result<Sse<impl Stream<Item = std::result::Result<Event, Infallible>>>> {
-
     // At least one of content or image must be provided
     if payload.content.is_empty() && payload.image_url.is_none() {
         return Err(AppError::Parse {
@@ -877,14 +863,9 @@ pub async fn stream_message(
         match result {
             Ok(response) => {
                 // Persist assistant message
-                let assistant_msg = db_coach::insert_message(
-                    &pool,
-                    &conv_id,
-                    "assistant",
-                    &response.text,
-                    None,
-                )
-                .await;
+                let assistant_msg =
+                    db_coach::insert_message(&pool, &conv_id, "assistant", &response.text, None)
+                        .await;
 
                 if let Ok(assistant_msg) = assistant_msg {
                     // Store extracted facts
@@ -1002,12 +983,17 @@ fn notify_new_suggestions(
     plant_name: String,
     suggestions: Vec<CoachSuggestion>,
 ) {
-    use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
+    use crate::utils::push::{send_push_if_allowed, PushCategory, PushPayload};
 
     // Only notify for actionable suggestions
     let actionable: Vec<CoachSuggestion> = suggestions
         .into_iter()
-        .filter(|s| matches!(s.suggestion_type.as_str(), "schedule_change" | "care_action" | "new_task"))
+        .filter(|s| {
+            matches!(
+                s.suggestion_type.as_str(),
+                "schedule_change" | "care_action" | "new_task"
+            )
+        })
         .collect();
 
     if actionable.is_empty() {
@@ -1038,7 +1024,10 @@ fn notify_new_suggestions(
             body,
             url: Some("/plants".to_string()),
             icon: None,
-            tag: Some(format!("coach-suggestion-{}", plant_name.to_lowercase().replace(' ', "-"))),
+            tag: Some(format!(
+                "coach-suggestion-{}",
+                plant_name.to_lowercase().replace(' ', "-")
+            )),
         };
 
         send_push_if_allowed(&pool, &user_id, PushCategory::CoachSuggestion, &payload).await;

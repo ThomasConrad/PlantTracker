@@ -59,14 +59,11 @@ pub struct CalendarQuery {
 }
 
 async fn get_or_create_calendar_token(pool: &sqlx::SqlitePool, user_id: &str) -> Result<String> {
-    let existing_token = sqlx::query!(
-        "SELECT calendar_token FROM users WHERE id = ?",
-        user_id,
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(AppError::Database)?
-    .and_then(|row| row.calendar_token);
+    let existing_token = sqlx::query!("SELECT calendar_token FROM users WHERE id = ?", user_id,)
+        .fetch_optional(pool)
+        .await
+        .map_err(AppError::Database)?
+        .and_then(|row| row.calendar_token);
 
     if let Some(token) = existing_token {
         return Ok(token);
@@ -124,14 +121,11 @@ async fn verify_calendar_token(
     user_id: &str,
     provided_token: &str,
 ) -> Result<bool> {
-    let stored_token = sqlx::query!(
-        "SELECT calendar_token FROM users WHERE id = ?",
-        user_id,
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(AppError::Database)?
-    .and_then(|row| row.calendar_token);
+    let stored_token = sqlx::query!("SELECT calendar_token FROM users WHERE id = ?", user_id,)
+        .fetch_optional(pool)
+        .await
+        .map_err(AppError::Database)?
+        .and_then(|row| row.calendar_token);
 
     Ok(stored_token.is_some_and(|token| token == provided_token))
 }
@@ -250,7 +244,6 @@ pub async fn get_calendar_subscription_info(
     uri: Uri,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse> {
-
     tracing::info!("Calendar subscription info request for user: {}", user.id);
 
     // Calendar token is persisted and reused until explicitly rotated.
@@ -311,7 +304,6 @@ pub async fn regenerate_calendar_token(
     uri: Uri,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse> {
-
     tracing::info!("Calendar token regeneration request for user: {}", user.id);
 
     // Rotate token so old subscriptions are invalidated immediately.

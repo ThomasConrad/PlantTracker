@@ -101,7 +101,6 @@ pub async fn get_admin_dashboard(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<AdminDashboardResponse>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -214,7 +213,6 @@ pub async fn list_users(
     State(state): State<AppState>,
     Query(query): Query<UserListQuery>,
 ) -> Result<Json<UserListResponse>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -312,7 +310,6 @@ pub async fn update_user(
     axum::extract::Path(user_id): axum::extract::Path<String>,
     JsonExtractor(request): JsonExtractor<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -443,7 +440,6 @@ pub async fn delete_user(
     State(state): State<AppState>,
     axum::extract::Path(user_id): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -494,7 +490,6 @@ pub async fn get_admin_settings(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<AdminSettingsResponse>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -548,7 +543,6 @@ pub async fn update_admin_settings(
     State(state): State<AppState>,
     JsonExtractor(request): JsonExtractor<UpdateAdminSettingsRequest>,
 ) -> Result<Json<AdminSettingsResponse>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -639,7 +633,6 @@ pub async fn bulk_user_action(
     State(state): State<AppState>,
     JsonExtractor(request): JsonExtractor<BulkUserActionRequest>,
 ) -> Result<Json<serde_json::Value>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -735,7 +728,6 @@ pub async fn get_system_health(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>> {
-
     // Check if user is admin
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -816,7 +808,6 @@ pub async fn run_daily_health_check(
     AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>> {
-
     if !user.is_admin() {
         return Err(AppError::Authorization {
             message: "Admin access required".to_string(),
@@ -852,13 +843,14 @@ pub async fn run_daily_health_check(
         };
 
         // Get the user's LLM settings
-        let plant_user = match crate::database::users::get_user_by_id(&state.pool, &pwu.user_id).await {
-            Ok(u) => u,
-            Err(_) => {
-                failed += 1;
-                continue;
-            }
-        };
+        let plant_user =
+            match crate::database::users::get_user_by_id(&state.pool, &pwu.user_id).await {
+                Ok(u) => u,
+                Err(_) => {
+                    failed += 1;
+                    continue;
+                }
+            };
 
         // Resolve the coach for this user
         let coach = match plant_user.resolve_coach(state.coach.as_ref()) {
@@ -870,20 +862,12 @@ pub async fn run_daily_health_check(
         };
 
         // Run background assessment (non-blocking per plant, but we await to be sequential)
-        match super::memory::run_health_assessment(
-            &state,
-            &plant_id,
-            &pwu.user_id,
-            coach.as_ref(),
-        )
-        .await
+        match super::memory::run_health_assessment(&state, &plant_id, &pwu.user_id, coach.as_ref())
+            .await
         {
             Ok(_) => assessed += 1,
             Err(e) => {
-                tracing::warn!(
-                    "Daily health check failed for plant {}: {}",
-                    plant_id, e
-                );
+                tracing::warn!("Daily health check failed for plant {}: {}", plant_id, e);
                 failed += 1;
             }
         }
@@ -894,7 +878,9 @@ pub async fn run_daily_health_check(
 
     tracing::info!(
         "Daily health check complete: assessed={}, failed={}, total={}",
-        assessed, failed, total
+        assessed,
+        failed,
+        total
     );
 
     Ok(Json(serde_json::json!({

@@ -23,24 +23,12 @@ fn fields_to_entry(
     created_at: &str,
     updated_at: &str,
 ) -> Result<TrackingEntry, AppError> {
-    let care_task_ids = care_task_ids_json.and_then(|s| {
-        serde_json::from_str::<Vec<String>>(s).ok().map(|ids| {
-            ids.iter()
-                .filter_map(|id| Uuid::parse_str(id).ok())
-                .collect()
-        })
-    });
+    let care_task_ids = DbParse::uuid_list_json(care_task_ids_json);
 
     let measurements: Option<Vec<Measurement>> =
         measurements_json.and_then(|s| serde_json::from_str(s).ok());
 
-    let photo_ids = photo_ids_json.and_then(|s| {
-        serde_json::from_str::<Vec<String>>(s).ok().map(|ids| {
-            ids.iter()
-                .filter_map(|id| Uuid::parse_str(id).ok())
-                .collect()
-        })
-    });
+    let photo_ids = DbParse::uuid_list_json(photo_ids_json);
 
     Ok(TrackingEntry {
         id: DbParse::uuid(id)?,
@@ -292,6 +280,8 @@ pub async fn update_tracking_entry(
     user_id: &str,
     request: &crate::models::tracking_entry::UpdateTrackingEntryRequest,
 ) -> Result<TrackingEntry, AppError> {
+    use crate::utils::db_traits::UpdateBuilder;
+
     crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
 
     let plant_id_str = plant_id.to_string();
@@ -311,71 +301,37 @@ pub async fn update_tracking_entry(
         });
     }
 
-    let now = Utc::now();
-    let mut update_parts = vec!["updated_at = ?"];
-    let mut values: Vec<String> = vec![now.to_rfc3339()];
+    let timestamp_str = request.timestamp.map(|ts| ts.to_rfc3339());
 
-    if let Some(timestamp) = &request.timestamp {
-        update_parts.push("timestamp = ?");
-        values.push(timestamp.to_rfc3339());
-    }
+    let care_task_ids_json = request.care_task_ids.as_ref().map(|ids| {
+        serde_json::to_string(&ids.iter().map(|id| id.to_string()).collect::<Vec<_>>())
+            .unwrap_or_default()
+    });
 
-    if let Some(care_task_ids) = &request.care_task_ids {
-        update_parts.push("care_task_ids = ?");
-        values.push(
-            serde_json::to_string(
-                &care_task_ids
-                    .iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<_>>(),
-            )
-            .unwrap_or_default(),
-        );
-    }
+    let measurements_json = request
+        .measurements
+        .as_ref()
+        .map(|m| serde_json::to_string(m).unwrap_or_default());
 
-    if let Some(measurements) = &request.measurements {
-        update_parts.push("measurements = ?");
-        values.push(serde_json::to_string(measurements).unwrap_or_default());
-    }
+    let photo_ids_json = request.photo_ids.as_ref().map(|ids| {
+        serde_json::to_string(&ids.iter().map(|id| id.to_string()).collect::<Vec<_>>())
+            .unwrap_or_default()
+    });
 
-    if let Some(notes) = &request.notes {
-        update_parts.push("notes = ?");
-        values.push(notes.clone());
-    }
-
-    if let Some(photo_ids) = &request.photo_ids {
-        update_parts.push("photo_ids = ?");
-        values.push(
-            serde_json::to_string(
-                &photo_ids
-                    .iter()
-                    .map(|id| id.to_string())
-                    .collect::<Vec<_>>(),
-            )
-            .unwrap_or_default(),
-        );
-    }
-
-    let query = format!(
-        "UPDATE tracking_entries SET {} WHERE id = ? AND plant_id = ?",
-        update_parts.join(", ")
-    );
-
-    let mut query_builder = sqlx::query(&query);
-    for value in values {
-        query_builder = query_builder.bind(value);
-    }
-    query_builder = query_builder
-        .bind(entry_id.to_string())
-        .bind(plant_id.to_string());
-
-    query_builder
+    UpdateBuilder::new("tracking_entries")
+        .set_opt("timestamp", timestamp_str)
+        .set_opt("care_task_ids", care_task_ids_json)
+        .set_opt("measurements", measurements_json)
+        .set_opt("notes", request.notes.clone())
+        .set_opt("photo_ids", photo_ids_json)
+        .where_eq("id", &entry_id_str)
+        .where_eq("plant_id", &plant_id_str)
         .execute(pool)
-        .await?
-        .require_affected(format!("Tracking entry with id {entry_id}"))?;
+        .await?;
 
     // Update last_performed for any new care tasks
     if let Some(care_task_ids) = &request.care_task_ids {
+        let now = Utc::now();
         let timestamp = request.timestamp.unwrap_or(now);
         let timestamp_str = timestamp.to_rfc3339();
         let now_str = now.to_rfc3339();

@@ -68,7 +68,6 @@ async fn list_plants(
     State(app_state): State<AppState>,
     Query(params): Query<ListPlantsQuery>,
 ) -> Result<Json<PlantsResponse>> {
-
     tracing::info!(
         "List plants request for user {} with params: {:?}",
         user.id,
@@ -124,7 +123,6 @@ async fn create_plant(
     State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<CreatePlantRequest>,
 ) -> Result<(StatusCode, Json<PlantResponse>)> {
-
     tracing::info!(
         "Create plant request for user {}: name={}, genus={}",
         user.id,
@@ -160,7 +158,6 @@ async fn get_plant(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-
     tracing::info!("Get plant request for id: {} by user: {}", id, user.id);
 
     let plant = db_plants::get_plant_by_id(&app_state.pool, id).await?;
@@ -200,7 +197,6 @@ async fn update_plant(
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdatePlantRequest>,
 ) -> Result<Json<PlantResponse>> {
-
     tracing::info!("Update plant request for id: {} by user: {}", id, user.id);
     tracing::debug!("Update payload: {:?}", payload);
 
@@ -232,7 +228,6 @@ async fn delete_plant(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode> {
-
     tracing::info!("Delete plant request for id: {} by user: {}", id, user.id);
 
     db_plants::delete_plant(&app_state.pool, id, &user.id).await?;
@@ -263,7 +258,6 @@ pub async fn archive_plant(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-
     tracing::info!("Archive plant request for id: {} by user: {}", id, user.id);
     let plant = db_plants::archive_plant(&app_state.pool, id, &user.id).await?;
     Ok(Json(plant))
@@ -291,7 +285,6 @@ pub async fn unarchive_plant(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-
     tracing::info!(
         "Unarchive plant request for id: {} by user: {}",
         id,
@@ -306,7 +299,6 @@ async fn set_plant_preview(
     State(app_state): State<AppState>,
     Path((id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<PlantResponse>> {
-
     tracing::info!(
         "Set preview request for plant: {}, photo: {} by user: {}",
         id,
@@ -330,7 +322,6 @@ async fn clear_plant_preview(
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-
     tracing::info!(
         "Clear preview request for plant: {} by user: {}",
         id,

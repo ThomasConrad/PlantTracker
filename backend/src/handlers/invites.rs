@@ -65,7 +65,6 @@ async fn create_invite(
     State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<CreateInviteRequest>,
 ) -> Result<(axum::http::StatusCode, Json<InviteResponse>)> {
-
     if !user.can_create_invite() {
         return Err(AppError::Authorization {
             message:
@@ -76,12 +75,8 @@ async fn create_invite(
 
     tracing::info!("Creating invite code for user: {}", user.id);
 
-    let invite = db_invites::create_invite_code_consuming_quota(
-        &app_state.pool,
-        &payload,
-        &user.id,
-    )
-    .await?;
+    let invite =
+        db_invites::create_invite_code_consuming_quota(&app_state.pool, &payload, &user.id).await?;
 
     tracing::info!("Invite code created: {}", invite.code);
     Ok((axum::http::StatusCode::CREATED, Json(invite.into())))
@@ -140,7 +135,6 @@ async fn list_invites(
     State(app_state): State<AppState>,
     Query(params): Query<ListInvitesQuery>,
 ) -> Result<Json<serde_json::Value>> {
-
     tracing::info!("Listing invite codes for user: {}", user.id);
 
     let created_by = params.created_by.as_deref().or(Some(&user.id));
@@ -247,13 +241,9 @@ async fn invite_waitlist_entry(
     }
 
     let max_uses = payload.max_uses.unwrap_or(1).max(1);
-    let (entry, invite) = db_invites::invite_waitlist_entry(
-        &app_state.pool,
-        &waitlist_id,
-        &user.id,
-        max_uses,
-    )
-    .await?;
+    let (entry, invite) =
+        db_invites::invite_waitlist_entry(&app_state.pool, &waitlist_id, &user.id, max_uses)
+            .await?;
 
     Ok(Json(serde_json::json!({
         "invite_code": invite.code,

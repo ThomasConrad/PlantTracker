@@ -51,7 +51,6 @@ async fn list_photos(
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListPhotosQuery>,
 ) -> Result<Json<PhotosResponse>> {
-
     tracing::info!(
         "List photos request for plant: {} by user: {}",
         plant_id,
@@ -106,7 +105,6 @@ async fn serve_photo(
     State(app_state): State<AppState>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Response<Body>> {
-
     tracing::info!(
         "Serve photo request for plant: {}, photo: {} by user: {}",
         plant_id,
@@ -138,7 +136,6 @@ async fn upload_photo(
     Path(plant_id): Path<Uuid>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<crate::models::Photo>)> {
-
     tracing::info!(
         "Upload photo request for plant: {} by user: {}",
         plant_id,
@@ -255,12 +252,7 @@ async fn upload_photo(
 
     // Trigger background health assessment from the new photo (best-effort)
     if let Ok(coach) = user.resolve_coach(app_state.coach.as_ref()) {
-        super::memory::trigger_background_assessment(
-            app_state,
-            plant_id,
-            user.id.clone(),
-            coach,
-        );
+        super::memory::trigger_background_assessment(app_state, plant_id, user.id.clone(), coach);
     }
 
     Ok((StatusCode::CREATED, Json(photo)))
@@ -271,7 +263,6 @@ async fn delete_photo(
     State(app_state): State<AppState>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
-
     tracing::info!(
         "Delete photo request for plant: {}, photo: {} by user: {}",
         plant_id,

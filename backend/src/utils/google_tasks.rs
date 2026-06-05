@@ -51,8 +51,6 @@ impl GoogleTasksConfig {
     }
 }
 
-
-
 /// Generate Google OAuth authorization URL
 pub fn generate_auth_url(config: &GoogleTasksConfig, state: &str) -> String {
     let scope = "https://www.googleapis.com/auth/tasks";
@@ -438,7 +436,8 @@ pub async fn get_task_status(
         .get(format!(
             "{}/tasks/v1/lists/{}/tasks/{}",
             tasks_api_base_url(),
-            task_list_id, task_id
+            task_list_id,
+            task_id
         ))
         .header("Authorization", format!("Bearer {}", token.access_token))
         .send()

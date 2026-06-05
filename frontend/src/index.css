@@ -628,6 +628,12 @@
     padding-right: env(safe-area-inset-right);
   }
 
+  /* Prevent text from overflowing containers — breaks at any character when needed */
+  .overflow-wrap-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
   /* Mobile layout utilities */
   .mobile-content-container {
     height: 100dvh;

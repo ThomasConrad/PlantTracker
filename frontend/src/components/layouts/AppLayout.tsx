@@ -328,8 +328,8 @@ export const AppLayout: Component<AppLayoutProps> = (props) => {
         </div>
       </nav>
 
-      <main class="mobile-content-area sm:max-w-7xl sm:mx-auto sm:py-6 sm:px-6 lg:px-8">
-        <div class="h-full '${isMobile() ? '' : 'p-4'}'">{props.children}</div>
+      <main class="mobile-content-area sm:max-w-7xl sm:mx-auto sm:py-6 sm:px-6 lg:px-8 flex flex-col">
+        <div class="flex-1 min-h-0 flex flex-col">{props.children}</div>
       </main>
 
       {/* Bottom Navigation */}

@@ -269,9 +269,9 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
   };
 
   return (
-    <div class="flex flex-col h-full">
-      {/* Messages area */}
-      <div class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div class="flex flex-col min-h-0 flex-1 overflow-hidden">
+      {/* Messages area — flex-1 + min-h-0 ensures it shrinks to fit, overflow-y-auto for scrolling */}
+      <div class="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4">
         <Show when={loading()}>
           <div class="flex justify-center py-8">
             <LoadingSpinner size="lg" />
@@ -292,10 +292,10 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
           {(message) => (
             <Show when={!(message.role === "user" && message.content.startsWith("[User input:"))}>
               <div
-                class={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                class={`flex ${message.role === "user" ? "justify-end" : "justify-start"} min-w-0`}
               >
                 <div
-                  class={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                  class={`max-w-[85%] rounded-2xl px-4 py-2.5 overflow-hidden ${
                     message.role === "user"
                       ? "bg-primary-600 text-white rounded-br-md"
                       : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md"
@@ -305,10 +305,10 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
                     <img
                       src={message.imageUrl}
                       alt="Attached photo"
-                      class="rounded-lg mb-2 max-h-48 object-cover"
+                      class="rounded-lg mb-2 max-h-48 w-full object-cover"
                     />
                   </Show>
-                  <p class="whitespace-pre-wrap text-sm">
+                  <p class="whitespace-pre-wrap break-words text-sm overflow-wrap-anywhere">
                     {message.content}
                   </p>
 
@@ -395,8 +395,8 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
 
         {/* Streaming response */}
         <Show when={sending()}>
-          <div class="flex justify-start">
-            <div class="max-w-[80%] bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-2.5">
+          <div class="flex justify-start min-w-0">
+            <div class="max-w-[85%] bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-2xl rounded-bl-md px-4 py-2.5 overflow-hidden">
               <Show
                 when={streamingText()}
                 fallback={
@@ -417,7 +417,7 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
                 }
               >
                 <p
-                  class="whitespace-pre-wrap text-sm"
+                  class="whitespace-pre-wrap break-words text-sm overflow-wrap-anywhere"
                 >
                   {streamingText()}
                 </p>
@@ -432,14 +432,14 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
 
       {/* Error */}
       <Show when={error()}>
-        <div class="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+        <div class="flex-shrink-0 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
       </Show>
 
       {/* Pending image preview */}
       <Show when={pendingImage()}>
-        <div class="px-4 py-2 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex-shrink-0 px-4 py-2 border-t border-gray-200 dark:border-gray-700">
           <div class="relative inline-block">
             <img
               src={pendingImage()}
@@ -458,7 +458,7 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
 
       {/* Gallery picker overlay */}
       <Show when={showGallery()}>
-        <div class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 max-h-48 overflow-y-auto">
+        <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-3 max-h-48 overflow-y-auto">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
               Select from gallery
@@ -500,8 +500,8 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
         </div>
       </Show>
 
-      {/* Input area */}
-      <div class="border-t border-gray-200 dark:border-gray-700 p-3 flex items-end gap-2">
+      {/* Input area — flex-shrink-0 ensures it never gets pushed off screen */}
+      <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-3 flex items-end gap-2 safe-area-bottom">
         <input
           ref={fileInputRef}
           type="file"

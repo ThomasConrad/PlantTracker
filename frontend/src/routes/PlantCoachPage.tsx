@@ -16,9 +16,9 @@ export const PlantCoachPage: Component = () => {
   const plant = () => plantsStore.selectedPlant;
 
   return (
-    <div class="flex flex-col h-[calc(100vh-4rem)]">
+    <div class="flex flex-col h-full min-h-0 overflow-hidden">
       {/* Header */}
-      <div class="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <A
           href={`/plants/${params.id}`}
           class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

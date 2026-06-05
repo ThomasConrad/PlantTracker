@@ -55,7 +55,7 @@ export const coachApi = {
       `/coach/plants/${plantId}/messages`,
       {
         method: "POST",
-        body: JSON.stringify({ content, image_url: imageUrl }),
+        body: JSON.stringify({ content, imageUrl }),
       },
     );
   },
@@ -79,7 +79,7 @@ export const coachApi = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ content, image_url: imageUrl }),
+      body: JSON.stringify({ content, imageUrl }),
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -92,7 +92,7 @@ export const coachApi = {
             url,
             status: response.status,
             durationMs,
-            requestBody: { content, image_url: imageUrl },
+            requestBody: { content, imageUrl },
             responseBody: text,
           });
           callbacks.onError(text || `HTTP ${response.status}`);
@@ -188,7 +188,7 @@ export const coachApi = {
             method: "POST",
             url,
             durationMs: Math.round(performance.now() - startTime),
-            requestBody: { content, image_url: imageUrl },
+            requestBody: { content, imageUrl },
             error: err,
             extra: { networkError: true },
           });

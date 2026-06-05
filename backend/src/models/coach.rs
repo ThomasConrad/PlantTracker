@@ -77,7 +77,7 @@ pub struct CoachSuggestion {
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SendCoachMessageRequest {
-    #[validate(length(min = 1, max = 5000))]
+    #[validate(length(max = 5000))]
     pub content: String,
     pub image_url: Option<String>,
 }

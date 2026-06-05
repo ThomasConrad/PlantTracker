@@ -151,6 +151,13 @@ pub async fn send_message(
         message: "Not authenticated".to_string(),
     })?;
 
+    // At least one of content or image must be provided
+    if payload.content.is_empty() && payload.image_url.is_none() {
+        return Err(AppError::Parse {
+            message: "Message must contain text or an image".to_string(),
+        });
+    }
+
     // Verify plant belongs to user
     let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;
     if plant.user_id != user.id {
@@ -658,6 +665,13 @@ pub async fn stream_message(
     let user = auth_session.user.ok_or(AppError::Authentication {
         message: "Not authenticated".to_string(),
     })?;
+
+    // At least one of content or image must be provided
+    if payload.content.is_empty() && payload.image_url.is_none() {
+        return Err(AppError::Parse {
+            message: "Message must contain text or an image".to_string(),
+        });
+    }
 
     // Verify plant belongs to user
     let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;

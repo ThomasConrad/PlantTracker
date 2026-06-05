@@ -126,6 +126,37 @@ pub fn create_coach_for_user(
     )
 }
 
+/// Resolve the best available coach for a user: per-user settings take priority,
+/// then falls back to the app-level global coach. Returns an Arc for cheap cloning
+/// into spawned tasks.
+///
+/// Use this instead of manually matching `create_coach_for_user` + `app_state.coach`
+/// in every handler.
+pub fn resolve_coach_for_request(
+    user_base_url: Option<&str>,
+    user_api_key: Option<&str>,
+    user_model: Option<&str>,
+    global_coach: Option<&std::sync::Arc<dyn PlantCoach>>,
+) -> std::result::Result<std::sync::Arc<dyn PlantCoach>, String> {
+    // Try per-user coach first
+    if let Some(result) = create_coach_for_user(user_base_url, user_api_key, user_model) {
+        match result {
+            Ok(boxed) => return Ok(std::sync::Arc::from(boxed)),
+            Err(e) => {
+                return Err(format!("Failed to initialize your LLM settings: {e}"));
+            }
+        }
+    }
+
+    // Fall back to global coach
+    match global_coach {
+        Some(arc) => Ok(arc.clone()),
+        None => Err(
+            "No AI service configured. Set up your LLM provider in Settings.".to_string(),
+        ),
+    }
+}
+
 // ─── Shared prompt & schema ─────────────────────────────────────────────────
 
 /// The base system prompt instructing the LLM how to behave and what JSON to return.

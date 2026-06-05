@@ -290,7 +290,7 @@ pub async fn get_latest_health_score(
     let plant_id_str = plant_id.to_string();
     let row = sqlx::query_as!(
         HealthScoreRow,
-        r#"SELECT id, plant_id, user_id, score, care_adherence as "care_adherence?: f64", overdue_penalty as "overdue_penalty?: f64", coach_sentiment as "coach_sentiment?: f64", scored_at, created_at
+        r#"SELECT id, plant_id, user_id, score, care_adherence as "care_adherence?: f64", overdue_penalty as "overdue_penalty?: f64", coach_sentiment as "coach_sentiment?: f64", reasoning as "reasoning?: String", scored_at, created_at
          FROM plant_health_scores WHERE plant_id = ? AND user_id = ? ORDER BY scored_at DESC LIMIT 1"#,
         plant_id_str,
         user_id
@@ -310,6 +310,7 @@ pub async fn store_health_score(
     care_adherence: Option<f64>,
     overdue_penalty: Option<f64>,
     coach_sentiment: Option<f64>,
+    reasoning: Option<&str>,
 ) -> Result<PlantHealthScore, AppError> {
     let id = Uuid::new_v4();
     let now = Utc::now().to_rfc3339();
@@ -319,8 +320,8 @@ pub async fn store_health_score(
 
     // Upsert: replace today's score if it exists
     sqlx::query!(
-        r#"INSERT OR REPLACE INTO plant_health_scores (id, plant_id, user_id, score, care_adherence, overdue_penalty, coach_sentiment, scored_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
+        r#"INSERT OR REPLACE INTO plant_health_scores (id, plant_id, user_id, score, care_adherence, overdue_penalty, coach_sentiment, reasoning, scored_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         id_str,
         plant_id_str,
         user_id,
@@ -328,6 +329,7 @@ pub async fn store_health_score(
         care_adherence,
         overdue_penalty,
         coach_sentiment,
+        reasoning,
         today,
         now
     )
@@ -401,6 +403,7 @@ struct HealthScoreRow {
     care_adherence: Option<f64>,
     overdue_penalty: Option<f64>,
     coach_sentiment: Option<f64>,
+    reasoning: Option<String>,
     scored_at: String,
     created_at: String,
 }
@@ -418,6 +421,7 @@ impl HealthScoreRow {
             care_adherence: self.care_adherence,
             overdue_penalty: self.overdue_penalty,
             coach_sentiment: self.coach_sentiment,
+            reasoning: self.reasoning,
             scored_at: self.scored_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| {
                 // Try as date-only
                 chrono::NaiveDate::parse_from_str(&self.scored_at, "%Y-%m-%d")

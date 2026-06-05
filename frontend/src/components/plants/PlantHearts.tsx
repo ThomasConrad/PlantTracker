@@ -5,6 +5,7 @@ interface HealthHearts {
   hearts: number;
   score: number;
   scoredAt?: string;
+  reasoning?: string;
 }
 
 interface Props {
@@ -34,10 +35,14 @@ export const PlantHearts: Component<Props> = (props) => {
     const hasHalf = h.hearts % 1 >= 0.5;
     const empty = 5 - full - (hasHalf ? 1 : 0);
 
+    const tooltip = h.reasoning
+      ? `${h.reasoning} (${h.hearts}/5)`
+      : `Health: ${h.hearts}/5`;
+
     return (
       <span
         class={`inline-flex items-center gap-px ${props.class || ""}`}
-        title={`Health: ${h.hearts}/5`}
+        title={tooltip}
       >
         {"❤️".repeat(full)}
         {hasHalf ? "💛" : ""}

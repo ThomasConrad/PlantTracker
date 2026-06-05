@@ -43,6 +43,7 @@ dotenvy = "0.15"
 
 # File upload
 multer = "3.0"
+base64 = "0.22"
 
 # Image processing
 image = { version = "0.24", features = ["jpeg", "png", "gif", "webp", "avif"] }

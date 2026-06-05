@@ -5,6 +5,8 @@ import { PlantHearts } from "./PlantHearts";
 
 interface PlantCardProps {
   plant: Plant;
+  /** If provided, called on click instead of navigating (used for mobile sheet) */
+  onTap?: (plant: Plant) => void;
 }
 
 export const PlantCard: Component<PlantCardProps> = (props) => {
@@ -14,8 +16,15 @@ export const PlantCard: Component<PlantCardProps> = (props) => {
 
   const overdueCount = createMemo(() => overdueTasks().length);
 
+  const handleClick = (e: MouseEvent) => {
+    if (props.onTap) {
+      e.preventDefault();
+      props.onTap(props.plant);
+    }
+  };
+
   return (
-    <A href={`/plants/${props.plant.id}`} class="plant-card-full-image group">
+    <A href={`/plants/${props.plant.id}`} class="plant-card-full-image group" onClick={handleClick}>
       <div class="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-sm">
         <Show
           when={props.plant.previewUrl}

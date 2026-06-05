@@ -1000,3 +1000,77 @@
 .plant-detail-overlay {
   z-index: 30;
 }
+
+/* ─── Reusable Bottom Sheet ─────────────────────────────────────────────────── */
+
+.bottom-sheet-container {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.bottom-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  pointer-events: auto;
+}
+
+.bottom-sheet-backdrop-visible {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.bottom-sheet-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 51;
+  background: #fafaf8;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.12);
+  padding: 6px 0 0;
+  will-change: transform;
+  backface-visibility: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+  transform: translateY(100vh);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  contain: layout style;
+  pointer-events: auto;
+}
+
+.bottom-sheet-handle {
+  display: block;
+  margin: 0 auto 10px;
+  width: 40px;
+  height: 5px;
+  border-radius: 3px;
+  background: #d4d4d4;
+  border: none;
+  cursor: grab;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.bottom-sheet-header {
+  flex-shrink: 0;
+  padding: 0 20px 8px;
+}
+
+.bottom-sheet-scroll {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+  padding: 0 0 40px;
+}

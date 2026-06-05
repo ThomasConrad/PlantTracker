@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT enabled, reminder_time, timezone, browser_notifications_enabled,\n                push_health_alerts, push_daily_summary, push_coach_suggestions, push_reminders\n         FROM user_reminder_preferences\n         WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "enabled",
+        "ordinal": 0,
+        "type_info": "Bool"
+      },
+      {
+        "name": "reminder_time",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "timezone",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "browser_notifications_enabled",
+        "ordinal": 3,
+        "type_info": "Bool"
+      },
+      {
+        "name": "push_health_alerts",
+        "ordinal": 4,
+        "type_info": "Bool"
+      },
+      {
+        "name": "push_daily_summary",
+        "ordinal": 5,
+        "type_info": "Bool"
+      },
+      {
+        "name": "push_coach_suggestions",
+        "ordinal": 6,
+        "type_info": "Bool"
+      },
+      {
+        "name": "push_reminders",
+        "ordinal": 7,
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6bcf59d22d8c7bb0e9670431c9aeaee3377532e42857e3ad79e2d3ceceb1e136"
+}

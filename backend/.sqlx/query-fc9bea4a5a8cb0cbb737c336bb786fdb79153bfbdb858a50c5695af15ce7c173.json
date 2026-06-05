@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT push_health_alerts, push_daily_summary, push_coach_suggestions, push_reminders\n         FROM user_reminder_preferences WHERE user_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "push_health_alerts",
+        "ordinal": 0,
+        "type_info": "Bool"
+      },
+      {
+        "name": "push_daily_summary",
+        "ordinal": 1,
+        "type_info": "Bool"
+      },
+      {
+        "name": "push_coach_suggestions",
+        "ordinal": 2,
+        "type_info": "Bool"
+      },
+      {
+        "name": "push_reminders",
+        "ordinal": 3,
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "fc9bea4a5a8cb0cbb737c336bb786fdb79153bfbdb858a50c5695af15ce7c173"
+}

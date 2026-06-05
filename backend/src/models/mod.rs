@@ -5,6 +5,7 @@ pub mod invite;
 pub mod memory;
 pub mod photo;
 pub mod plant;
+pub mod plant_attribute;
 pub mod reminder;
 pub mod tracking_entry;
 pub mod user;

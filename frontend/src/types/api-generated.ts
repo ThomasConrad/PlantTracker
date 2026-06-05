@@ -436,6 +436,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/plants/identify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Identify a plant from a photo using AI vision + Trefle.io enrichment. */
+        post: operations["identify_plant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/species-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search species via Trefle.io (proxy endpoint to keep API token server-side). */
+        get: operations["search_species"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/plants/{id}": {
         parameters: {
             query?: never;
@@ -479,6 +513,38 @@ export interface paths {
         put?: never;
         post: operations["unarchive_plant"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/attributes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_attributes"];
+        put?: never;
+        post: operations["create_attribute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/plants/{plant_id}/attributes/{attribute_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["update_attribute"];
+        post?: never;
+        delete: operations["delete_attribute"];
         options?: never;
         head?: never;
         patch?: never;
@@ -660,6 +726,8 @@ export interface components {
             max_total_users: number;
             registration_enabled: boolean;
         };
+        /** @enum {string} */
+        AttributeSource: "identification" | "coach" | "user";
         AuthResponse: {
             user: components["schemas"]["UserResponse"];
         };
@@ -785,6 +853,16 @@ export interface components {
             content: string;
             factType: components["schemas"]["MemoryFactType"];
         };
+        CreatePlantAttributeRequest: {
+            category?: string | null;
+            icon?: string | null;
+            key: string;
+            label: string;
+            /** Format: int32 */
+            sortOrder?: number | null;
+            source?: components["schemas"]["AttributeSource"] | null;
+            value: string;
+        };
         /** @description Inline care task definition used when creating a plant */
         CreatePlantCareTaskInput: {
             /** Format: double */
@@ -800,6 +878,8 @@ export interface components {
             unit?: string | null;
         };
         CreatePlantRequest: {
+            /** @description Initial plant attributes (requirements/characteristics) to create with the plant */
+            attributes?: components["schemas"]["CreatePlantAttributeRequest"][] | null;
             /** @description Initial care tasks to create with the plant */
             careTasks?: components["schemas"]["CreatePlantCareTaskInput"][] | null;
             customMetrics?: components["schemas"]["CreateCustomMetricRequest"][] | null;
@@ -892,10 +972,26 @@ export interface components {
              * @description 0.0–5.0, rounded to nearest 0.5
              */
             hearts: number;
+            /** @description AI-generated explanation of health status */
+            reasoning?: string | null;
             /** Format: double */
             score: number;
             /** Format: date-time */
             scoredAt?: string | null;
+        };
+        IdentifyPlantRequest: {
+            /** @description Optional context from the user (e.g., "indoor plant on my desk") */
+            context?: string | null;
+            /** @description Base64-encoded image data URL (e.g., "data:image/jpeg;base64,...") */
+            image_url: string;
+        };
+        IdentifyPlantResponse: {
+            /** @description General observations from the AI about the photo */
+            analysis_notes: string;
+            /** @description Whether the top candidate is confident enough for auto-selection */
+            auto_select: boolean;
+            /** @description List of candidate species, sorted by confidence (highest first) */
+            candidates: components["schemas"]["PlantCandidate"][];
         };
         InviteInfo: {
             code: string;
@@ -973,6 +1069,47 @@ export interface components {
             /** Format: int64 */
             total: number;
         };
+        PlantAttribute: {
+            category?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            icon?: string | null;
+            /** Format: uuid */
+            id: string;
+            key: string;
+            label: string;
+            /** Format: uuid */
+            plantId: string;
+            /** Format: int32 */
+            sortOrder: number;
+            source: components["schemas"]["AttributeSource"];
+            /** Format: date-time */
+            updatedAt: string;
+            value: string;
+        };
+        PlantAttributesResponse: {
+            attributes: components["schemas"]["PlantAttribute"][];
+        };
+        PlantCandidate: {
+            /** @description Common name (if known) */
+            common_name?: string | null;
+            /**
+             * Format: double
+             * @description AI confidence 0.0-1.0
+             */
+            confidence: number;
+            /** @description Genus only */
+            genus: string;
+            /** @description Why the AI thinks this is the species */
+            reasoning: string;
+            /** @description Reference images from Trefle.io (URLs) */
+            reference_images: string[];
+            /** @description Scientific name (genus + species) */
+            scientific_name: string;
+            suggested_care: components["schemas"]["SuggestedCare"];
+            /** @description Trefle species slug (for further lookups) */
+            trefle_slug?: string | null;
+        };
         PlantHealthScore: {
             /** Format: double */
             careAdherence?: number | null;
@@ -986,6 +1123,8 @@ export interface components {
             overduePenalty?: number | null;
             /** Format: uuid */
             plantId: string;
+            /** @description AI reasoning about the plant's health condition */
+            reasoning?: string | null;
             /**
              * Format: double
              * @description 0.0–1.0, displayed as 0–5 hearts
@@ -1016,6 +1155,7 @@ export interface components {
         PlantResponse: {
             /** Format: date-time */
             archivedAt?: string | null;
+            attributes: components["schemas"]["PlantAttribute"][];
             careTasks: components["schemas"]["CareTaskWithStatus"][];
             /** Format: date-time */
             createdAt: string;
@@ -1045,6 +1185,11 @@ export interface components {
         ReminderPreferences: {
             browserNotificationsEnabled: boolean;
             enabled: boolean;
+            pushCoachSuggestions: boolean;
+            pushDailySummary: boolean;
+            /** @description Push notification preferences (per-category) */
+            pushHealthAlerts: boolean;
+            pushReminders: boolean;
             reminderTime: string;
             timezone: string;
         };
@@ -1052,9 +1197,20 @@ export interface components {
             /** @description Ordered list of care task IDs in desired order */
             taskIds: string[];
         };
+        SearchSpeciesResponse: {
+            results: components["schemas"]["SpeciesSearchResult"][];
+        };
         SendCoachMessageRequest: {
             content: string;
             imageUrl?: string | null;
+        };
+        SpeciesSearchResult: {
+            common_name?: string | null;
+            family?: string | null;
+            genus?: string | null;
+            image_url?: string | null;
+            scientific_name: string;
+            slug: string;
         };
         StoreTokensRequest: {
             /** @description The access token from Google OAuth */
@@ -1066,6 +1222,40 @@ export interface components {
             expires_at: number;
             /** @description The refresh token from Google OAuth (optional) */
             refresh_token?: string | null;
+        };
+        SuggestedAttribute: {
+            /** @description Category for grouping (e.g., "environment", "soil", "safety", "growth") */
+            category?: string | null;
+            /** @description Optional emoji icon */
+            icon?: string | null;
+            /** @description Normalized key (e.g., "soil_type", "toxicity", "growth_rate", "mature_size") */
+            key: string;
+            /** @description Display label (e.g., "Soil Type", "Toxicity", "Growth Rate") */
+            label: string;
+            /** @description The value (e.g., "Well-draining, slightly acidic", "Toxic to cats and dogs") */
+            value: string;
+        };
+        SuggestedCare: {
+            /** @description Additional care notes from AI */
+            additional_notes?: string | null;
+            /** @description Suggested plant attributes (extensible metadata like soil type, toxicity, growth rate, etc.) */
+            attributes?: components["schemas"]["SuggestedAttribute"][];
+            /**
+             * Format: int32
+             * @description Suggested fertilizing interval in days
+             */
+            fertilizing_interval_days?: number | null;
+            /** @description Humidity notes */
+            humidity_notes?: string | null;
+            /** @description Light requirement description */
+            light_requirement?: string | null;
+            /** @description Temperature range description */
+            temperature_notes?: string | null;
+            /**
+             * Format: int32
+             * @description Suggested watering interval in days
+             */
+            watering_interval_days?: number | null;
         };
         /** @description Google Tasks sync request */
         SyncPlantTasksRequest: {
@@ -1157,6 +1347,12 @@ export interface components {
             content?: string | null;
             factType?: components["schemas"]["MemoryFactType"] | null;
         };
+        UpdatePlantAttributeRequest: {
+            category?: string | null;
+            icon?: string | null;
+            label?: string | null;
+            value?: string | null;
+        };
         UpdatePlantRequest: {
             customMetrics?: components["schemas"]["UpdateCustomMetricRequest"][] | null;
             genus?: string | null;
@@ -1165,6 +1361,11 @@ export interface components {
         UpdateReminderPreferencesRequest: {
             browserNotificationsEnabled: boolean;
             enabled: boolean;
+            pushCoachSuggestions?: boolean;
+            pushDailySummary?: boolean;
+            /** @description Push notification preferences (per-category) */
+            pushHealthAlerts?: boolean;
+            pushReminders?: boolean;
             reminderTime: string;
             timezone: string;
         };
@@ -2415,6 +2616,88 @@ export interface operations {
             };
         };
     };
+    identify_plant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdentifyPlantRequest"];
+            };
+        };
+        responses: {
+            /** @description Plant identification results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentifyPlantResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid image data */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description AI service or Trefle.io unavailable */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    search_species: {
+        parameters: {
+            query: {
+                /** @description Search query */
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Species search results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchSpeciesResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Trefle.io unavailable */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_plant: {
         parameters: {
             query?: never;
@@ -2630,6 +2913,164 @@ export interface operations {
             };
             /** @description Internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_attributes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plant attributes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAttributesResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_attribute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePlantAttributeRequest"];
+            };
+        };
+        responses: {
+            /** @description Attribute created/updated */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAttribute"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plant not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_attribute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Attribute ID */
+                attribute_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePlantAttributeRequest"];
+            };
+        };
+        responses: {
+            /** @description Attribute updated */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantAttribute"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Attribute not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_attribute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Plant ID */
+                plant_id: string;
+                /** @description Attribute ID */
+                attribute_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attribute deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Attribute not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

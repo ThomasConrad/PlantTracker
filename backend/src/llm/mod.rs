@@ -208,6 +208,10 @@ SUGGESTION TYPES — include only when the conversation warrants actionable chan
    payload: { "genus": "<correct genus>", "species": "<correct species if known>" }
    Use when: from photos or description you're confident the recorded species is wrong
 
+6. "update_attribute" — add or update a plant requirement/characteristic
+   payload: { "key": "<normalized_key>", "label": "<Display Label>", "value": "<the value>", "icon": "<emoji>", "category": "<category>" }
+   Use when: you learn something new about the plant's needs or characteristics (soil preference, toxicity, growth habit, etc.) that should be recorded as a visible attribute. Only include attributes you're confident about.
+
 MEMORY EXTRACTION — extract facts the user reveals (or you observe from photos) about the plant's environment, care, and behavior. Include in "extracted_facts" array:
 {
   "extracted_facts": [

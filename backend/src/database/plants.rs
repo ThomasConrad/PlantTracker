@@ -3,6 +3,7 @@ use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
 use crate::database::care_tasks as db_care_tasks;
+use crate::database::plant_attributes as db_plant_attributes;
 use crate::database::DatabasePool;
 use crate::models::care_task::CreateCareTaskRequest;
 use crate::models::{
@@ -38,6 +39,7 @@ impl PlantRow {
             archived_at: DbParse::optional_datetime(self.archived_at.as_deref())?,
             custom_metrics: vec![],
             care_tasks: vec![],
+            attributes: vec![],
             created_at: DbParse::datetime(&self.created_at)?,
             updated_at: DbParse::datetime(&self.updated_at)?,
             user_id: self.user_id,
@@ -124,7 +126,7 @@ async fn replace_custom_metrics_for_plant(
     Ok(())
 }
 
-/// Enriches a PlantResponse with custom_metrics and care_tasks
+/// Enriches a PlantResponse with custom_metrics, care_tasks, and attributes
 async fn enrich_plant_response(
     pool: &DatabasePool,
     mut plant: PlantResponse,
@@ -135,6 +137,10 @@ async fn enrich_plant_response(
     let care_response =
         db_care_tasks::list_care_tasks_for_plant(pool, &plant.id, &plant.user_id, false).await?;
     plant.care_tasks = care_response.tasks;
+
+    let attrs_response =
+        db_plant_attributes::list_attributes_for_plant(pool, &plant.id, &plant.user_id).await?;
+    plant.attributes = attrs_response.attributes;
 
     Ok(plant)
 }
@@ -187,6 +193,11 @@ pub async fn create_plant(
             };
             db_care_tasks::create_care_task(pool, &plant_id, user_id, &req).await?;
         }
+    }
+
+    // Create plant attributes if provided
+    if let Some(attributes) = &request.attributes {
+        db_plant_attributes::bulk_create_attributes(pool, &plant_id, user_id, attributes).await?;
     }
 
     get_plant_by_id(pool, plant_id).await

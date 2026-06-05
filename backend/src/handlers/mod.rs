@@ -8,6 +8,7 @@ pub mod identify;
 pub mod invites;
 pub mod memory;
 pub mod photos;
+pub mod plant_attributes;
 pub mod plants;
 pub mod push;
 pub mod reminders;

@@ -229,11 +229,16 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
         </div>
       </Show>
 
+      {/* Plant Attributes */}
+      <Show when={(plant().attributes || []).length > 0}>
+        <PlantAttributesSection attributes={plant().attributes || []} />
+      </Show>
+
       {/* Coach Suggestions */}
       <Show when={suggestions().length > 0}>
         <div class="px-5">
           <div class="flex items-center gap-2 mb-2">
-            <span class="text-amber-500 text-sm">💡</span>
+            <span class="text-amber-500 text-sm">{"\uD83D\uDCA1"}</span>
             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Coach Suggestions
             </h3>
@@ -373,6 +378,62 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
           Edit Plant
         </button>
       </div>
+    </div>
+  );
+};
+
+// ─── Plant Attributes Section ─────────────────────────────────────────────────
+
+interface PlantAttributesSectionProps {
+  attributes: Array<{
+    id: string;
+    key: string;
+    label: string;
+    value: string;
+    icon?: string | null;
+    category?: string | null;
+  }>;
+}
+
+const PlantAttributesSection: Component<PlantAttributesSectionProps> = (props) => {
+  const [expanded, setExpanded] = createSignal(false);
+
+  // Show first 3 by default, expand to show all
+  const visibleAttributes = () =>
+    expanded() ? props.attributes : props.attributes.slice(0, 3);
+
+  const hasMore = () => props.attributes.length > 3;
+
+  return (
+    <div class="px-5 space-y-2">
+      <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+        Requirements
+      </h3>
+      <div class="grid grid-cols-1 gap-1.5">
+        <For each={visibleAttributes()}>
+          {(attr) => (
+            <div class="flex items-start gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+              <Show when={attr.icon}>
+                <span class="text-sm flex-shrink-0 mt-0.5">{attr.icon}</span>
+              </Show>
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-medium text-gray-500">{attr.label}</p>
+                <p class="text-sm text-gray-900 leading-snug">{attr.value}</p>
+              </div>
+            </div>
+          )}
+        </For>
+      </div>
+      <Show when={hasMore()}>
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          class="text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors"
+        >
+          {expanded()
+            ? "Show less"
+            : `Show ${props.attributes.length - 3} more`}
+        </button>
+      </Show>
     </div>
   );
 };

@@ -25,6 +25,15 @@ export interface CareTaskFormData {
   notes?: string;
 }
 
+export interface PlantAttributeFormData {
+  key: string;
+  label: string;
+  value: string;
+  icon?: string | null;
+  category?: string | null;
+  source?: "identification" | "coach" | "user";
+}
+
 export interface PlantFormData {
   name: string;
   genus: string;
@@ -34,6 +43,7 @@ export interface PlantFormData {
     unit: string;
     dataType: "Number" | "Text" | "Boolean";
   }[];
+  attributes?: PlantAttributeFormData[];
 }
 
 export interface TrackingFormData {

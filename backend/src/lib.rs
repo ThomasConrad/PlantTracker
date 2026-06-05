@@ -56,11 +56,15 @@ use handlers::admin::{
 };
 use handlers::identify::{
     IdentifyPlantRequest, IdentifyPlantResponse, PlantCandidate, SearchSpeciesResponse,
-    SpeciesSearchResult, SuggestedCare,
+    SpeciesSearchResult, SuggestedAttribute, SuggestedCare,
 };
 
 use handlers::care_tasks::LogCareTaskResponse;
 use handlers::google_tasks::StoreTokensRequest;
+use models::plant_attribute::{
+    AttributeSource, CreatePlantAttributeRequest, PlantAttribute, PlantAttributesResponse,
+    UpdatePlantAttributeRequest,
+};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -119,6 +123,10 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::memory::update_memory,
         crate::handlers::memory::delete_memory,
         crate::handlers::memory::get_health,
+        crate::handlers::plant_attributes::list_attributes,
+        crate::handlers::plant_attributes::create_attribute,
+        crate::handlers::plant_attributes::update_attribute,
+        crate::handlers::plant_attributes::delete_attribute,
     ),
     components(
         schemas(
@@ -193,8 +201,14 @@ use handlers::google_tasks::StoreTokensRequest;
             IdentifyPlantResponse,
             PlantCandidate,
             SuggestedCare,
+            SuggestedAttribute,
             SearchSpeciesResponse,
             SpeciesSearchResult,
+            PlantAttribute,
+            PlantAttributesResponse,
+            CreatePlantAttributeRequest,
+            UpdatePlantAttributeRequest,
+            AttributeSource,
         )
     ),
     tags(

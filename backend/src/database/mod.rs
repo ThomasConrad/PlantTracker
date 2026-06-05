@@ -70,6 +70,7 @@ pub mod google_task_sync;
 pub mod invites;
 pub mod memory;
 pub mod photos;
+pub mod plant_attributes;
 pub mod plants;
 pub mod reminders;
 pub mod tracking;

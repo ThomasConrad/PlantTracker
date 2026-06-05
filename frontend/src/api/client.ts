@@ -102,6 +102,15 @@ export interface SuggestedCare {
   humidity_notes: string | null;
   temperature_notes: string | null;
   additional_notes: string | null;
+  attributes?: SuggestedAttribute[];
+}
+
+export interface SuggestedAttribute {
+  key: string;
+  label: string;
+  value: string;
+  icon?: string | null;
+  category?: string | null;
 }
 
 export interface IdentifyPlantResponse {

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT DISTINCT p.id as \"plant_id!: String\", p.user_id as \"user_id!: String\"\n         FROM plants p\n         JOIN photos ph ON ph.plant_id = p.id\n         WHERE p.archived_at IS NULL\n         AND NOT EXISTS (\n             SELECT 1 FROM plant_health_scores hs\n             WHERE hs.plant_id = p.id AND hs.scored_at = ?\n         )\n         ORDER BY p.updated_at DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "plant_id!: String",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id!: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "45b63344a0d15db7c7ccf639c26af456b55b4bcc9acf289252d1b44d2c574b71"
+}

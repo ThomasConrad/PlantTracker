@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { logApiError, logApiSuccess, logWarn } from "@/utils/logger";
 
 export interface CoachMessage {
   id: string;
@@ -71,8 +72,10 @@ export const coachApi = {
   ): AbortController => {
     const controller = new AbortController();
     const baseUrl = apiClient.getBaseUrl();
+    const url = `${baseUrl}/coach/plants/${plantId}/messages/stream`;
+    const startTime = performance.now();
 
-    fetch(`${baseUrl}/coach/plants/${plantId}/messages/stream`, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -80,14 +83,25 @@ export const coachApi = {
       signal: controller.signal,
     })
       .then(async (response) => {
+        const durationMs = Math.round(performance.now() - startTime);
+
         if (!response.ok) {
           const text = await response.text();
+          logApiError({
+            method: "POST",
+            url,
+            status: response.status,
+            durationMs,
+            requestBody: { content, image_url: imageUrl },
+            responseBody: text,
+          });
           callbacks.onError(text || `HTTP ${response.status}`);
           return;
         }
 
         const reader = response.body?.getReader();
         if (!reader) {
+          logWarn("Coach stream: no response body", { url });
           callbacks.onError("No response body");
           return;
         }
@@ -103,35 +117,81 @@ export const coachApi = {
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
 
+          // SSE parser: accumulate event type and multi-line data,
+          // dispatch when we hit a blank line (event boundary).
           let currentEvent = "";
+          let dataLines: string[] = [];
+
           for (const line of lines) {
             if (line.startsWith("event: ")) {
               currentEvent = line.slice(7);
             } else if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              switch (currentEvent) {
-                case "token":
-                  callbacks.onToken(data);
-                  break;
-                case "done":
-                  try {
-                    const message = JSON.parse(data) as CoachMessage;
-                    callbacks.onDone(message);
-                  } catch {
-                    callbacks.onError("Failed to parse done event");
+              dataLines.push(line.slice(6));
+            } else if (line.trim() === "") {
+              // Blank line = end of event, dispatch
+              if (currentEvent && dataLines.length > 0) {
+                const data = dataLines.join("\n");
+                switch (currentEvent) {
+                  case "token":
+                    callbacks.onToken(data);
+                    break;
+                  case "done": {
+                    const streamDuration = Math.round(
+                      performance.now() - startTime,
+                    );
+                    try {
+                      const message = JSON.parse(data) as CoachMessage;
+                      logApiSuccess({
+                        method: "POST",
+                        url,
+                        status: response.status,
+                        durationMs: streamDuration,
+                      });
+                      callbacks.onDone(message);
+                    } catch (e) {
+                      logApiError({
+                        method: "POST",
+                        url,
+                        status: response.status,
+                        durationMs: streamDuration,
+                        responseBody: data,
+                        error: e,
+                        extra: { event: "done", parseError: true },
+                      });
+                      callbacks.onError("Failed to parse done event");
+                    }
+                    break;
                   }
-                  break;
-                case "error":
-                  callbacks.onError(data);
-                  break;
+                  case "error":
+                    logApiError({
+                      method: "POST",
+                      url,
+                      status: response.status,
+                      durationMs: Math.round(performance.now() - startTime),
+                      responseBody: data,
+                      extra: { event: "error", streamError: true },
+                    });
+                    callbacks.onError(data);
+                    break;
+                }
               }
+              // Reset for next event
               currentEvent = "";
+              dataLines = [];
             }
           }
         }
       })
       .catch((err) => {
         if (err.name !== "AbortError") {
+          logApiError({
+            method: "POST",
+            url,
+            durationMs: Math.round(performance.now() - startTime),
+            requestBody: { content, image_url: imageUrl },
+            error: err,
+            extra: { networkError: true },
+          });
           callbacks.onError(err.message || "Stream failed");
         }
       });

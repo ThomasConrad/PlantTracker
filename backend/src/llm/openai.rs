@@ -134,7 +134,7 @@ impl PlantCoach for OpenAICoach {
             "type": "json_schema",
             "json_schema": {
                 "name": "coach_response",
-                "strict": true,
+                "strict": false,
                 "schema": schema
             }
         });
@@ -176,8 +176,27 @@ impl PlantCoach for OpenAICoach {
             .and_then(|c| c.message.content)
             .context("No content in OpenAI response")?;
 
+        // Strip markdown code fences if model wrapped response
+        let content_trimmed = content.trim();
+        let content_trimmed = content_trimmed
+            .strip_prefix("```json")
+            .or_else(|| content_trimmed.strip_prefix("```"))
+            .unwrap_or(content_trimmed);
+        let content_trimmed = content_trimmed
+            .strip_suffix("```")
+            .unwrap_or(content_trimmed)
+            .trim();
+
         let coach_response: CoachResponse =
-            serde_json::from_str(&content).context("Failed to parse coach response JSON")?;
+            serde_json::from_str(content_trimmed).map_err(|e| {
+                error!(
+                    "Failed to parse coach response. Error: {}. Raw content ({} bytes): {}",
+                    e,
+                    content.len(),
+                    &content[..content.len().min(500)]
+                );
+                anyhow::anyhow!("Failed to parse coach response JSON: {e}")
+            })?;
 
         Ok(coach_response)
     }
@@ -194,7 +213,7 @@ impl PlantCoach for OpenAICoach {
             "type": "json_schema",
             "json_schema": {
                 "name": "coach_response",
-                "strict": true,
+                "strict": false,
                 "schema": schema
             }
         });
@@ -227,18 +246,23 @@ impl PlantCoach for OpenAICoach {
         let mut full_content = String::new();
         let mut stream = response.bytes_stream();
 
-        // Track if we're inside the "text" field value to forward tokens
-        let mut in_text_field = false;
-        let mut text_buffer = String::new();
-        let mut brace_depth = 0;
-        let mut sent_chars = 0;
+        // State machine for extracting the "text" field value from streaming JSON
+        let mut extractor = TextFieldExtractor::new();
+
+        // Buffer for incomplete SSE lines split across TCP chunks
+        let mut line_buffer = String::new();
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.context("Stream chunk error")?;
             let chunk_str = String::from_utf8_lossy(&chunk);
 
-            for line in chunk_str.lines() {
-                let line = line.trim();
+            line_buffer.push_str(&chunk_str);
+
+            // Process all complete lines (terminated by \n)
+            while let Some(newline_pos) = line_buffer.find('\n') {
+                let line = line_buffer[..newline_pos].trim().to_string();
+                line_buffer = line_buffer[newline_pos + 1..].to_string();
+
                 if line.is_empty() || line == "data: [DONE]" {
                     continue;
                 }
@@ -248,43 +272,11 @@ impl PlantCoach for OpenAICoach {
                             if let Some(content) = choice.delta.content {
                                 full_content.push_str(&content);
 
-                                // Heuristic: try to extract text field content progressively
-                                // Once we see `"text":"` or `"text": "`, start forwarding
-                                if !in_text_field {
-                                    if let Some(pos) = full_content.find("\"text\"") {
-                                        // Find the opening quote of the value
-                                        let after = &full_content[pos + 6..];
-                                        if let Some(quote_pos) = after.find('"') {
-                                            in_text_field = true;
-                                            let value_start = pos + 6 + quote_pos + 1;
-                                            text_buffer =
-                                                full_content[value_start..].to_string();
-                                            // Track brace depth for nested JSON
-                                            brace_depth = 0;
-                                        }
-                                    }
-                                } else {
-                                    text_buffer.push_str(&content);
-                                }
-
-                                // Forward new text to the client
-                                if in_text_field && text_buffer.len() > sent_chars {
-                                    // Check if we've hit the end of the text field
-                                    // Look for unescaped closing quote
-                                    let _check = &text_buffer[sent_chars..];
-                                    // Don't send the last few chars in case they're
-                                    // part of an escape sequence or the closing quote
-                                    let safe_end =
-                                        find_safe_send_boundary(&text_buffer, sent_chars);
-                                    if safe_end > sent_chars {
-                                        let to_send = &text_buffer[sent_chars..safe_end];
-                                        // Unescape JSON string escapes
-                                        let unescaped = unescape_json_string(to_send);
-                                        if !unescaped.is_empty() {
-                                            let _ = tx.send(unescaped).await;
-                                        }
-                                        sent_chars = safe_end;
-                                    }
+                                // Feed chars to the extractor; it emits decoded text
+                                // only while inside the "text" field value.
+                                let extracted = extractor.feed(&content);
+                                if !extracted.is_empty() {
+                                    let _ = tx.send(extracted).await;
                                 }
                             }
                         }
@@ -293,66 +285,206 @@ impl PlantCoach for OpenAICoach {
             }
         }
 
-        // Send any remaining text
-        if in_text_field && text_buffer.len() > sent_chars {
-            // Remove trailing quote if present
-            let remaining = &text_buffer[sent_chars..];
-            let remaining = remaining.trim_end_matches('"');
-            if !remaining.is_empty() {
-                let unescaped = unescape_json_string(remaining);
-                if !unescaped.is_empty() {
-                    let _ = tx.send(unescaped).await;
-                }
-            }
-        }
-
         // Parse the complete response
-        let _ = brace_depth; // suppress unused warning
-        let coach_response: CoachResponse = serde_json::from_str(&full_content)
-            .context("Failed to parse streamed coach response JSON")?;
+        let content = full_content.trim();
+        // Strip markdown code fences if model wrapped response
+        let content = content
+            .strip_prefix("```json")
+            .or_else(|| content.strip_prefix("```"))
+            .unwrap_or(content);
+        let content = content.strip_suffix("```").unwrap_or(content).trim();
+
+        let coach_response: CoachResponse = serde_json::from_str(content)
+            .map_err(|e| {
+                error!(
+                    "Failed to parse streamed coach response. Error: {}. Raw content ({} bytes): {}",
+                    e,
+                    content.len(),
+                    &content[..content.len().min(500)]
+                );
+                anyhow::anyhow!("Failed to parse streamed coach response JSON: {e}")
+            })?;
 
         Ok(coach_response)
     }
 }
 
-/// Find a safe boundary to send text up to (avoid splitting escape sequences)
-fn find_safe_send_boundary(buffer: &str, from: usize) -> usize {
-    let bytes = buffer.as_bytes();
-    let len = bytes.len();
-    // Don't send the last 2 chars (might be `\"` or end quote)
-    if len <= from + 2 {
-        return from;
-    }
-    let mut end = len - 2;
-    // Make sure we don't split in the middle of a backslash escape
-    while end > from && bytes[end - 1] == b'\\' {
-        end -= 1;
-    }
-    end
+/// State machine that extracts the decoded text content of the `"text"` field
+/// from a stream of JSON characters.  It handles:
+/// - Finding `"text"` key followed by `:` and opening `"`
+/// - Proper escape sequence tracking (`\"`, `\\`, `\n`, etc.)
+/// - Detecting the unescaped closing `"` to stop extraction
+#[derive(Debug)]
+enum ExtractorState {
+    /// Scanning for the key `"text"` in the JSON stream
+    LookingForKey { ring: [u8; 6], ring_len: usize },
+    /// Found the key, now looking for `:` then opening `"`
+    WaitingForColon,
+    WaitingForOpenQuote,
+    /// Inside the string value, emitting decoded characters
+    InsideValue { escaped: bool },
+    /// Done — text field fully extracted, ignore rest
+    Done,
 }
 
-/// Basic JSON string unescaping
-fn unescape_json_string(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    let mut chars = s.chars();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            match chars.next() {
-                Some('n') => result.push('\n'),
-                Some('t') => result.push('\t'),
-                Some('r') => result.push('\r'),
-                Some('"') => result.push('"'),
-                Some('\\') => result.push('\\'),
-                Some('/') => result.push('/'),
-                Some(other) => {
-                    result.push('\\');
-                    result.push(other);
-                }
-                None => result.push('\\'),
-            }
-        } else {
-            result.push(c);
+struct TextFieldExtractor {
+    state: ExtractorState,
+}
+
+impl TextFieldExtractor {
+    fn new() -> Self {
+        Self {
+            state: ExtractorState::LookingForKey {
+                ring: [0; 6],
+                ring_len: 0,
+            },
         }
     }
-    result
+
+    /// Feed a chunk of characters. Returns decoded text to send to the client.
+    fn feed(&mut self, input: &str) -> String {
+        let mut output = String::new();
+
+        for ch in input.chars() {
+            match &mut self.state {
+                ExtractorState::LookingForKey { ring, ring_len } => {
+                    // We're looking for the 6 bytes: "text" (with quotes)
+                    let b = ch as u8;
+                    if *ring_len < 6 {
+                        ring[*ring_len] = b;
+                        *ring_len += 1;
+                    } else {
+                        // Shift left
+                        ring.copy_within(1..6, 0);
+                        ring[5] = b;
+                    }
+                    if *ring_len == 6 && ring == b"\"text\"" {
+                        self.state = ExtractorState::WaitingForColon;
+                    }
+                }
+                ExtractorState::WaitingForColon => {
+                    if ch == ':' {
+                        self.state = ExtractorState::WaitingForOpenQuote;
+                    } else if !ch.is_whitespace() {
+                        // Unexpected char — probably a different key that ends with "text"
+                        // Go back to looking
+                        self.state = ExtractorState::LookingForKey {
+                            ring: [0; 6],
+                            ring_len: 0,
+                        };
+                    }
+                }
+                ExtractorState::WaitingForOpenQuote => {
+                    if ch == '"' {
+                        self.state = ExtractorState::InsideValue { escaped: false };
+                    } else if !ch.is_whitespace() {
+                        // Value isn't a string — not the field we want
+                        self.state = ExtractorState::LookingForKey {
+                            ring: [0; 6],
+                            ring_len: 0,
+                        };
+                    }
+                }
+                ExtractorState::InsideValue { escaped } => {
+                    if *escaped {
+                        // Previous char was backslash — decode escape
+                        match ch {
+                            'n' => output.push('\n'),
+                            't' => output.push('\t'),
+                            'r' => output.push('\r'),
+                            '"' => output.push('"'),
+                            '\\' => output.push('\\'),
+                            '/' => output.push('/'),
+                            // Unicode escapes (\uXXXX) — push raw for now
+                            _ => {
+                                output.push('\\');
+                                output.push(ch);
+                            }
+                        }
+                        *escaped = false;
+                    } else if ch == '\\' {
+                        *escaped = true;
+                    } else if ch == '"' {
+                        // Unescaped quote — end of text field value
+                        self.state = ExtractorState::Done;
+                    } else {
+                        output.push(ch);
+                    }
+                }
+                ExtractorState::Done => {
+                    // Ignore everything after text field is complete
+                }
+            }
+        }
+
+        output
+    }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extractor_handles_typical_stream_chunks() {
+        let mut ext = TextFieldExtractor::new();
+        // Simulates actual OpenAI stream deltas: {"text":"I can help you!","suggestions":...}
+        let chunks = vec![
+            "{\"",
+            "text",
+            "\":\"",
+            "I",
+            " can",
+            " help",
+            " you",
+            "!\",\"suggestions\":[],\"extracted_facts\":[]}",
+        ];
+
+        let mut result = String::new();
+        for chunk in &chunks {
+            result.push_str(&ext.feed(chunk));
+        }
+        assert_eq!(result, "I can help you!");
+    }
+
+    #[test]
+    fn extractor_handles_escape_sequences() {
+        let mut ext = TextFieldExtractor::new();
+        // JSON: {"text":"line1\nline2\"quoted\"","suggestions":[]}
+        let input = "{\"text\":\"line1\\nline2\\\"quoted\\\"\",\"suggestions\":[]}";
+
+        let result = ext.feed(input);
+        assert_eq!(result, "line1\nline2\"quoted\"");
+    }
+
+    #[test]
+    fn extractor_ignores_content_after_text_field() {
+        let mut ext = TextFieldExtractor::new();
+        let input = "{\"text\":\"hello\",\"suggestions\":[{\"suggestion_type\":\"photo_request\",\"description\":\"Send a photo\",\"payload\":{}}],\"extracted_facts\":[]}";
+
+        let result = ext.feed(input);
+        assert_eq!(result, "hello");
+    }
+
+    #[test]
+    fn extractor_handles_whitespace_around_colon() {
+        let mut ext = TextFieldExtractor::new();
+        let input = "{\"text\" : \"spaced out\"}";
+
+        let result = ext.feed(input);
+        assert_eq!(result, "spaced out");
+    }
+
+    #[test]
+    fn extractor_handles_single_char_deltas() {
+        let mut ext = TextFieldExtractor::new();
+        let input = "{\"text\":\"Hi there!\"}";
+
+        let mut result = String::new();
+        for ch in input.chars() {
+            result.push_str(&ext.feed(&ch.to_string()));
+        }
+        assert_eq!(result, "Hi there!");
+    }
+}
+

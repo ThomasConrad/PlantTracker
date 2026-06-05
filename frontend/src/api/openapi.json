@@ -931,6 +931,34 @@
         ]
       }
     },
+    "/google-tasks/poll-completions": {
+      "post": {
+        "tags": [
+          "google-tasks"
+        ],
+        "summary": "Poll Google Tasks for completions and mark care tasks as done in Planty",
+        "operationId": "poll_completions",
+        "responses": {
+          "200": {
+            "description": "Polled completions successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "No Google Tasks connection found"
+          },
+          "500": {
+            "description": "Failed to poll completions"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
     "/google-tasks/status": {
       "get": {
         "tags": [

@@ -28,7 +28,9 @@ pub struct ImageUrlContent {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoachResponse {
+    #[serde(default)]
     pub text: String,
+    #[serde(default)]
     pub suggestions: Vec<CoachSuggestionOutput>,
     /// Facts extracted from the conversation to store as plant memories
     #[serde(default)]
@@ -37,8 +39,11 @@ pub struct CoachResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoachSuggestionOutput {
+    #[serde(default)]
     pub suggestion_type: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
     pub payload: serde_json::Value,
 }
 

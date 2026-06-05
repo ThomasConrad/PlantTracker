@@ -8,6 +8,7 @@ pub mod handlers;
 pub mod llm;
 pub mod middleware;
 pub mod models;
+pub mod trefle;
 pub mod utils;
 
 use models::{
@@ -52,6 +53,10 @@ use handlers::admin::{
     AdminDashboardResponse, AdminSettingsResponse, BulkUserAction, BulkUserActionRequest,
     InviteInfo, UpdateAdminSettingsRequest, UpdateUserRequest, UserListResponse,
 };
+use handlers::identify::{
+    IdentifyPlantRequest, IdentifyPlantResponse, PlantCandidate, SearchSpeciesResponse,
+    SpeciesSearchResult, SuggestedCare,
+};
 
 use handlers::care_tasks::LogCareTaskResponse;
 use handlers::google_tasks::StoreTokensRequest;
@@ -79,6 +84,8 @@ use handlers::google_tasks::StoreTokensRequest;
         crate::handlers::plants::delete_plant,
         crate::handlers::plants::archive_plant,
         crate::handlers::plants::unarchive_plant,
+        crate::handlers::identify::identify_plant,
+        crate::handlers::identify::search_species,
         crate::handlers::tracking::list_entries,
         crate::handlers::tracking::create_entry,
         crate::handlers::google_tasks::get_google_auth_url,
@@ -181,6 +188,12 @@ use handlers::google_tasks::StoreTokensRequest;
             MemorySource,
             PlantHealthScore,
             HealthHearts,
+            IdentifyPlantRequest,
+            IdentifyPlantResponse,
+            PlantCandidate,
+            SuggestedCare,
+            SearchSpeciesResponse,
+            SpeciesSearchResult,
         )
     ),
     tags(

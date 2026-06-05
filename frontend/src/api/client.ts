@@ -78,6 +78,47 @@ interface DispatchRemindersResponse {
   sentCount: number;
 }
 
+// ─── Plant Identification Types ─────────────────────────────────────────────
+
+export interface PlantCandidate {
+  scientific_name: string;
+  common_name: string | null;
+  genus: string;
+  confidence: number;
+  reasoning: string;
+  reference_images: string[];
+  suggested_care: SuggestedCare;
+  trefle_slug: string | null;
+}
+
+export interface SuggestedCare {
+  watering_interval_days: number | null;
+  fertilizing_interval_days: number | null;
+  light_requirement: string | null;
+  humidity_notes: string | null;
+  temperature_notes: string | null;
+  additional_notes: string | null;
+}
+
+export interface IdentifyPlantResponse {
+  candidates: PlantCandidate[];
+  auto_select: boolean;
+  analysis_notes: string;
+}
+
+export interface SpeciesSearchResult {
+  scientific_name: string;
+  common_name: string | null;
+  genus: string | null;
+  family: string | null;
+  image_url: string | null;
+  slug: string;
+}
+
+export interface SearchSpeciesResponse {
+  results: SpeciesSearchResult[];
+}
+
 import {
   enqueueRequest,
   getCachedResponse,
@@ -577,6 +618,25 @@ class ApiClient {
     return this.request<DispatchRemindersResponse>("/reminders/dispatch", {
       method: "POST",
     });
+  }
+
+  // ─── Plant Identification ───────────────────────────────────────────────────
+
+  async identifyPlant(
+    imageUrl: string,
+    context?: string,
+  ): Promise<IdentifyPlantResponse> {
+    return this.request<IdentifyPlantResponse>("/plants/identify", {
+      method: "POST",
+      body: JSON.stringify({ image_url: imageUrl, context }),
+    });
+  }
+
+  async searchSpecies(query: string): Promise<SearchSpeciesResponse> {
+    const encoded = encodeURIComponent(query);
+    return this.request<SearchSpeciesResponse>(
+      `/plants/species-search?q=${encoded}`,
+    );
   }
 }
 

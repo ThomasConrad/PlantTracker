@@ -6,7 +6,7 @@ use serde_json::json;
 use std::time::Duration;
 use tracing::error;
 
-use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, RESPONSE_JSON_SCHEMA};
+use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, coach_response_schema};
 
 pub struct OpenAICoach {
     client: Client,
@@ -127,8 +127,7 @@ fn convert_messages(messages: Vec<ChatMessage>) -> Vec<OpenAIMessage> {
 #[async_trait::async_trait]
 impl PlantCoach for OpenAICoach {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse> {
-        let schema: serde_json::Value =
-            serde_json::from_str(RESPONSE_JSON_SCHEMA).context("Failed to parse JSON schema")?;
+        let schema = coach_response_schema();
 
         let response_format = json!({
             "type": "json_schema",
@@ -201,13 +200,76 @@ impl PlantCoach for OpenAICoach {
         Ok(coach_response)
     }
 
+    async fn chat_raw(
+        &self,
+        messages: Vec<ChatMessage>,
+        response_schema: Option<serde_json::Value>,
+    ) -> Result<String> {
+        let response_format = response_schema.map(|schema| {
+            json!({
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "structured_response",
+                    "strict": false,
+                    "schema": schema
+                }
+            })
+        });
+
+        let openai_messages = convert_messages(messages);
+
+        let request = OpenAIRequest {
+            model: self.model.clone(),
+            messages: openai_messages,
+            response_format,
+            stream: None,
+        };
+
+        let response = self
+            .client
+            .post(self.build_url())
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&request)
+            .send()
+            .await
+            .context("Failed to send request to LLM provider")?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            error!("OpenAI API error: status={}, body={}", status, body);
+            anyhow::bail!("OpenAI API returned status {}: {}", status, body);
+        }
+
+        let openai_response: OpenAIResponse = response
+            .json()
+            .await
+            .context("Failed to parse OpenAI response")?;
+
+        let content = openai_response
+            .choices
+            .into_iter()
+            .next()
+            .and_then(|c| c.message.content)
+            .context("No content in OpenAI response")?;
+
+        // Strip markdown code fences if model wrapped response
+        let content = content.trim();
+        let content = content
+            .strip_prefix("```json")
+            .or_else(|| content.strip_prefix("```"))
+            .unwrap_or(content);
+        let content = content.strip_suffix("```").unwrap_or(content).trim();
+
+        Ok(content.to_string())
+    }
+
     async fn stream_chat(
         &self,
         messages: Vec<ChatMessage>,
         tx: tokio::sync::mpsc::Sender<String>,
     ) -> Result<CoachResponse> {
-        let schema: serde_json::Value =
-            serde_json::from_str(RESPONSE_JSON_SCHEMA).context("Failed to parse JSON schema")?;
+        let schema = coach_response_schema();
 
         let response_format = json!({
             "type": "json_schema",

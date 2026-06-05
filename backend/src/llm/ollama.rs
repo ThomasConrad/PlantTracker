@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tracing::error;
 
-use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, RESPONSE_JSON_SCHEMA};
+use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, coach_response_schema};
 
 /// Ollama coach — uses Ollama's native `/api/chat` endpoint.
 /// Configure via:
@@ -96,8 +96,7 @@ fn convert_messages(messages: Vec<ChatMessage>) -> Vec<OllamaMessage> {
 #[async_trait::async_trait]
 impl PlantCoach for OllamaCoach {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse> {
-        let format: serde_json::Value = serde_json::from_str(RESPONSE_JSON_SCHEMA)
-            .context("Failed to parse response schema")?;
+        let format = coach_response_schema();
 
         let ollama_messages = convert_messages(messages);
 

@@ -172,27 +172,16 @@ pub async fn send_message(
     }
 
     // Resolve coach: per-user LLM settings take priority over global config
-    let user_coach: Option<Box<dyn crate::llm::PlantCoach>> =
-        match crate::llm::create_coach_for_user(
-            user.llm_base_url.as_deref(),
-            user.llm_api_key.as_deref(),
-            user.llm_model.as_deref(),
-        ) {
-            Some(Ok(c)) => Some(c),
-            Some(Err(e)) => {
-                return Err(AppError::External {
-                    message: format!("Failed to initialize your LLM settings: {e}"),
-                });
-            }
-            None => None,
-        };
-
-    let coach_ref: &dyn crate::llm::PlantCoach = match &user_coach {
-        Some(c) => c.as_ref(),
-        None => app_state.coach.as_ref().ok_or(AppError::External {
-            message: "No AI coach configured. Set up your LLM provider in Settings, or ask the admin to configure a default.".to_string(),
-        })?.as_ref(),
-    };
+    let coach = crate::llm::resolve_coach_for_request(
+        user.llm_base_url.as_deref(),
+        user.llm_api_key.as_deref(),
+        user.llm_model.as_deref(),
+        app_state.coach.as_ref(),
+    )
+    .map_err(|_| AppError::External {
+        message: "No AI coach configured. Set up your LLM provider in Settings, or ask the admin to configure a default.".to_string(),
+    })?;
+    let coach_ref: &dyn crate::llm::PlantCoach = coach.as_ref();
 
     let conversation =
         db_coach::get_or_create_conversation(&app_state.pool, &plant_id.to_string(), &user.id)
@@ -334,6 +323,16 @@ pub async fn send_message(
             status: row.status,
             applied_at: row.applied_at,
         });
+    }
+
+    // Fire push notification for new actionable suggestions
+    if !suggestions.is_empty() {
+        notify_new_suggestions(
+            app_state.pool.clone(),
+            user.id.clone(),
+            plant.name.clone(),
+            suggestions.clone(),
+        );
     }
 
     let message = CoachMessage {
@@ -809,24 +808,15 @@ pub async fn stream_message(
     }
 
     // Resolve coach
-    let coach: Box<dyn crate::llm::PlantCoach> = match crate::llm::create_coach_for_user(
+    let coach = crate::llm::resolve_coach_for_request(
         user.llm_base_url.as_deref(),
         user.llm_api_key.as_deref(),
         user.llm_model.as_deref(),
-    ) {
-        Some(Ok(c)) => c,
-        Some(Err(e)) => {
-            return Err(AppError::External {
-                message: format!("Failed to initialize your LLM settings: {e}"),
-            });
-        }
-        None => {
-            let global = app_state.coach.as_ref().ok_or(AppError::External {
-                message: "No AI coach configured.".to_string(),
-            })?;
-            Box::new(ArcCoachWrapper(global.clone()))
-        }
-    };
+        app_state.coach.as_ref(),
+    )
+    .map_err(|_| AppError::External {
+        message: "No AI coach configured.".to_string(),
+    })?;
 
     let conversation =
         db_coach::get_or_create_conversation(&app_state.pool, &plant_id.to_string(), &user.id)
@@ -901,6 +891,7 @@ pub async fn stream_message(
     let pool = app_state.pool.clone();
     let conv_id = conversation.id.clone();
     let user_id = user.id.clone();
+    let plant_name = plant.name.clone();
 
     tokio::spawn(async move {
         // Token channel: provider sends text chunks here
@@ -978,6 +969,16 @@ pub async fn stream_message(
                         }
                     }
 
+                    // Fire push notification for new actionable suggestions
+                    if !suggestions.is_empty() {
+                        notify_new_suggestions(
+                            pool.clone(),
+                            user_id.clone(),
+                            plant_name.clone(),
+                            suggestions.clone(),
+                        );
+                    }
+
                     let message = CoachMessage {
                         id: assistant_msg.id,
                         role: "assistant".to_string(),
@@ -1030,20 +1031,53 @@ enum StreamEvent {
     Error(String),
 }
 
-/// Wrapper to use an Arc<dyn PlantCoach> as an owned PlantCoach
-struct ArcCoachWrapper(std::sync::Arc<dyn crate::llm::PlantCoach>);
+/// Fire-and-forget: send push notifications for new coach suggestions.
+/// Only sends for actionable suggestion types (schedule_change, care_action, new_task).
+fn notify_new_suggestions(
+    pool: crate::database::DatabasePool,
+    user_id: String,
+    plant_name: String,
+    suggestions: Vec<CoachSuggestion>,
+) {
+    use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
 
-#[async_trait::async_trait]
-impl crate::llm::PlantCoach for ArcCoachWrapper {
-    async fn chat(&self, messages: Vec<ChatMessage>) -> anyhow::Result<crate::llm::CoachResponse> {
-        self.0.chat(messages).await
+    // Only notify for actionable suggestions
+    let actionable: Vec<CoachSuggestion> = suggestions
+        .into_iter()
+        .filter(|s| matches!(s.suggestion_type.as_str(), "schedule_change" | "care_action" | "new_task"))
+        .collect();
+
+    if actionable.is_empty() {
+        return;
     }
 
-    async fn stream_chat(
-        &self,
-        messages: Vec<ChatMessage>,
-        tx: tokio::sync::mpsc::Sender<String>,
-    ) -> anyhow::Result<crate::llm::CoachResponse> {
-        self.0.stream_chat(messages, tx).await
-    }
+    tokio::spawn(async move {
+        let (title, body) = if actionable.len() == 1 {
+            let s = &actionable[0];
+            (
+                format!("Suggestion for {}", plant_name),
+                s.description.clone(),
+            )
+        } else {
+            (
+                format!("{} suggestions for {}", actionable.len(), plant_name),
+                actionable
+                    .iter()
+                    .take(2)
+                    .map(|s| s.description.as_str())
+                    .collect::<Vec<_>>()
+                    .join("; "),
+            )
+        };
+
+        let payload = PushPayload {
+            title,
+            body,
+            url: Some("/plants".to_string()),
+            icon: None,
+            tag: Some(format!("coach-suggestion-{}", plant_name.to_lowercase().replace(' ', "-"))),
+        };
+
+        send_push_if_allowed(&pool, &user_id, PushCategory::CoachSuggestion, &payload).await;
+    });
 }

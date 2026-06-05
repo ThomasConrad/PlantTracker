@@ -9,5 +9,6 @@ pub mod invites;
 pub mod memory;
 pub mod photos;
 pub mod plants;
+pub mod push;
 pub mod reminders;
 pub mod tracking;

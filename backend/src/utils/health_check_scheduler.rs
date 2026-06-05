@@ -10,8 +10,9 @@ use uuid::Uuid;
 
 use crate::app_state::AppState;
 use crate::database::DatabasePool;
-use crate::handlers::memory::run_health_assessment;
+use crate::handlers::memory::{run_health_assessment, HealthAssessmentResult};
 use crate::llm::PlantCoach;
+use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
 
 /// Start the daily health check as a background task.
 /// Returns immediately; the actual work runs in a spawned task.
@@ -56,6 +57,10 @@ async fn run_all_assessments(app_state: &AppState) -> Result<(u32, u32, usize), 
     let mut assessed = 0u32;
     let mut failed = 0u32;
 
+    // Collect alerts per-user so we can send a single summary push per user
+    let mut user_alerts: std::collections::HashMap<String, Vec<HealthAssessmentResult>> =
+        std::collections::HashMap::new();
+
     for (plant_id_str, user_id) in &plants_with_photos {
         let plant_id = match Uuid::parse_str(plant_id_str) {
             Ok(id) => id,
@@ -91,7 +96,16 @@ async fn run_all_assessments(app_state: &AppState) -> Result<(u32, u32, usize), 
 
         // Run the assessment
         match run_health_assessment(app_state, &plant_id, user_id, coach.as_ref()).await {
-            Ok(_) => assessed += 1,
+            Ok(result) => {
+                assessed += 1;
+                // Track plants with concerning health (score <= 2/5)
+                if result.raw_ai_score <= 2 {
+                    user_alerts
+                        .entry(user_id.clone())
+                        .or_default()
+                        .push(result);
+                }
+            }
             Err(e) => {
                 warn!(
                     "Health check failed for plant {}: {}",
@@ -105,7 +119,51 @@ async fn run_all_assessments(app_state: &AppState) -> Result<(u32, u32, usize), 
         sleep(Duration::from_millis(1000)).await;
     }
 
+    // Send push notifications for users with concerning plants
+    send_daily_health_alerts(app_state, &user_alerts).await;
+
     Ok((assessed, failed, total))
+}
+
+/// Send push notifications summarizing plants that need attention.
+async fn send_daily_health_alerts(
+    app_state: &AppState,
+    user_alerts: &std::collections::HashMap<String, Vec<HealthAssessmentResult>>,
+) {
+    if user_alerts.is_empty() {
+        return;
+    }
+
+    for (user_id, alerts) in user_alerts {
+        let (title, body) = if alerts.len() == 1 {
+            let a = &alerts[0];
+            (
+                format!("{} needs attention", a.plant_name),
+                format!("Health score: {}/5", a.raw_ai_score),
+            )
+        } else {
+            let names: Vec<&str> = alerts.iter().take(3).map(|a| a.plant_name.as_str()).collect();
+            let suffix = if alerts.len() > 3 {
+                format!(" and {} more", alerts.len() - 3)
+            } else {
+                String::new()
+            };
+            (
+                format!("{} plants need attention", alerts.len()),
+                format!("{}{}", names.join(", "), suffix),
+            )
+        };
+
+        let payload = PushPayload {
+            title,
+            body,
+            url: Some("/plants".to_string()),
+            icon: None,
+            tag: Some("daily-health-summary".to_string()),
+        };
+
+        send_push_if_allowed(&app_state.pool, user_id, PushCategory::DailySummary, &payload).await;
+    }
 }
 
 /// Get all (plant_id, user_id) pairs for plants that have photos and are not archived.

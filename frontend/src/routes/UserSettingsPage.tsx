@@ -1,6 +1,7 @@
 import { Component, createSignal, onMount, Show } from "solid-js";
 import { apiClient } from "@/api/client";
 import { authStore } from "@/stores/auth";
+import { pushStore } from "@/stores/push";
 import { Select } from "@/components/ui";
 
 export const UserSettingsPage: Component = () => {
@@ -37,6 +38,15 @@ export const UserSettingsPage: Component = () => {
   const [llmApiKeySet, setLlmApiKeySet] = createSignal(false);
   const [llmModel, setLlmModel] = createSignal("");
 
+  // Push notification preferences
+  const [testPushLoading, setTestPushLoading] = createSignal(false);
+  const [pushPrefs, setPushPrefs] = createSignal({
+    pushHealthAlerts: true,
+    pushDailySummary: true,
+    pushCoachSuggestions: true,
+    pushReminders: true,
+  });
+
   onMount(() => {
     if (authStore.user) {
       setName(authStore.user.name || "");
@@ -47,7 +57,53 @@ export const UserSettingsPage: Component = () => {
       setLlmApiKeySet(authStore.user.llmApiKeySet || false);
       setLlmModel(authStore.user.llmModel || "");
     }
+    pushStore.initialize();
+    // Load push notification category preferences
+    loadPushPrefs();
   });
+
+  const loadPushPrefs = async () => {
+    try {
+      const prefs = await apiClient.getReminderPreferences();
+      setPushPrefs({
+        pushHealthAlerts: prefs.pushHealthAlerts ?? true,
+        pushDailySummary: prefs.pushDailySummary ?? true,
+        pushCoachSuggestions: prefs.pushCoachSuggestions ?? true,
+        pushReminders: prefs.pushReminders ?? true,
+      });
+    } catch {
+      // Ignore — defaults are fine
+    }
+  };
+
+  const updatePushPref = async (key: string, value: boolean) => {
+    const updated = { ...pushPrefs(), [key]: value };
+    setPushPrefs(updated);
+    try {
+      // Get current full prefs and update with new push prefs
+      const current = await apiClient.getReminderPreferences();
+      await apiClient.updateReminderPreferences({
+        ...current,
+        ...updated,
+      });
+    } catch (err) {
+      console.error("Failed to save push preference:", err);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setTestPushLoading(true);
+    try {
+      await apiClient.testPush();
+      showSuccess("Test notification sent! Check your device.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to send test notification",
+      );
+    } finally {
+      setTestPushLoading(false);
+    }
+  };
 
   const showSuccess = (message: string) => {
     setSuccess(message);
@@ -495,6 +551,133 @@ export const UserSettingsPage: Component = () => {
           </button>
         </div>
       </form>
+
+      {/* Push Notifications */}
+      <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <h2 class="text-lg font-medium text-gray-900 mb-2">
+            Push Notifications
+          </h2>
+          <p class="text-sm text-gray-500 mb-4">
+            Receive alerts when your plants need attention — even when the app is closed.
+          </p>
+
+          <Show when={pushStore.state === "unsupported"}>
+            <p class="text-sm text-gray-500 italic">
+              Push notifications are not supported in this browser.
+            </p>
+          </Show>
+
+          <Show when={pushStore.state === "denied"}>
+            <div class="bg-red-50 border border-red-200 rounded-md p-3">
+              <p class="text-sm text-red-700">
+                Notification permission was denied. To enable push notifications,
+                reset the notification permission in your browser settings for this site.
+              </p>
+            </div>
+          </Show>
+
+          <Show when={pushStore.canSubscribe}>
+            <button
+              type="button"
+              onClick={() => pushStore.subscribe()}
+              disabled={pushStore.loading}
+              class="inline-flex items-center gap-2 py-2 px-4 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {pushStore.loading ? "Enabling..." : "Enable Push Notifications"}
+            </button>
+          </Show>
+
+          <Show when={pushStore.state === "subscribed"}>
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                  <span class="text-sm text-gray-700">Push notifications active</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleTestPush}
+                    disabled={testPushLoading()}
+                    class="text-sm text-green-600 hover:text-green-700 font-medium disabled:opacity-50"
+                  >
+                    {testPushLoading() ? "Sending..." : "Send Test"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pushStore.unsubscribe()}
+                    disabled={pushStore.loading}
+                    class="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+                  >
+                    {pushStore.loading ? "Disabling..." : "Disable"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Notification Category Preferences */}
+              <div class="border-t pt-4 space-y-3">
+                <p class="text-sm font-medium text-gray-700">Notify me about:</p>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pushPrefs().pushHealthAlerts}
+                    onChange={(e) => updatePushPref("pushHealthAlerts", e.currentTarget.checked)}
+                    class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <div>
+                    <span class="text-sm text-gray-700">Health alerts</span>
+                    <p class="text-xs text-gray-400">When a plant's health score drops</p>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pushPrefs().pushDailySummary}
+                    onChange={(e) => updatePushPref("pushDailySummary", e.currentTarget.checked)}
+                    class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <div>
+                    <span class="text-sm text-gray-700">Daily summary</span>
+                    <p class="text-xs text-gray-400">Daily overview of plants needing care</p>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pushPrefs().pushCoachSuggestions}
+                    onChange={(e) => updatePushPref("pushCoachSuggestions", e.currentTarget.checked)}
+                    class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <div>
+                    <span class="text-sm text-gray-700">Coach suggestions</span>
+                    <p class="text-xs text-gray-400">When the AI coach has care advice</p>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pushPrefs().pushReminders}
+                    onChange={(e) => updatePushPref("pushReminders", e.currentTarget.checked)}
+                    class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <div>
+                    <span class="text-sm text-gray-700">Care reminders</span>
+                    <p class="text-xs text-gray-400">Watering, fertilizing, and other scheduled care</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </Show>
+
+          <Show when={pushStore.error}>
+            <p class="mt-2 text-sm text-red-600">{pushStore.error}</p>
+          </Show>
+        </div>
+      </div>
 
       <div class="bg-white shadow rounded-lg">
         <div class="px-4 py-5 sm:p-6 space-y-4">

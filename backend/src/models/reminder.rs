@@ -9,6 +9,11 @@ pub struct ReminderPreferences {
     pub reminder_time: String,
     pub timezone: String,
     pub browser_notifications_enabled: bool,
+    /// Push notification preferences (per-category)
+    pub push_health_alerts: bool,
+    pub push_daily_summary: bool,
+    pub push_coach_suggestions: bool,
+    pub push_reminders: bool,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -20,6 +25,19 @@ pub struct UpdateReminderPreferencesRequest {
     #[validate(length(min = 1, max = 64))]
     pub timezone: String,
     pub browser_notifications_enabled: bool,
+    /// Push notification preferences (per-category)
+    #[serde(default = "default_true")]
+    pub push_health_alerts: bool,
+    #[serde(default = "default_true")]
+    pub push_daily_summary: bool,
+    #[serde(default = "default_true")]
+    pub push_coach_suggestions: bool,
+    #[serde(default = "default_true")]
+    pub push_reminders: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

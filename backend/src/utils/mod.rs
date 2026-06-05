@@ -3,4 +3,5 @@ pub mod errors;
 pub mod google_tasks;
 pub mod health_check_scheduler;
 pub mod image_processing;
+pub mod push;
 pub mod token_refresh_scheduler;

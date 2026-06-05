@@ -13,6 +13,7 @@ use crate::models::{
     UpdateReminderPreferencesRequest,
 };
 use crate::utils::errors::{AppError, Result};
+use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -115,8 +116,52 @@ async fn dispatch_due_reminders(
         }));
     }
 
+    let pool = auth_session.backend.db.clone();
     let reminders =
-        db_reminders::dispatch_due_reminders(&auth_session.backend.db, &user.id).await?;
+        db_reminders::dispatch_due_reminders(&pool, &user.id).await?;
+
+    // Send push notifications for dispatched reminders (fire-and-forget)
+    if !reminders.is_empty() {
+        let user_id = user.id.clone();
+        let reminder_count = reminders.len();
+        let reminders_for_push = reminders.clone();
+        tokio::spawn(async move {
+            let (title, body) = if reminder_count == 1 {
+                let r = &reminders_for_push[0];
+                let action = if r.reminder_type == "watering" { "Water" } else { "Care for" };
+                (
+                    format!("{} {}", action, r.plant_name),
+                    if r.days_overdue > 0 {
+                        format!("{} day(s) overdue", r.days_overdue)
+                    } else {
+                        "Due today".to_string()
+                    },
+                )
+            } else {
+                let names: Vec<&str> = reminders_for_push.iter().take(3).map(|r| r.plant_name.as_str()).collect();
+                let suffix = if reminder_count > 3 {
+                    format!(" and {} more", reminder_count - 3)
+                } else {
+                    String::new()
+                };
+                (
+                    format!("{} plants need care", reminder_count),
+                    format!("{}{}", names.join(", "), suffix),
+                )
+            };
+
+            let payload = PushPayload {
+                title,
+                body,
+                url: Some("/reminders".to_string()),
+                icon: None,
+                tag: Some("reminder-dispatch".to_string()),
+            };
+
+            send_push_if_allowed(&pool, &user_id, PushCategory::Reminder, &payload).await;
+        });
+    }
+
     Ok(Json(DispatchRemindersResponse {
         sent_count: reminders.len(),
         reminders,

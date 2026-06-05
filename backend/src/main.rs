@@ -193,6 +193,7 @@ async fn main() -> anyhow::Result<()> {
         .nest("/calendar", calendar::routes())
         .nest("/google-tasks", google_tasks::routes())
         .nest("/reminders", reminders::routes())
+        .nest("/push", handlers::push::routes())
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/openapi.json", get(|| async { Json(ApiDoc::openapi()) }))
         .with_state(app_state);

@@ -21,10 +21,11 @@ export const PlantFormPage: Component = () => {
   const isCurrentPlantLoaded = () =>
     !!plantsStore.selectedPlant && plantsStore.selectedPlant.id === params.id;
 
-  // Check if user has AI configured
+  // Check if user has AI configured (only valid once auth is loaded)
   const hasAiConfigured = () => {
     const user = authStore.user;
-    return user?.llmApiKeySet === true && !!user?.llmBaseUrl;
+    if (!user) return null; // unknown yet — auth still loading
+    return user.llmApiKeySet === true && !!user.llmBaseUrl;
   };
 
   // Load existing photos for edit mode
@@ -135,7 +136,16 @@ export const PlantFormPage: Component = () => {
     <Show
       when={isEditing()}
       fallback={
-        <PlantCreationWizard aiUnavailable={!hasAiConfigured()} />
+        <Show
+          when={hasAiConfigured() !== null}
+          fallback={
+            <div class="flex justify-center items-center min-h-[60vh]">
+              <LoadingSpinner size="lg" />
+            </div>
+          }
+        >
+          <PlantCreationWizard aiUnavailable={!hasAiConfigured()} />
+        </Show>
       }
     >
       {/* Edit mode — existing layout */}

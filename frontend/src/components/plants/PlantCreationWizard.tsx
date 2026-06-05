@@ -25,6 +25,7 @@ interface Props {
 export const PlantCreationWizard: Component<Props> = (props) => {
   const navigate = useNavigate();
 
+  // Start at capture if AI is available, form if not
   const [step, setStep] = createSignal<WizardStep>(
     props.aiUnavailable ? "form" : "capture",
   );

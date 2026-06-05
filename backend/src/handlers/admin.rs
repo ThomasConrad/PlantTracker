@@ -823,6 +823,125 @@ pub async fn get_system_health(
     })))
 }
 
+/// Run daily health check: re-assess all plants that have photos.
+/// Processes each plant sequentially with a short delay to avoid API rate limits.
+/// Returns a summary of how many plants were assessed.
+#[utoipa::path(
+    post,
+    path = "/admin/daily-health-check",
+    responses(
+        (status = 200, description = "Health check completed"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden - Admin access required")
+    ),
+    security(("session" = []))
+)]
+pub async fn run_daily_health_check(
+    auth_session: AuthSession,
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Authentication required".to_string(),
+    })?;
+
+    if !user.is_admin() {
+        return Err(AppError::Authorization {
+            message: "Admin access required".to_string(),
+        });
+    }
+
+    // Get all plant IDs that have at least one photo, along with their user_id
+    let plants_with_photos: Vec<PlantWithUser> = sqlx::query_as!(
+        PlantWithUser,
+        r#"SELECT DISTINCT p.id as "plant_id!: String", p.user_id as "user_id!: String"
+         FROM plants p
+         JOIN photos ph ON ph.plant_id = p.id
+         WHERE p.archived_at IS NULL
+         ORDER BY p.updated_at DESC"#,
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(AppError::Database)?;
+
+    let total = plants_with_photos.len();
+    let mut assessed = 0u32;
+    let mut failed = 0u32;
+
+    tracing::info!("Daily health check: {} plants with photos", total);
+
+    for pwu in &plants_with_photos {
+        let plant_id = match uuid::Uuid::parse_str(&pwu.plant_id) {
+            Ok(id) => id,
+            Err(_) => {
+                failed += 1;
+                continue;
+            }
+        };
+
+        // Get the user's LLM settings
+        let plant_user = match crate::database::users::get_user_by_id(&state.pool, &pwu.user_id).await {
+            Ok(u) => u,
+            Err(_) => {
+                failed += 1;
+                continue;
+            }
+        };
+
+        // Resolve the coach for this user
+        let coach = match crate::llm::resolve_coach_for_request(
+            plant_user.llm_base_url.as_deref(),
+            plant_user.llm_api_key.as_deref(),
+            plant_user.llm_model.as_deref(),
+            state.coach.as_ref(),
+        ) {
+            Ok(c) => c,
+            Err(_) => {
+                failed += 1;
+                continue;
+            }
+        };
+
+        // Run background assessment (non-blocking per plant, but we await to be sequential)
+        match super::memory::run_health_assessment(
+            &state,
+            &plant_id,
+            &pwu.user_id,
+            coach.as_ref(),
+        )
+        .await
+        {
+            Ok(_) => assessed += 1,
+            Err(e) => {
+                tracing::warn!(
+                    "Daily health check failed for plant {}: {}",
+                    plant_id, e
+                );
+                failed += 1;
+            }
+        }
+
+        // Brief pause between plants to avoid API rate limits
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    tracing::info!(
+        "Daily health check complete: assessed={}, failed={}, total={}",
+        assessed, failed, total
+    );
+
+    Ok(Json(serde_json::json!({
+        "total_plants": total,
+        "assessed": assessed,
+        "failed": failed,
+    })))
+}
+
+#[derive(Debug)]
+struct PlantWithUser {
+    plant_id: String,
+    user_id: String,
+}
+
 /// Admin routes  
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -836,4 +955,5 @@ pub fn routes() -> Router<AppState> {
             get(get_admin_settings).put(update_admin_settings),
         )
         .route("/health", get(get_system_health))
+        .route("/daily-health-check", post(run_daily_health_check))
 }

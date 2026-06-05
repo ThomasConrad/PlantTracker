@@ -33,7 +33,7 @@ use handlers::{
 };
 use planty_api::ApiDoc;
 use utils::{
-    google_tasks::GoogleTasksConfig, token_refresh_scheduler::start_token_refresh_scheduler,
+    google_tasks::GoogleTasksConfig, health_check_scheduler, token_refresh_scheduler::start_token_refresh_scheduler,
 };
 
 #[derive(Parser, Debug)]
@@ -111,6 +111,9 @@ async fn main() -> anyhow::Result<()> {
     } else {
         tracing::info!("Google Tasks not configured, skipping token refresh scheduler");
     }
+
+    // Start daily health check scheduler
+    health_check_scheduler::start_health_check_scheduler(app_state.clone());
 
     // Authentication setup
     let (session_layer, auth_layer) = auth::create_auth_layers(pool.clone());

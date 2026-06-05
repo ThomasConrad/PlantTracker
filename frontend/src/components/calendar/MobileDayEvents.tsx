@@ -17,9 +17,9 @@ interface CalendarEvent {
   id: string;
   title: string;
   plant: Plant;
-  entry: TrackingEntry;
+  entry: TrackingEntry | null;
   date: Date;
-  type: "care" | "measurement" | "note" | "photo";
+  type: "care" | "measurement" | "note" | "photo" | "scheduled";
 }
 
 interface MobileDayEventsProps {
@@ -37,7 +37,9 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
     const grouped: { [key: string]: CalendarEvent[] } = {};
 
     props.events.forEach((event) => {
-      const eventDate = new Date(event.entry.timestamp);
+      const eventDate = event.entry
+        ? new Date(event.entry.timestamp)
+        : event.date;
       const hours = eventDate.getHours();
       const minutes = eventDate.getMinutes();
       const roundedMinutes = Math.floor(minutes / 10) * 10;
@@ -50,11 +52,15 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
     const sortedTimes = Object.keys(grouped).sort();
     return sortedTimes.map((time) => ({
       time,
-      events: grouped[time].sort(
-        (a, b) =>
-          new Date(a.entry.timestamp).getTime() -
-          new Date(b.entry.timestamp).getTime(),
-      ),
+      events: grouped[time].sort((a, b) => {
+        const aTime = a.entry
+          ? new Date(a.entry.timestamp).getTime()
+          : a.date.getTime();
+        const bTime = b.entry
+          ? new Date(b.entry.timestamp).getTime()
+          : b.date.getTime();
+        return aTime - bTime;
+      }),
     }));
   });
 
@@ -62,6 +68,8 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
     switch (type) {
       case "care":
         return "✅";
+      case "scheduled":
+        return "📅";
       case "measurement":
         return "📊";
       case "note":
@@ -77,6 +85,8 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
     switch (type) {
       case "care":
         return "border-l-blue-500 bg-blue-50";
+      case "scheduled":
+        return "border-l-green-500 bg-green-50";
       case "measurement":
         return "border-l-purple-500 bg-purple-50";
       case "note":
@@ -297,23 +307,25 @@ export const MobileDayEvents: Component<MobileDayEventsProps> = (props) => {
                       <div class="mc-event-info">
                         <div class="mc-event-title">{event.plant.name}</div>
                         <div class="mc-event-subtitle">
-                          {event.type === "measurement"
-                            ? "Measurement"
-                            : event.type}
+                          {event.type === "scheduled"
+                            ? "Scheduled"
+                            : event.type === "measurement"
+                              ? "Measurement"
+                              : event.type}
                           <Show
                             when={
-                              event.entry.measurements &&
+                              event.entry?.measurements &&
                               event.entry.measurements.length > 0
                             }
                           >
                             <span class="font-medium ml-1">
-                              {String(event.entry.measurements![0].value)}
+                              {String(event.entry!.measurements![0].value)}
                             </span>
                           </Show>
                         </div>
-                        <Show when={event.entry.notes}>
+                        <Show when={event.entry?.notes}>
                           <div class="mc-event-notes">
-                            {String(event.entry.notes)}
+                            {String(event.entry!.notes)}
                           </div>
                         </Show>
                       </div>

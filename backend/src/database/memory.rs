@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use uuid::Uuid;
 
 use crate::database::DatabasePool;
@@ -6,6 +6,7 @@ use crate::models::memory::{
     ExtractedFact, MemoryFactType, MemorySource, PlantHealthScore, PlantMemoriesResponse,
     PlantMemory,
 };
+use crate::utils::db_traits::{DbParse, RequireAffected};
 use crate::utils::errors::AppError;
 
 // ─── Plant Memories ──────────────────────────────────────────────────────────
@@ -146,20 +147,16 @@ pub async fn delete_memory(
     user_id: &str,
 ) -> Result<(), AppError> {
     let memory_id_str = memory_id.to_string();
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"DELETE FROM plant_memories WHERE id = ? AND user_id = ?"#,
         memory_id_str,
         user_id
     )
     .execute(pool)
     .await
-    .map_err(AppError::Database)?;
+    .map_err(AppError::Database)?
+    .require_affected(format!("Memory {memory_id}"))?;
 
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Memory {memory_id}"),
-        });
-    }
     Ok(())
 }
 
@@ -366,12 +363,8 @@ struct MemoryRow {
 impl MemoryRow {
     fn into_memory(self) -> Result<PlantMemory, AppError> {
         Ok(PlantMemory {
-            id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal {
-                message: "Invalid UUID".to_string(),
-            })?,
-            plant_id: Uuid::parse_str(&self.plant_id).map_err(|_| AppError::Internal {
-                message: "Invalid plant UUID".to_string(),
-            })?,
+            id: DbParse::uuid(&self.id)?,
+            plant_id: DbParse::uuid(&self.plant_id)?,
             fact_type: self.fact_type.parse().map_err(|_| AppError::Internal {
                 message: "Invalid fact type".to_string(),
             })?,
@@ -381,16 +374,8 @@ impl MemoryRow {
                 message: "Invalid source".to_string(),
             })?,
             source_message_id: self.source_message_id,
-            created_at: DateTime::parse_from_rfc3339(&self.created_at)
-                .map_err(|_| AppError::Internal {
-                    message: "Invalid datetime".to_string(),
-                })?
-                .with_timezone(&Utc),
-            updated_at: DateTime::parse_from_rfc3339(&self.updated_at)
-                .map_err(|_| AppError::Internal {
-                    message: "Invalid datetime".to_string(),
-                })?
-                .with_timezone(&Utc),
+            created_at: DbParse::datetime(&self.created_at)?,
+            updated_at: DbParse::datetime(&self.updated_at)?,
         })
     }
 }
@@ -413,28 +398,15 @@ struct HealthScoreRow {
 impl HealthScoreRow {
     fn into_health_score(self) -> Result<PlantHealthScore, AppError> {
         Ok(PlantHealthScore {
-            id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal {
-                message: "Invalid UUID".to_string(),
-            })?,
-            plant_id: Uuid::parse_str(&self.plant_id).map_err(|_| AppError::Internal {
-                message: "Invalid plant UUID".to_string(),
-            })?,
+            id: DbParse::uuid(&self.id)?,
+            plant_id: DbParse::uuid(&self.plant_id)?,
             score: self.score,
             care_adherence: self.care_adherence,
             overdue_penalty: self.overdue_penalty,
             coach_sentiment: self.coach_sentiment,
             reasoning: self.reasoning,
-            scored_at: self.scored_at.parse::<DateTime<Utc>>().unwrap_or_else(|_| {
-                // Try as date-only
-                chrono::NaiveDate::parse_from_str(&self.scored_at, "%Y-%m-%d")
-                    .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc())
-                    .unwrap_or_default()
-            }),
-            created_at: DateTime::parse_from_rfc3339(&self.created_at)
-                .map_err(|_| AppError::Internal {
-                    message: "Invalid datetime".to_string(),
-                })?
-                .with_timezone(&Utc),
+            scored_at: DbParse::datetime(&self.scored_at)?,
+            created_at: DbParse::datetime(&self.created_at)?,
         })
     }
 }

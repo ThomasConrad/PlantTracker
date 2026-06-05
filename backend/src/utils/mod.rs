@@ -1,4 +1,5 @@
 pub mod calendar;
+pub mod db_traits;
 pub mod errors;
 pub mod google_tasks;
 pub mod health_check_scheduler;

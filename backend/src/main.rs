@@ -19,6 +19,7 @@ mod admin;
 mod app_state;
 mod auth;
 mod database;
+pub mod extractors;
 mod handlers;
 mod llm;
 mod middleware;

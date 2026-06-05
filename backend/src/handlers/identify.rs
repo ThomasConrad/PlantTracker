@@ -14,7 +14,7 @@ use tracing::{debug, error, info, warn};
 use utoipa::ToSchema;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
+use crate::extractors::AuthenticatedUser;
 use crate::llm::{ChatMessage, ContentPart, ImageUrlContent};
 use crate::trefle::TrefleClient;
 use crate::utils::errors::{AppError, Result};
@@ -152,13 +152,10 @@ struct AiCareSuggestions {
     tag = "plants"
 )]
 pub async fn identify_plant(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Json(payload): Json<IdentifyPlantRequest>,
 ) -> Result<Json<IdentifyPlantResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // Validate image data URL
     if !payload.image_url.starts_with("data:image/") {
@@ -168,15 +165,7 @@ pub async fn identify_plant(
     }
 
     // Resolve LLM coach: per-user settings take priority
-    let coach = crate::llm::resolve_coach_for_request(
-        user.llm_base_url.as_deref(),
-        user.llm_api_key.as_deref(),
-        user.llm_model.as_deref(),
-        app_state.coach.as_ref(),
-    )
-    .map_err(|_| AppError::External {
-        message: "No AI service configured. Set up your LLM provider in Settings to use plant identification.".to_string(),
-    })?;
+    let coach = user.resolve_coach(app_state.coach.as_ref())?;
     let coach_ref: &dyn crate::llm::PlantCoach = coach.as_ref();
 
     // Build the identification prompt
@@ -381,12 +370,9 @@ pub async fn identify_plant(
     tag = "plants"
 )]
 pub async fn search_species(
-    auth_session: AuthSession,
+    AuthenticatedUser(_user): AuthenticatedUser,
     axum::extract::Query(params): axum::extract::Query<SearchSpeciesQuery>,
 ) -> Result<Json<SearchSpeciesResponse>> {
-    let _user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     if params.q.trim().is_empty() {
         return Ok(Json(SearchSpeciesResponse { results: vec![] }));

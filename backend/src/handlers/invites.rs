@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::invites as db_invites;
+use crate::extractors::AuthenticatedUser;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{
     CreateInviteRequest, InviteResponse, ValidateInviteRequest, WaitlistResponse,
@@ -61,12 +61,10 @@ struct InviteWaitlistRequest {
     tag = "invites"
 )]
 async fn create_invite(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<CreateInviteRequest>,
 ) -> Result<(axum::http::StatusCode, Json<InviteResponse>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     if !user.can_create_invite() {
         return Err(AppError::Authorization {
@@ -79,7 +77,7 @@ async fn create_invite(
     tracing::info!("Creating invite code for user: {}", user.id);
 
     let invite = db_invites::create_invite_code_consuming_quota(
-        &auth_session.backend.db,
+        &app_state.pool,
         &payload,
         &user.id,
     )
@@ -138,17 +136,15 @@ async fn validate_invite(
     tag = "invites"
 )]
 async fn list_invites(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     Query(params): Query<ListInvitesQuery>,
 ) -> Result<Json<serde_json::Value>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     tracing::info!("Listing invite codes for user: {}", user.id);
 
     let created_by = params.created_by.as_deref().or(Some(&user.id));
-    let invites = db_invites::list_invite_codes(&auth_session.backend.db, created_by).await?;
+    let invites = db_invites::list_invite_codes(&app_state.pool, created_by).await?;
 
     let responses: Vec<InviteResponse> = invites.into_iter().map(Into::into).collect();
     Ok(Json(serde_json::json!({
@@ -167,7 +163,7 @@ async fn list_invites(
     tag = "invites"
 )]
 async fn join_waitlist(
-    auth_session: AuthSession,
+    State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<WaitlistSignupRequest>,
 ) -> Result<(axum::http::StatusCode, Json<WaitlistResponse>)> {
     if !waitlist_enabled() {
@@ -178,7 +174,7 @@ async fn join_waitlist(
 
     tracing::info!("Adding to waitlist: {}", payload.email);
 
-    let entry = db_invites::add_to_waitlist(&auth_session.backend.db, &payload).await?;
+    let entry = db_invites::add_to_waitlist(&app_state.pool, &payload).await?;
 
     tracing::info!("Added to waitlist: {}", payload.email);
     Ok((axum::http::StatusCode::CREATED, Json(entry.into())))
@@ -193,16 +189,15 @@ async fn join_waitlist(
     ),
     tag = "invites"
 )]
-async fn list_waitlist(auth_session: AuthSession) -> Result<Json<Vec<WaitlistResponse>>> {
+async fn list_waitlist(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
+) -> Result<Json<Vec<WaitlistResponse>>> {
     if !waitlist_enabled() {
         return Err(AppError::NotFound {
             resource: "Waitlist".to_string(),
         });
     }
-
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -212,7 +207,7 @@ async fn list_waitlist(auth_session: AuthSession) -> Result<Json<Vec<WaitlistRes
 
     tracing::info!("Listing waitlist entries");
 
-    let entries = db_invites::get_waitlist_entries(&auth_session.backend.db).await?;
+    let entries = db_invites::get_waitlist_entries(&app_state.pool).await?;
 
     let responses: Vec<WaitlistResponse> = entries.into_iter().map(Into::into).collect();
     Ok(Json(responses))
@@ -234,7 +229,8 @@ async fn list_waitlist(auth_session: AuthSession) -> Result<Json<Vec<WaitlistRes
     tag = "invites"
 )]
 async fn invite_waitlist_entry(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     Path(waitlist_id): Path<String>,
     Json(payload): Json<InviteWaitlistRequest>,
 ) -> Result<Json<serde_json::Value>> {
@@ -244,10 +240,6 @@ async fn invite_waitlist_entry(
         });
     }
 
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
-
     if !user.is_admin() {
         return Err(AppError::Authorization {
             message: "Admin access required".to_string(),
@@ -256,7 +248,7 @@ async fn invite_waitlist_entry(
 
     let max_uses = payload.max_uses.unwrap_or(1).max(1);
     let (entry, invite) = db_invites::invite_waitlist_entry(
-        &auth_session.backend.db,
+        &app_state.pool,
         &waitlist_id,
         &user.id,
         max_uses,

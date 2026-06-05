@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::{google_oauth, google_task_sync, plants as db_plants};
+use crate::extractors::AuthenticatedUser;
 use crate::models::google_oauth::{
     CreateGoogleTaskRequest, GoogleOAuthCallbackRequest, GoogleOAuthSuccessResponse,
     GoogleOAuthUrlResponse, GoogleTasksStatus, SyncPlantTasksRequest,
@@ -48,10 +48,7 @@ pub fn routes() -> Router<AppState> {
         ("session" = [])
     )
 )]
-pub async fn get_google_auth_url(auth_session: AuthSession) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
+pub async fn get_google_auth_url(AuthenticatedUser(user): AuthenticatedUser) -> Result<impl IntoResponse> {
 
     let config = GoogleTasksConfig::from_env()?;
     // Include user ID in the state parameter
@@ -168,12 +165,9 @@ pub async fn handle_google_oauth_callback(
 )]
 pub async fn store_google_tokens(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Json(request): Json<StoreTokensRequest>,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let expires_at = if request.expires_at > 0 {
         Some(chrono::DateTime::from_timestamp(request.expires_at, 0).unwrap_or_else(Utc::now))
@@ -231,11 +225,8 @@ pub struct StoreTokensRequest {
 )]
 pub async fn get_google_tasks_status(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let token = google_oauth::get_oauth_token(&app_state.pool, &user.id).await?;
 
@@ -290,11 +281,8 @@ pub async fn get_google_tasks_status(
 )]
 pub async fn disconnect_google_tasks(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     google_oauth::delete_oauth_token(&app_state.pool, &user.id).await?;
 
@@ -324,12 +312,9 @@ pub async fn disconnect_google_tasks(
 )]
 pub async fn sync_plant_tasks(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Json(request): Json<SyncPlantTasksRequest>,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let config = GoogleTasksConfig::from_env()?;
     let token = ensure_valid_token(&app_state.pool, &user.id, &config).await?;
@@ -448,11 +433,8 @@ pub async fn sync_plant_tasks(
 )]
 pub async fn poll_completions(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // Check for incomplete tasks first (avoids needing Google config if nothing to do)
     let incomplete = google_task_sync::get_incomplete_tasks(&app_state.pool, &user.id).await?;
@@ -544,12 +526,9 @@ pub async fn poll_completions(
 )]
 pub async fn create_task(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Json(request): Json<CreateGoogleTaskRequest>,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let config = GoogleTasksConfig::from_env()?;
     let token = ensure_valid_token(&app_state.pool, &user.id, &config).await?;

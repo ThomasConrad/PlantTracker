@@ -4,6 +4,7 @@ pub mod admin;
 pub mod app_state;
 pub mod auth;
 pub mod database;
+pub mod extractors;
 pub mod handlers;
 pub mod llm;
 pub mod middleware;

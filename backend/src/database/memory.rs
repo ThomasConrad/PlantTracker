@@ -29,7 +29,7 @@ pub async fn list_memories_for_plant(
 
     let memories = rows
         .into_iter()
-        .filter_map(|r| r.to_memory().ok())
+        .filter_map(|r| r.into_memory().ok())
         .collect();
 
     Ok(PlantMemoriesResponse { memories })
@@ -55,9 +55,10 @@ pub async fn get_memory(
         resource: format!("Memory {memory_id}"),
     })?;
 
-    row.to_memory()
+    row.into_memory()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_memory(
     pool: &DatabasePool,
     plant_id: &Uuid,
@@ -299,9 +300,10 @@ pub async fn get_latest_health_score(
     .await
     .map_err(AppError::Database)?;
 
-    Ok(row.and_then(|r| r.to_health_score().ok()))
+    Ok(row.and_then(|r| r.into_health_score().ok()))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn store_health_score(
     pool: &DatabasePool,
     plant_id: &Uuid,
@@ -362,7 +364,7 @@ struct MemoryRow {
 }
 
 impl MemoryRow {
-    fn to_memory(self) -> Result<PlantMemory, AppError> {
+    fn into_memory(self) -> Result<PlantMemory, AppError> {
         Ok(PlantMemory {
             id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal {
                 message: "Invalid UUID".to_string(),
@@ -409,7 +411,7 @@ struct HealthScoreRow {
 }
 
 impl HealthScoreRow {
-    fn to_health_score(self) -> Result<PlantHealthScore, AppError> {
+    fn into_health_score(self) -> Result<PlantHealthScore, AppError> {
         Ok(PlantHealthScore {
             id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal {
                 message: "Invalid UUID".to_string(),

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Structured browser console logger for API debugging.
  *

@@ -6,6 +6,7 @@ use validator::Validate;
 // Database row types
 
 #[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
 pub struct CoachConversationRow {
     pub id: String,
     pub plant_id: String,
@@ -16,6 +17,7 @@ pub struct CoachConversationRow {
 }
 
 #[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
 pub struct CoachMessageRow {
     pub id: String,
     pub conversation_id: String,
@@ -26,6 +28,7 @@ pub struct CoachMessageRow {
 }
 
 #[derive(Debug, Clone, FromRow)]
+#[allow(dead_code)]
 pub struct CoachSuggestionRow {
     pub id: String,
     pub message_id: String,
@@ -39,16 +42,6 @@ pub struct CoachSuggestionRow {
 }
 
 // API response types
-
-#[derive(Debug, Clone, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CoachConversation {
-    pub id: String,
-    pub plant_id: String,
-    pub title: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]

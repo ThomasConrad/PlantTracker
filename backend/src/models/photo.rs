@@ -55,12 +55,3 @@ pub struct UploadPhotoRequest {
     pub content_type: String,
     pub data: Vec<u8>, // Raw image data
 }
-
-#[derive(Debug, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ProcessedImageInfo {
-    pub width: u32,
-    pub height: u32,
-    pub data: Vec<u8>,
-    pub content_type: String,
-}

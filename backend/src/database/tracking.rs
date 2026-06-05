@@ -10,6 +10,7 @@ use crate::utils::errors::AppError;
 
 /// Convert raw field values into a TrackingEntry. Shared logic for both
 /// dynamic queries (via row_to_entry) and macro queries.
+#[allow(clippy::too_many_arguments)]
 fn fields_to_entry(
     id: &str,
     plant_id: &str,
@@ -440,7 +441,7 @@ pub async fn update_tracking_entry(
 
     // Update last_performed for any new care tasks
     if let Some(care_task_ids) = &request.care_task_ids {
-        let timestamp = request.timestamp.unwrap_or_else(|| now);
+        let timestamp = request.timestamp.unwrap_or(now);
         let timestamp_str = timestamp.to_rfc3339();
         let now_str = now.to_rfc3339();
         for task_id in care_task_ids {

@@ -253,7 +253,9 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
                           setSuggestions((prev) =>
                             prev.filter((s) => s.id !== suggestion.id),
                           );
-                        } catch {}
+                        } catch {
+                          // Silently ignore — suggestion may already be handled
+                        }
                       }}
                       class="w-7 h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition-colors"
                       title="Accept"
@@ -269,7 +271,9 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
                           setSuggestions((prev) =>
                             prev.filter((s) => s.id !== suggestion.id),
                           );
-                        } catch {}
+                        } catch {
+                          // Silently ignore — suggestion may already be handled
+                        }
                       }}
                       class="w-7 h-7 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center hover:bg-gray-200 transition-colors"
                       title="Dismiss"

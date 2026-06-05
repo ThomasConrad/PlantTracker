@@ -9,19 +9,6 @@ use crate::models::care_task::CareTaskWithStatus;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct Plant {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub name: String,
-    pub genus: String,
-    pub preview_id: Option<Uuid>,
-    pub archived_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
-#[serde(rename_all = "camelCase")]
 pub struct CustomMetric {
     pub id: Uuid,
     pub plant_id: Uuid,

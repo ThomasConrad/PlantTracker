@@ -24,6 +24,7 @@ use crate::utils::errors::AppError;
 /// Result of a health assessment — returned so callers can decide
 /// whether to fire push notifications or other side effects.
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct HealthAssessmentResult {
     /// Blended 0.0-1.0 score (stored in DB)
     pub blended_score: f64,

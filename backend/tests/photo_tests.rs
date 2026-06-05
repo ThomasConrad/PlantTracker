@@ -123,6 +123,8 @@ async fn test_upload_photo_validation_errors() {
     assert_eq!(response.status(), 422);
 
     // Test file too large (11MB > 10MB limit)
+    // The server may either return 413/422 or reset the connection when the body
+    // exceeds the limit (race between server rejection and client still writing).
     let large_data = vec![0u8; 11_000_000]; // 11MB
     let part = Part::bytes(large_data)
         .file_name("huge.jpg")
@@ -131,15 +133,35 @@ async fn test_upload_photo_validation_errors() {
 
     let form = Form::new().part("file", part);
 
-    let response = app
+    let result = app
         .client
         .post(app.url(&format!("/plants/{}/photos", plant_id)))
         .multipart(form)
         .send()
-        .await
-        .expect("Failed to send request");
+        .await;
 
-    assert_eq!(response.status(), 422);
+    match result {
+        Ok(response) => {
+            // Server managed to send a response before connection dropped
+            assert!(
+                response.status() == 413 || response.status() == 422,
+                "Expected 413 or 422, got {}",
+                response.status()
+            );
+        }
+        Err(e) => {
+            // Connection reset is acceptable — server rejected the oversized body
+            let err_str = format!("{e}");
+            assert!(
+                err_str.contains("reset")
+                    || err_str.contains("broken pipe")
+                    || err_str.contains("BrokenPipe")
+                    || err_str.contains("os error 54")
+                    || err_str.contains("os error 32"),
+                "Unexpected error: {e}"
+            );
+        }
+    }
 
     // Test no file provided
     let form = Form::new(); // Empty form

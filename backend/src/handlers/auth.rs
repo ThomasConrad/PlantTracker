@@ -345,9 +345,14 @@ async fn get_profile_picture(
 ) -> Result<Response<Body>> {
     let picture = db_users::get_user_profile_picture(&app_state.pool, &user.id).await?;
 
-    let (data, content_type) = picture.ok_or(AppError::NotFound {
-        resource: "Profile picture".to_string(),
-    })?;
+    let Some((data, content_type)) = picture else {
+        return Ok(Response::builder()
+            .status(StatusCode::NO_CONTENT)
+            .body(Body::empty())
+            .map_err(|_| AppError::Internal {
+                message: "Failed to build response".to_string(),
+            })?);
+    };
 
     let response = Response::builder()
         .status(StatusCode::OK)

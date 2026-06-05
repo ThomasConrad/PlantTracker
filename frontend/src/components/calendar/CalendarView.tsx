@@ -41,9 +41,9 @@ interface CalendarEvent {
   id: string;
   title: string;
   plant: Plant;
-  entry: TrackingEntry;
+  entry: TrackingEntry | null;
   date: Date;
-  type: "care" | "measurement" | "note" | "photo";
+  type: "care" | "measurement" | "note" | "photo" | "scheduled";
 }
 
 interface CalendarViewProps {
@@ -180,6 +180,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
         : plants;
 
       for (const plant of plantsToShow) {
+        // Load past tracking entries
         try {
           const response = await plantsStore.getTrackingEntries(plant.id);
           for (const entry of response.entries) {
@@ -201,6 +202,58 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
           }
         } catch (error) {
           console.error(`Failed to load entries for plant ${plant.id}:`, error);
+        }
+
+        // Generate projected schedule events from care tasks
+        const showScheduled =
+          !props.selectedTypes?.length ||
+          props.selectedTypes.includes("scheduled") ||
+          props.selectedTypes.includes("care");
+
+        if (showScheduled && plant.careTasks) {
+          for (const task of plant.careTasks) {
+            if (!task.intervalDays || task.intervalDays <= 0) continue;
+            if (task.archivedAt) continue;
+
+            const intervalMs = task.intervalDays * 24 * 60 * 60 * 1000;
+            const now = new Date();
+            const endDate = new Date(
+              now.getTime() + 365 * 24 * 60 * 60 * 1000,
+            );
+
+            // Start from lastPerformed or (now - interval) if never performed
+            let nextDue: Date;
+            if (task.lastPerformed) {
+              nextDue = new Date(
+                new Date(task.lastPerformed).getTime() + intervalMs,
+              );
+            } else {
+              // Never performed: first event is today
+              nextDue = new Date(now);
+              nextDue.setHours(9, 0, 0, 0);
+            }
+
+            // Skip past events (but keep today and overdue)
+            const todayStart = new Date(now);
+            todayStart.setHours(0, 0, 0, 0);
+
+            // Generate events going forward
+            let count = 0;
+            while (nextDue <= endDate && count < 52) {
+              if (nextDue >= todayStart) {
+                allEvents.push({
+                  id: `sched-${task.id}-${nextDue.getTime()}`,
+                  title: `${task.icon || "🌱"} ${task.name} · ${plant.name}`,
+                  plant,
+                  entry: null,
+                  date: new Date(nextDue),
+                  type: "scheduled",
+                });
+                count++;
+              }
+              nextDue = new Date(nextDue.getTime() + intervalMs);
+            }
+          }
         }
       }
 
@@ -231,6 +284,8 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
     switch (type) {
       case "care":
         return "bg-blue-100 text-blue-800 border-blue-200";
+      case "scheduled":
+        return "bg-green-100 text-green-800 border-green-200";
       case "measurement":
         return "bg-purple-100 text-purple-800 border-purple-200";
       case "note":
@@ -767,6 +822,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
       measurement: false,
       note: false,
       photo: false,
+      scheduled: false,
     };
     dayEvents.forEach((event) => {
       activities[event.type] = true;
@@ -805,6 +861,9 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
               >
                 <span class="mc-day-num">{day.getDate()}</span>
                 <span class="mc-dots">
+                  <Show when={activities.scheduled}>
+                    <i class="mc-dot bg-green-500"></i>
+                  </Show>
                   <Show when={activities.care}>
                     <i class="mc-dot bg-blue-500"></i>
                   </Show>
@@ -1099,7 +1158,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
                           {(event) => (
                             <div
                               class={`calendar-event ${getEventColor(event.type)}`}
-                              title={`${event.title}${event.entry.notes ? ": " + event.entry.notes : ""}`}
+                              title={`${event.title}${event.entry?.notes ? ": " + event.entry.notes : ""}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEventClick(event);
@@ -1125,7 +1184,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
       </Show>
 
       {/* Event Detail Modal */}
-      <Show when={selectedEvent()}>
+      <Show when={selectedEvent() && selectedEvent()!.entry}>
         <EventDetailModal
           isOpen={showEventDetail()}
           onClose={() => {
@@ -1133,7 +1192,7 @@ export const CalendarView: Component<CalendarViewProps> = (props) => {
             setSelectedEvent(null);
           }}
           plant={selectedEvent()!.plant}
-          entry={selectedEvent()!.entry}
+          entry={selectedEvent()!.entry!}
         />
       </Show>
 

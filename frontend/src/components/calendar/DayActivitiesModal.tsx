@@ -17,9 +17,9 @@ interface CalendarEvent {
   id: string;
   title: string;
   plant: Plant;
-  entry: TrackingEntry;
+  entry: TrackingEntry | null;
   date: Date;
-  type: "care" | "measurement" | "note" | "photo";
+  type: "care" | "measurement" | "note" | "photo" | "scheduled";
 }
 
 interface DayActivitiesModalProps {
@@ -103,6 +103,24 @@ export const DayActivitiesModal: Component<DayActivitiesModalProps> = (
                 stroke-linejoin="round"
                 stroke-width={2}
                 d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+              />
+            </svg>
+          </div>
+        );
+      case "scheduled":
+        return (
+          <div class="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+            <svg
+              class="h-4 w-4 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width={2}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
           </div>
@@ -228,13 +246,17 @@ export const DayActivitiesModal: Component<DayActivitiesModalProps> = (
                   onClick={() => props.onEventClick(event)}
                 >
                   <div class="flex items-start space-x-3">
-                    {getActivityIcon(deriveEntryType(event.entry))}
+                    {event.entry
+                      ? getActivityIcon(deriveEntryType(event.entry))
+                      : getActivityIcon("scheduled")}
 
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
                           <h3 class="text-sm font-medium text-gray-900">
-                            {getActivityTypeLabel(deriveEntryType(event.entry))}
+                            {event.entry
+                              ? getActivityTypeLabel(deriveEntryType(event.entry))
+                              : "Scheduled"}
                           </h3>
                           <span class="text-sm text-gray-500">•</span>
                           <span class="text-sm font-medium text-blue-600">
@@ -242,43 +264,44 @@ export const DayActivitiesModal: Component<DayActivitiesModalProps> = (
                           </span>
                         </div>
                         <time class="text-xs text-gray-500">
-                          {new Date(event.entry.timestamp).toLocaleTimeString(
-                            "en-GB",
-                            {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            },
-                          )}
+                          {(event.entry
+                            ? new Date(event.entry.timestamp)
+                            : event.date
+                          ).toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </time>
                       </div>
 
-                      <Show when={event.entry.notes}>
+                      <Show when={event.entry?.notes}>
                         <p class="mt-1 text-sm text-gray-600 truncate">
-                          {event.entry.notes}
+                          {event.entry!.notes}
                         </p>
                       </Show>
 
                       <Show
                         when={
+                          event.entry &&
                           deriveEntryType(event.entry) === "measurement" &&
                           event.entry.measurements?.length
                         }
                       >
                         <p class="mt-1 text-sm text-gray-600">
                           Value:{" "}
-                          {JSON.stringify(event.entry.measurements![0].value)}
+                          {JSON.stringify(event.entry!.measurements![0].value)}
                         </p>
                       </Show>
 
                       <Show
                         when={
-                          event.entry.photoIds &&
+                          event.entry?.photoIds &&
                           Array.isArray(event.entry.photoIds) &&
                           event.entry.photoIds.length > 0
                         }
                       >
                         <p class="mt-1 text-xs text-gray-500">
-                          📷 {(event.entry.photoIds as string[]).length}{" "}
+                          📷 {(event.entry!.photoIds as string[]).length}{" "}
                           photo(s)
                         </p>
                       </Show>

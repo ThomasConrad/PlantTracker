@@ -14,7 +14,7 @@ use crate::models::{
     UpdateReminderPreferencesRequest,
 };
 use crate::utils::errors::Result;
-use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
+use crate::utils::push::{send_push_if_allowed, PushCategory, PushPayload};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -58,8 +58,7 @@ async fn update_preferences(
     State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<UpdateReminderPreferencesRequest>,
 ) -> Result<Json<ReminderPreferences>> {
-    let prefs =
-        db_reminders::update_preferences(&app_state.pool, &user.id, &payload).await?;
+    let prefs = db_reminders::update_preferences(&app_state.pool, &user.id, &payload).await?;
     Ok(Json(prefs))
 }
 
@@ -110,8 +109,7 @@ async fn dispatch_due_reminders(
     }
 
     let pool = app_state.pool.clone();
-    let reminders =
-        db_reminders::dispatch_due_reminders(&pool, &user.id).await?;
+    let reminders = db_reminders::dispatch_due_reminders(&pool, &user.id).await?;
 
     // Send push notifications for dispatched reminders (fire-and-forget)
     if !reminders.is_empty() {
@@ -121,7 +119,11 @@ async fn dispatch_due_reminders(
         tokio::spawn(async move {
             let (title, body) = if reminder_count == 1 {
                 let r = &reminders_for_push[0];
-                let action = if r.reminder_type == "watering" { "Water" } else { "Care for" };
+                let action = if r.reminder_type == "watering" {
+                    "Water"
+                } else {
+                    "Care for"
+                };
                 (
                     format!("{} {}", action, r.plant_name),
                     if r.days_overdue > 0 {
@@ -131,7 +133,11 @@ async fn dispatch_due_reminders(
                     },
                 )
             } else {
-                let names: Vec<&str> = reminders_for_push.iter().take(3).map(|r| r.plant_name.as_str()).collect();
+                let names: Vec<&str> = reminders_for_push
+                    .iter()
+                    .take(3)
+                    .map(|r| r.plant_name.as_str())
+                    .collect();
                 let suffix = if reminder_count > 3 {
                     format!(" and {} more", reminder_count - 3)
                 } else {

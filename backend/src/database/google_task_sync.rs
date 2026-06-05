@@ -118,10 +118,7 @@ pub async fn get_incomplete_tasks(
 }
 
 /// Mark a synced task as completed
-pub async fn mark_task_completed(
-    pool: &SqlitePool,
-    google_task_id: &str,
-) -> Result<()> {
+pub async fn mark_task_completed(pool: &SqlitePool, google_task_id: &str) -> Result<()> {
     let now = Utc::now().to_rfc3339();
 
     sqlx::query!(

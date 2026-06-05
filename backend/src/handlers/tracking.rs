@@ -56,7 +56,6 @@ async fn list_entries(
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListEntriesQuery>,
 ) -> Result<Json<TrackingEntriesResponse>> {
-
     tracing::info!(
         "List tracking entries request for plant: {} by user: {} with params: {:?}",
         plant_id,
@@ -113,7 +112,6 @@ async fn create_entry(
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<CreateTrackingEntryRequest>,
 ) -> Result<(StatusCode, Json<TrackingEntry>)> {
-
     tracing::info!(
         "Create tracking entry request for plant: {} by user: {}",
         plant_id,
@@ -136,7 +134,6 @@ async fn get_entry(
     State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<TrackingEntry>> {
-
     tracing::info!(
         "Get tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,
@@ -163,7 +160,6 @@ async fn update_entry(
         crate::models::tracking_entry::UpdateTrackingEntryRequest,
     >,
 ) -> Result<Json<TrackingEntry>> {
-
     tracing::info!(
         "Update tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,
@@ -193,7 +189,6 @@ async fn delete_entry(
     State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
-
     tracing::info!(
         "Delete tracking entry request for plant: {}, entry: {} by user: {}",
         plant_id,

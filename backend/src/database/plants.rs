@@ -8,7 +8,7 @@ use crate::models::care_task::CreateCareTaskRequest;
 use crate::models::{
     CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, UpdatePlantRequest,
 };
-use crate::utils::db_traits::{DbParse, RequireAffected};
+use crate::utils::db_traits::{DbParse, LogDbError, RequireAffected};
 use crate::utils::errors::AppError;
 
 #[derive(Debug, FromRow)]
@@ -96,13 +96,10 @@ async fn replace_custom_metrics_for_plant(
     plant_id: &str,
     metrics: &[(Option<Uuid>, String, String, MetricDataType)],
 ) -> Result<(), AppError> {
-    sqlx::query!(
-        r#"DELETE FROM custom_metrics WHERE plant_id = ?"#,
-        plant_id
-    )
-    .execute(pool)
-    .await
-    .map_err(AppError::Database)?;
+    sqlx::query!(r#"DELETE FROM custom_metrics WHERE plant_id = ?"#, plant_id)
+        .execute(pool)
+        .await
+        .map_err(AppError::Database)?;
 
     for (existing_id, name, unit, data_type) in metrics {
         let metric_id = existing_id.unwrap_or_else(Uuid::new_v4).to_string();
@@ -163,10 +160,7 @@ pub async fn create_plant(
     )
     .execute(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to create plant: {}", e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("create plant")?;
 
     // Create custom metrics if provided
     if let Some(custom_metrics) = &request.custom_metrics {
@@ -219,10 +213,7 @@ pub async fn get_plant_by_id(
     )
     .fetch_optional(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to fetch plant: {}", e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("fetch plant")?;
 
     let plant = plant_row.map_or_else(
         || {
@@ -288,20 +279,14 @@ pub async fn list_plants_for_user_with_sort(
             .bind(search_param)
             .fetch_one(pool)
             .await
-            .map_err(|e| {
-                tracing::error!("Failed to count plants: {}", e);
-                AppError::Database(e)
-            })?
+            .log_db_err("count plants")?
             .get::<i64, _>("count")
     } else {
         sqlx::query(&count_query)
             .bind(user_id)
             .fetch_one(pool)
             .await
-            .map_err(|e| {
-                tracing::error!("Failed to count plants: {}", e);
-                AppError::Database(e)
-            })?
+            .log_db_err("count plants")?
             .get::<i64, _>("count")
     };
 
@@ -322,10 +307,7 @@ pub async fn list_plants_for_user_with_sort(
             .fetch_all(pool)
             .await
     }
-    .map_err(|e| {
-        tracing::error!("Failed to fetch plants: {}", e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("fetch plants")?;
 
     let mut plants = Vec::new();
     for row in plant_rows {
@@ -342,6 +324,8 @@ pub async fn update_plant(
     user_id: &str,
     request: &UpdatePlantRequest,
 ) -> Result<PlantResponse, AppError> {
+    use crate::utils::db_traits::UpdateBuilder;
+
     let existing_plant = get_plant_by_id(pool, plant_id).await?;
     if existing_plant.user_id != user_id {
         return Err(AppError::NotFound {
@@ -349,36 +333,15 @@ pub async fn update_plant(
         });
     }
 
-    let now = Utc::now().to_rfc3339();
     let plant_id_str = plant_id.to_string();
 
-    let mut sets = vec!["updated_at = ?"];
-    let mut binds: Vec<String> = vec![now.clone()];
-
-    if let Some(name) = &request.name {
-        sets.push("name = ?");
-        binds.push(name.clone());
-    }
-    if let Some(genus) = &request.genus {
-        sets.push("genus = ?");
-        binds.push(genus.clone());
-    }
-
-    let query_str = format!(
-        "UPDATE plants SET {} WHERE id = ? AND user_id = ?",
-        sets.join(", ")
-    );
-
-    let mut query = sqlx::query(&query_str);
-    for bind in &binds {
-        query = query.bind(bind);
-    }
-    query = query.bind(&plant_id_str).bind(user_id);
-
-    query.execute(pool).await.map_err(|e| {
-        tracing::error!("Failed to update plant: {}", e);
-        AppError::Database(e)
-    })?;
+    UpdateBuilder::new("plants")
+        .set_opt("name", request.name.clone())
+        .set_opt("genus", request.genus.clone())
+        .where_eq("id", &plant_id_str)
+        .where_eq("user_id", user_id)
+        .execute(pool)
+        .await?;
 
     if let Some(custom_metrics) = &request.custom_metrics {
         let metrics = custom_metrics
@@ -405,10 +368,7 @@ pub async fn delete_plant(
     )
     .execute(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to delete plant: {}", e);
-        AppError::Database(e)
-    })?
+    .log_db_err("delete plant")?
     .require_affected(format!("Plant with id {plant_id}"))?;
 
     Ok(())
@@ -431,10 +391,7 @@ pub async fn archive_plant(
     )
     .execute(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to archive plant: {}", e);
-        AppError::Database(e)
-    })?
+    .log_db_err("archive plant")?
     .require_affected(format!("Plant with id {plant_id}"))?;
 
     get_plant_by_id(pool, plant_id).await
@@ -456,10 +413,7 @@ pub async fn unarchive_plant(
     )
     .execute(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to unarchive plant: {}", e);
-        AppError::Database(e)
-    })?
+    .log_db_err("unarchive plant")?
     .require_affected(format!("Plant with id {plant_id}"))?;
 
     get_plant_by_id(pool, plant_id).await

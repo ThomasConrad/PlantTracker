@@ -151,9 +151,7 @@ pub fn resolve_coach_for_request(
     // Fall back to global coach
     match global_coach {
         Some(arc) => Ok(arc.clone()),
-        None => Err(
-            "No AI service configured. Set up your LLM provider in Settings.".to_string(),
-        ),
+        None => Err("No AI service configured. Set up your LLM provider in Settings.".to_string()),
     }
 }
 

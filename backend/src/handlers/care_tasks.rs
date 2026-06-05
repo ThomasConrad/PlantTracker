@@ -70,7 +70,6 @@ async fn list_care_tasks(
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListCareTasksQuery>,
 ) -> Result<Json<CareTasksResponse>> {
-
     let response = db::list_care_tasks_for_plant(
         &app_state.pool,
         &plant_id,
@@ -102,7 +101,6 @@ async fn create_care_task(
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<CreateCareTaskRequest>,
 ) -> Result<(StatusCode, Json<CareTaskWithStatus>)> {
-
     let task = db::create_care_task(&app_state.pool, &plant_id, &user.id, &payload).await?;
     Ok((StatusCode::CREATED, Json(task)))
 }
@@ -127,7 +125,6 @@ async fn get_care_task(
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<CareTaskWithStatus>> {
-
     let task = db::get_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(Json(task))
 }
@@ -154,7 +151,6 @@ async fn update_care_task(
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
     ValidatedJson(payload): ValidatedJson<UpdateCareTaskRequest>,
 ) -> Result<Json<CareTaskWithStatus>> {
-
     let task = db::update_care_task(&app_state.pool, &task_id, &user.id, &payload).await?;
     Ok(Json(task))
 }
@@ -179,7 +175,6 @@ async fn delete_care_task(
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
-
     db::delete_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -206,7 +201,6 @@ async fn log_care_task(
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
     ValidatedJson(payload): ValidatedJson<LogCareTaskRequest>,
 ) -> Result<(StatusCode, Json<LogCareTaskResponse>)> {
-
     let (task, entry) = db::log_care_task(&app_state.pool, &task_id, &user.id, &payload).await?;
     Ok((
         StatusCode::CREATED,
@@ -241,7 +235,6 @@ async fn archive_care_task(
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<CareTaskWithStatus>> {
-
     let task = db::archive_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(Json(task))
 }
@@ -266,7 +259,6 @@ async fn unarchive_care_task(
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<CareTaskWithStatus>> {
-
     let task = db::unarchive_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(Json(task))
 }
@@ -290,7 +282,6 @@ async fn reorder_care_tasks(
     Path(plant_id): Path<Uuid>,
     Json(payload): Json<ReorderCareTasksRequest>,
 ) -> Result<Json<CareTasksResponse>> {
-
     let response =
         db::reorder_care_tasks(&app_state.pool, &plant_id, &user.id, &payload.task_ids).await?;
     Ok(Json(response))

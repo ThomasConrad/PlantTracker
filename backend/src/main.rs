@@ -34,7 +34,8 @@ use handlers::{
 };
 use planty_api::ApiDoc;
 use utils::{
-    google_tasks::GoogleTasksConfig, health_check_scheduler, token_refresh_scheduler::start_token_refresh_scheduler,
+    google_tasks::GoogleTasksConfig, health_check_scheduler,
+    token_refresh_scheduler::start_token_refresh_scheduler,
 };
 
 #[derive(Parser, Debug)]

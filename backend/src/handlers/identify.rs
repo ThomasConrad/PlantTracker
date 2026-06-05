@@ -156,7 +156,6 @@ pub async fn identify_plant(
     State(app_state): State<AppState>,
     Json(payload): Json<IdentifyPlantRequest>,
 ) -> Result<Json<IdentifyPlantResponse>> {
-
     // Validate image data URL
     if !payload.image_url.starts_with("data:image/") {
         return Err(AppError::Parse {
@@ -265,14 +264,14 @@ pub async fn identify_plant(
 
         // Try to enrich from Trefle.io
         if let Some(ref trefle) = trefle_client {
-            match trefle.search_and_enrich(&ai_candidate.scientific_name).await {
+            match trefle
+                .search_and_enrich(&ai_candidate.scientific_name)
+                .await
+            {
                 Ok(Some(enriched)) => {
                     // Add reference images
-                    candidate.reference_images = enriched
-                        .image_urls()
-                        .into_iter()
-                        .take(4)
-                        .collect();
+                    candidate.reference_images =
+                        enriched.image_urls().into_iter().take(4).collect();
 
                     candidate.trefle_slug = Some(enriched.species.slug.clone());
 
@@ -298,14 +297,8 @@ pub async fn identify_plant(
 
                     // Temperature notes from Trefle
                     if let Some(growth) = enriched.growth() {
-                        let min_temp = growth
-                            .minimum_temperature
-                            .as_ref()
-                            .and_then(|t| t.value);
-                        let max_temp = growth
-                            .maximum_temperature
-                            .as_ref()
-                            .and_then(|t| t.value);
+                        let min_temp = growth.minimum_temperature.as_ref().and_then(|t| t.value);
+                        let max_temp = growth.maximum_temperature.as_ref().and_then(|t| t.value);
                         if min_temp.is_some() || max_temp.is_some() {
                             let temp_str = match (min_temp, max_temp) {
                                 (Some(min), Some(max)) => {
@@ -320,10 +313,7 @@ pub async fn identify_plant(
                     }
                 }
                 Ok(None) => {
-                    debug!(
-                        "No Trefle match for {:?}",
-                        ai_candidate.scientific_name
-                    );
+                    debug!("No Trefle match for {:?}", ai_candidate.scientific_name);
                 }
                 Err(e) => {
                     warn!(
@@ -373,7 +363,6 @@ pub async fn search_species(
     AuthenticatedUser(_user): AuthenticatedUser,
     axum::extract::Query(params): axum::extract::Query<SearchSpeciesQuery>,
 ) -> Result<Json<SearchSpeciesResponse>> {
-
     if params.q.trim().is_empty() {
         return Ok(Json(SearchSpeciesResponse { results: vec![] }));
     }

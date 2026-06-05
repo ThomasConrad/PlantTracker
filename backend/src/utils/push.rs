@@ -6,8 +6,8 @@
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 use web_push::{
-    ContentEncoding, IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder,
-    WebPushClient, WebPushMessageBuilder,
+    ContentEncoding, IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient,
+    WebPushMessageBuilder,
 };
 
 use crate::database::DatabasePool;
@@ -25,7 +25,8 @@ impl PushConfig {
     pub fn from_env() -> Option<Self> {
         let public_key = std::env::var("VAPID_PUBLIC_KEY").ok()?;
         let private_key = std::env::var("VAPID_PRIVATE_KEY").ok()?;
-        let subject = std::env::var("VAPID_SUBJECT").unwrap_or_else(|_| "mailto:admin@example.com".to_string());
+        let subject = std::env::var("VAPID_SUBJECT")
+            .unwrap_or_else(|_| "mailto:admin@example.com".to_string());
 
         if public_key.is_empty() || private_key.is_empty() {
             return None;
@@ -65,7 +66,10 @@ pub async fn send_push_to_user(
     let subscriptions = match get_user_subscriptions(pool, user_id).await {
         Ok(subs) => subs,
         Err(e) => {
-            error!("Failed to get push subscriptions for user {}: {}", user_id, e);
+            error!(
+                "Failed to get push subscriptions for user {}: {}",
+                user_id, e
+            );
             return 0;
         }
     };
@@ -96,7 +100,10 @@ pub async fn send_push_to_user(
         match send_single_push(config, &client, sub, &payload_json).await {
             Ok(()) => successes += 1,
             Err(e) => {
-                warn!("Push notification failed for subscription {}: {}", sub.id, e);
+                warn!(
+                    "Push notification failed for subscription {}: {}",
+                    sub.id, e
+                );
                 // If the subscription is gone (410 Gone), remove it
                 if e.contains("410") || e.contains("Gone") || e.contains("expired") {
                     info!("Removing expired push subscription {}", sub.id);
@@ -135,7 +142,10 @@ pub async fn send_push_if_allowed(
     let allowed = match check_push_preference(pool, user_id, category).await {
         Ok(allowed) => allowed,
         Err(e) => {
-            warn!("Failed to check push preferences for user {}: {}", user_id, e);
+            warn!(
+                "Failed to check push preferences for user {}: {}",
+                user_id, e
+            );
             // Default to sending if we can't check prefs
             true
         }
@@ -182,17 +192,11 @@ async fn send_single_push(
     sub: &PushSubscriptionRow,
     payload_json: &str,
 ) -> Result<(), String> {
-    let subscription_info = SubscriptionInfo::new(
-        &sub.endpoint,
-        &sub.p256dh,
-        &sub.auth,
-    );
+    let subscription_info = SubscriptionInfo::new(&sub.endpoint, &sub.p256dh, &sub.auth);
 
-    let mut sig_builder = VapidSignatureBuilder::from_base64(
-        &config.private_key,
-        &subscription_info,
-    )
-    .map_err(|e| format!("VAPID signature error: {e}"))?;
+    let mut sig_builder =
+        VapidSignatureBuilder::from_base64(&config.private_key, &subscription_info)
+            .map_err(|e| format!("VAPID signature error: {e}"))?;
 
     sig_builder.add_claim("sub", config.subject.clone());
 
@@ -204,12 +208,11 @@ async fn send_single_push(
     builder.set_payload(ContentEncoding::Aes128Gcm, payload_json.as_bytes());
     builder.set_vapid_signature(vapid_signature);
 
-    let message = builder.build().map_err(|e| format!("Message build error: {e}"))?;
+    let message = builder
+        .build()
+        .map_err(|e| format!("Message build error: {e}"))?;
 
-    client
-        .send(message)
-        .await
-        .map_err(|e| format!("{e}"))?;
+    client.send(message).await.map_err(|e| format!("{e}"))?;
 
     Ok(())
 }
@@ -240,10 +243,16 @@ async fn get_user_subscriptions(
     Ok(rows)
 }
 
-async fn delete_subscription(pool: &DatabasePool, subscription_id: &str) -> Result<(), sqlx::Error> {
-    sqlx::query!("DELETE FROM push_subscriptions WHERE id = ?", subscription_id)
-        .execute(pool)
-        .await?;
+async fn delete_subscription(
+    pool: &DatabasePool,
+    subscription_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "DELETE FROM push_subscriptions WHERE id = ?",
+        subscription_id
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }
 
@@ -304,10 +313,14 @@ pub async fn remove_subscription_by_endpoint(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    // These tests modify process-wide env vars, so they must not run in parallel.
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn push_config_from_env_returns_none_when_missing() {
-        // Ensure env vars are unset for this test
+        let _lock = ENV_MUTEX.lock().unwrap();
         std::env::remove_var("VAPID_PUBLIC_KEY");
         std::env::remove_var("VAPID_PRIVATE_KEY");
 
@@ -317,6 +330,7 @@ mod tests {
 
     #[test]
     fn push_config_from_env_returns_none_when_empty() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         std::env::set_var("VAPID_PUBLIC_KEY", "");
         std::env::set_var("VAPID_PRIVATE_KEY", "");
 
@@ -330,6 +344,7 @@ mod tests {
 
     #[test]
     fn push_config_from_env_parses_correctly() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         std::env::set_var("VAPID_PUBLIC_KEY", "test-public-key");
         std::env::set_var("VAPID_PRIVATE_KEY", "test-private-key");
         std::env::set_var("VAPID_SUBJECT", "mailto:test@example.com");
@@ -347,6 +362,7 @@ mod tests {
 
     #[test]
     fn push_config_defaults_subject_when_not_set() {
+        let _lock = ENV_MUTEX.lock().unwrap();
         std::env::set_var("VAPID_PUBLIC_KEY", "pk");
         std::env::set_var("VAPID_PRIVATE_KEY", "sk");
         std::env::remove_var("VAPID_SUBJECT");

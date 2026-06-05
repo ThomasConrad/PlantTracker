@@ -12,7 +12,7 @@ use crate::app_state::AppState;
 use crate::database::DatabasePool;
 use crate::handlers::memory::{run_health_assessment, HealthAssessmentResult};
 use crate::llm::PlantCoach;
-use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
+use crate::utils::push::{send_push_if_allowed, PushCategory, PushPayload};
 
 /// Start the daily health check as a background task.
 /// Returns immediately; the actual work runs in a spawned task.
@@ -71,13 +71,14 @@ async fn run_all_assessments(app_state: &AppState) -> Result<(u32, u32, usize), 
         };
 
         // Get the user's LLM settings to build a coach
-        let plant_user = match crate::database::users::get_user_by_id(&app_state.pool, user_id).await {
-            Ok(u) => u,
-            Err(_) => {
-                failed += 1;
-                continue;
-            }
-        };
+        let plant_user =
+            match crate::database::users::get_user_by_id(&app_state.pool, user_id).await {
+                Ok(u) => u,
+                Err(_) => {
+                    failed += 1;
+                    continue;
+                }
+            };
 
         // Resolve the coach for this user
         let coach: Arc<dyn PlantCoach> = match plant_user.resolve_coach(app_state.coach.as_ref()) {
@@ -95,17 +96,11 @@ async fn run_all_assessments(app_state: &AppState) -> Result<(u32, u32, usize), 
                 assessed += 1;
                 // Track plants with concerning health (score <= 2/5)
                 if result.raw_ai_score <= 2 {
-                    user_alerts
-                        .entry(user_id.clone())
-                        .or_default()
-                        .push(result);
+                    user_alerts.entry(user_id.clone()).or_default().push(result);
                 }
             }
             Err(e) => {
-                warn!(
-                    "Health check failed for plant {}: {}",
-                    plant_id, e
-                );
+                warn!("Health check failed for plant {}: {}", plant_id, e);
                 failed += 1;
             }
         }
@@ -137,7 +132,11 @@ async fn send_daily_health_alerts(
                 format!("Health score: {}/5", a.raw_ai_score),
             )
         } else {
-            let names: Vec<&str> = alerts.iter().take(3).map(|a| a.plant_name.as_str()).collect();
+            let names: Vec<&str> = alerts
+                .iter()
+                .take(3)
+                .map(|a| a.plant_name.as_str())
+                .collect();
             let suffix = if alerts.len() > 3 {
                 format!(" and {} more", alerts.len() - 3)
             } else {
@@ -157,7 +156,13 @@ async fn send_daily_health_alerts(
             tag: Some("daily-health-summary".to_string()),
         };
 
-        send_push_if_allowed(&app_state.pool, user_id, PushCategory::DailySummary, &payload).await;
+        send_push_if_allowed(
+            &app_state.pool,
+            user_id,
+            PushCategory::DailySummary,
+            &payload,
+        )
+        .await;
     }
 }
 

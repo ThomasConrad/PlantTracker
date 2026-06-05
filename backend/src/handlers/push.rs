@@ -98,7 +98,6 @@ async fn subscribe(
     State(app_state): State<AppState>,
     Json(payload): Json<SubscribeRequest>,
 ) -> Result<Json<SubscribeResponse>> {
-
     push::save_subscription(
         &app_state.pool,
         &user.id,
@@ -134,7 +133,6 @@ async fn unsubscribe(
     State(app_state): State<AppState>,
     Json(payload): Json<UnsubscribeRequest>,
 ) -> Result<Json<SubscribeResponse>> {
-
     push::remove_subscription_by_endpoint(&app_state.pool, &user.id, &payload.endpoint)
         .await
         .map_err(|e| AppError::Internal {
@@ -161,14 +159,14 @@ async fn test_push(
     AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
 ) -> Result<Json<TestPushResponse>> {
-
     let config = push::PushConfig::from_env().ok_or(AppError::External {
         message: "Push notifications are not configured on this server".to_string(),
     })?;
 
     let payload = push::PushPayload {
         title: "Planty Test".to_string(),
-        body: "Push notifications are working! You'll receive alerts about your plants here.".to_string(),
+        body: "Push notifications are working! You'll receive alerts about your plants here."
+            .to_string(),
         url: Some("/settings".to_string()),
         icon: None,
         tag: Some("test-notification".to_string()),
@@ -178,11 +176,15 @@ async fn test_push(
 
     if sent == 0 {
         return Err(AppError::External {
-            message: "No active push subscriptions found. Make sure notifications are enabled.".to_string(),
+            message: "No active push subscriptions found. Make sure notifications are enabled."
+                .to_string(),
         });
     }
 
-    info!("Sent test push notification to user {} ({} device(s))", user.id, sent);
+    info!(
+        "Sent test push notification to user {} ({} device(s))",
+        user.id, sent
+    );
     Ok(Json(TestPushResponse { sent }))
 }
 

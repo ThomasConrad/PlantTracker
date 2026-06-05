@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tracing::error;
 
-use super::{ChatMessage, CoachResponse, ContentPart, PlantCoach, coach_response_schema};
+use super::{coach_response_schema, ChatMessage, CoachResponse, ContentPart, PlantCoach};
 
 /// Ollama coach — uses Ollama's native `/api/chat` endpoint.
 /// Configure via:

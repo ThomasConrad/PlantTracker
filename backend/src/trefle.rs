@@ -289,11 +289,7 @@ impl TrefleEnriched {
             }
         }
         // Fallback to search result image
-        self.species
-            .image_url
-            .iter()
-            .cloned()
-            .collect()
+        self.species.image_url.iter().cloned().collect()
     }
 
     /// Get growth/care data if available.
@@ -433,7 +429,11 @@ mod tests {
         };
 
         let watering = enriched.suggested_watering_days().unwrap();
-        assert!(watering >= 3 && watering <= 7, "tropical plant: {}", watering);
+        assert!(
+            watering >= 3 && watering <= 7,
+            "tropical plant: {}",
+            watering
+        );
 
         let fertilizing = enriched.suggested_fertilizing_days().unwrap();
         assert_eq!(fertilizing, 21);
@@ -484,11 +484,7 @@ mod tests {
         };
 
         let watering = enriched.suggested_watering_days().unwrap();
-        assert!(
-            watering >= 14 && watering <= 21,
-            "succulent: {}",
-            watering
-        );
+        assert!(watering >= 14 && watering <= 21, "succulent: {}", watering);
 
         let fertilizing = enriched.suggested_fertilizing_days().unwrap();
         assert_eq!(fertilizing, 42);

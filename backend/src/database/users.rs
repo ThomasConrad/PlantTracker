@@ -49,6 +49,7 @@ fn get_argon2_test_config() -> Argon2<'static> {
 
 use crate::database::DatabasePool;
 use crate::models::{CreateUserRequest, FirstDayOfWeek, PreferredUnits, User, UserRole, UserRow};
+use crate::utils::db_traits::LogDbError;
 use crate::utils::errors::AppError;
 
 pub async fn create_user(
@@ -112,10 +113,7 @@ pub async fn create_user_internal(
     )
     .execute(pool)
     .await
-    .map_err(|e| {
-        tracing::error!("Failed to create user: {}", e);
-        AppError::Database(e)
-    })?;
+    .log_db_err("create user")?;
 
     if result.rows_affected() != 1 {
         return Err(AppError::Internal {
@@ -158,10 +156,7 @@ pub async fn get_user_by_id(pool: &DatabasePool, user_id: &str) -> Result<User, 
     )
         .fetch_optional(pool)
         .await
-        .map_err(|e| {
-            tracing::error!("Failed to fetch user by id: {}", e);
-            AppError::Database(e)
-        })?;
+        .log_db_err("fetch user by id")?;
 
     user_row.map_or_else(
         || {
@@ -181,10 +176,7 @@ pub async fn get_user_by_email(pool: &DatabasePool, email: &str) -> Result<User,
     )
         .fetch_optional(pool)
         .await
-        .map_err(|e| {
-            tracing::error!("Failed to fetch user by email: {}", e);
-            AppError::Database(e)
-        })?;
+        .log_db_err("fetch user by email")?;
 
     user_row.map_or_else(
         || {
@@ -228,10 +220,7 @@ pub async fn update_user_login_time(pool: &DatabasePool, user_id: &str) -> Resul
     let result = sqlx::query!("UPDATE users SET updated_at = ? WHERE id = ?", now, user_id)
         .execute(pool)
         .await
-        .map_err(|e| {
-            tracing::error!("Failed to update user login time: {}", e);
-            AppError::Database(e)
-        })?;
+        .log_db_err("update user login time")?;
 
     if result.rows_affected() != 1 {
         return Err(AppError::NotFound {
@@ -250,11 +239,14 @@ pub async fn update_user_profile(
     first_day_of_week: &FirstDayOfWeek,
     preferred_units: &PreferredUnits,
 ) -> Result<User, AppError> {
-    let existing =
-        sqlx::query_scalar!(r#"SELECT COUNT(*) FROM users WHERE email = ? AND id != ?"#, email, user_id)
-            .fetch_one(pool)
-            .await
-            .map_err(AppError::Database)?;
+    let existing = sqlx::query_scalar!(
+        r#"SELECT COUNT(*) FROM users WHERE email = ? AND id != ?"#,
+        email,
+        user_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(AppError::Database)?;
 
     if existing > 0 {
         return Err(AppError::Validation(duplicate_email_validation_error()));

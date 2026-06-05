@@ -239,6 +239,8 @@ pub async fn update_care_task(
     user_id: &str,
     request: &UpdateCareTaskRequest,
 ) -> Result<CareTaskWithStatus, AppError> {
+    use crate::utils::db_traits::UpdateBuilder;
+
     // Verify ownership
     let task_id_str = task_id.to_string();
     let existing = sqlx::query!(
@@ -256,96 +258,25 @@ pub async fn update_care_task(
         });
     }
 
-    let now = Utc::now().to_rfc3339();
+    // Convert last_performed DateTime to string for the builder
+    let last_performed_str: Option<Option<String>> = request
+        .last_performed
+        .map(|opt| opt.map(|dt| dt.to_rfc3339()));
 
-    // Build dynamic update
-    let mut sets = vec!["updated_at = ?"];
-    let mut binds: Vec<Option<String>> = vec![Some(now.clone())];
-
-    if let Some(name) = &request.name {
-        sets.push("name = ?");
-        binds.push(Some(name.clone()));
-    }
-    if let Some(icon) = &request.icon {
-        sets.push("icon = ?");
-        binds.push(icon.clone());
-    }
-    if let Some(color) = &request.color {
-        sets.push("color = ?");
-        binds.push(color.clone());
-    }
-    if let Some(notes) = &request.notes {
-        sets.push("notes = ?");
-        binds.push(notes.clone());
-    }
-    if let Some(unit) = &request.unit {
-        sets.push("unit = ?");
-        binds.push(unit.clone());
-    }
-    if let Some(last_performed) = &request.last_performed {
-        sets.push("last_performed = ?");
-        binds.push(last_performed.map(|dt| dt.to_rfc3339()));
-    }
-
-    let query_str = format!(
-        "UPDATE care_tasks SET {} WHERE id = ? AND user_id = ?",
-        sets.join(", ")
-    );
-
-    let mut query = sqlx::query(&query_str);
-    for bind in &binds {
-        query = query.bind(bind);
-    }
-
-    // Handle numeric fields separately since they're not Option<String>
-    if let Some(interval) = &request.interval_days {
-        let task_id_s = task_id.to_string();
-        sqlx::query!(
-            r#"UPDATE care_tasks SET interval_days = ?, updated_at = ? WHERE id = ? AND user_id = ?"#,
-            *interval,
-            now,
-            task_id_s,
-            user_id
-        )
+    UpdateBuilder::new("care_tasks")
+        .set_opt("name", request.name.clone())
+        .set_nullable("icon", request.icon.clone())
+        .set_nullable("color", request.color.clone())
+        .set_nullable::<i32>("interval_days", request.interval_days)
+        .set_nullable::<f64>("amount", request.amount)
+        .set_nullable("unit", request.unit.clone())
+        .set_nullable("notes", request.notes.clone())
+        .set_nullable("last_performed", last_performed_str)
+        .set_opt::<i32>("sort_order", request.sort_order)
+        .where_eq("id", &task_id_str)
+        .where_eq("user_id", user_id)
         .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
-    }
-
-    if let Some(amount) = &request.amount {
-        let task_id_s = task_id.to_string();
-        sqlx::query!(
-            r#"UPDATE care_tasks SET amount = ?, updated_at = ? WHERE id = ? AND user_id = ?"#,
-            *amount,
-            now,
-            task_id_s,
-            user_id
-        )
-        .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
-    }
-
-    if let Some(sort_order) = request.sort_order {
-        let task_id_s = task_id.to_string();
-        sqlx::query!(
-            r#"UPDATE care_tasks SET sort_order = ?, updated_at = ? WHERE id = ? AND user_id = ?"#,
-            sort_order,
-            now,
-            task_id_s,
-            user_id
-        )
-        .execute(pool)
-        .await
-        .map_err(AppError::Database)?;
-    }
-
-    // Execute the string-fields query
-    if sets.len() > 1 {
-        // More than just updated_at
-        query = query.bind(task_id.to_string()).bind(user_id);
-        query.execute(pool).await.map_err(AppError::Database)?;
-    }
+        .await?;
 
     get_care_task(pool, task_id, user_id).await
 }

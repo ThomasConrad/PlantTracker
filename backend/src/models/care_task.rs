@@ -93,6 +93,7 @@ pub struct CareTasksResponse {
 /// Request to log a care task completion (creates a tracking entry + updates last_performed)
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub struct LogCareTaskRequest {
     pub timestamp: Option<DateTime<Utc>>,
     pub value: Option<serde_json::Value>,

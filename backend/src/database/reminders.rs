@@ -135,7 +135,7 @@ pub async fn list_due_reminders(pool: &DatabasePool, user_id: &str) -> Result<Ve
         });
     }
 
-    due.sort_by(|a, b| b.days_overdue.cmp(&a.days_overdue));
+    due.sort_by_key(|a| std::cmp::Reverse(a.days_overdue));
     Ok(due)
 }
 

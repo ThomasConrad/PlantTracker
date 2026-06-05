@@ -24,6 +24,7 @@ fn parse_uuid(s: &str) -> Result<Uuid, AppError> {
 
 /// Convert individual field values into a CareTask. Shared by both dynamic
 /// queries (via `row_to_care_task`) and compile-time-checked macro queries.
+#[allow(clippy::too_many_arguments)]
 fn fields_to_care_task(
     id: &str,
     plant_id: &str,

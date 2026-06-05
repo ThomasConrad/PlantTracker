@@ -89,7 +89,7 @@ pub async fn exchange_code_for_tokens(
     ];
 
     let response = client
-        .post(&oauth_token_url())
+        .post(oauth_token_url())
         .form(&params)
         .send()
         .await
@@ -156,7 +156,7 @@ pub async fn refresh_access_token(
     ];
 
     let response = client
-        .post(&oauth_token_url())
+        .post(oauth_token_url())
         .form(&params)
         .send()
         .await

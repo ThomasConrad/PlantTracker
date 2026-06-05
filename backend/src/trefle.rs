@@ -333,7 +333,7 @@ impl TrefleEnriched {
             _ => 0,
         };
 
-        Some((base + adjustment).max(2).min(28))
+        Some((base + adjustment).clamp(2, 28))
     }
 
     /// Derive a suggested fertilizing interval (days).

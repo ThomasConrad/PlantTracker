@@ -52,7 +52,7 @@ pub fn generate_plant_calendar(
                 });
 
                 let event = Event::new()
-                    .uid(&format!("care-{}-{}-{}", ct.id, event_count, next.timestamp() as i64))
+                    .uid(&format!("care-{}-{}-{}", ct.id, event_count, next.timestamp()))
                     .summary(&format!("{} {} {}", icon, ct.name, plant.name))
                     .description(&format!(
                         "Time to {} your {} ({}).{} Every {} days.\n\nView plant details: {}/plants/{}",
@@ -67,7 +67,7 @@ pub fn generate_plant_calendar(
                     .starts(next)
                     .ends(next + Duration::hours(1))
                     .location(&format!("Plant: {} ({})", plant.name, plant.genus))
-                    .add_property("CATEGORIES", &format!("Plant Care,{}", ct.name))
+                    .add_property("CATEGORIES", format!("Plant Care,{}", ct.name))
                     .add_property("PRIORITY", "5")
                     .done();
 

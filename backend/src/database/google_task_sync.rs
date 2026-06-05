@@ -5,6 +5,7 @@ use crate::utils::errors::{AppError, Result};
 
 /// A record tracking a synced Google Task
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct GoogleTaskSyncRecord {
     pub id: String,
     pub user_id: String,
@@ -140,6 +141,7 @@ pub async fn mark_task_completed(
 }
 
 /// Delete all sync records for a user (on disconnect)
+#[allow(dead_code)]
 pub async fn delete_all_for_user(pool: &SqlitePool, user_id: &str) -> Result<()> {
     sqlx::query!("DELETE FROM google_task_sync WHERE user_id = ?", user_id)
         .execute(pool)
@@ -150,6 +152,7 @@ pub async fn delete_all_for_user(pool: &SqlitePool, user_id: &str) -> Result<()>
 }
 
 /// Delete sync records for tasks whose due_date has passed (cleanup)
+#[allow(dead_code)]
 pub async fn cleanup_old_tasks(pool: &SqlitePool, before_date: &str) -> Result<u64> {
     let result = sqlx::query!(
         "DELETE FROM google_task_sync WHERE due_date < ? AND status = 'completed'",

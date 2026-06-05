@@ -1,5 +1,5 @@
 use anyhow::Result;
-use sqlx::{sqlite::SqlitePool, Pool, Sqlite};
+use sqlx::{Pool, Sqlite};
 use std::env;
 
 pub type DatabasePool = Pool<Sqlite>;

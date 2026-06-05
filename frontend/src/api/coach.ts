@@ -7,6 +7,7 @@ export interface CoachMessage {
   content: string;
   imageUrl?: string;
   suggestions: CoachSuggestion[];
+  inputRequests?: InputRequest[];
   createdAt: string;
 }
 
@@ -17,11 +18,43 @@ export interface CoachSuggestion {
     | "new_task"
     | "care_action"
     | "photo_request"
-    | "species_correction";
+    | "species_correction"
+    | "update_attribute";
   description: string;
   payload: Record<string, unknown>;
   status: "pending" | "accepted" | "dismissed";
   appliedAt?: string;
+}
+
+export interface InputRequest {
+  template: "toggle" | "slider" | "select" | "multi_select" | "photo";
+  params: ToggleParams | SliderParams | SelectParams | PhotoParams;
+}
+
+export interface ToggleParams {
+  label: string;
+  key: string;
+}
+
+export interface SliderParams {
+  label: string;
+  key: string;
+  min: number;
+  max: number;
+  step: number;
+  min_label?: string;
+  max_label?: string;
+}
+
+export interface SelectParams {
+  label: string;
+  key: string;
+  options: { value: string; label: string }[];
+}
+
+export interface PhotoParams {
+  label: string;
+  key: string;
 }
 
 export interface CoachMessagesResponse {

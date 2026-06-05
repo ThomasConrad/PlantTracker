@@ -558,7 +558,15 @@ fn ensure_standard_attributes(candidate: &mut PlantCandidate) {
 
 // ─── System Prompt ──────────────────────────────────────────────────────────
 
-const IDENTIFY_SYSTEM_PROMPT: &str = r#"You are an expert botanist and plant identification specialist. Analyze the provided photo and identify the plant species.
+const IDENTIFY_SYSTEM_PROMPT: &str = r#"You are an expert botanist and plant identification specialist. Analyze the provided photo carefully and identify the plant species.
+
+IDENTIFICATION APPROACH:
+- Look closely at leaf shape, size, margins (smooth/serrated/lobed), venation pattern, and texture
+- Note stem structure, growth habit (trailing, upright, rosette, climbing)
+- Check for distinctive features: variegation patterns, aerial roots, leaf sheath, petiole color
+- Consider pot/indoor context — most will be common houseplants
+- If multiple plants are visible, identify the main/largest one
+- If the photo is of poor quality but you can still make out features, do your best and reflect uncertainty in your confidence score
 
 RESPONSE FORMAT — respond with a single JSON object:
 {

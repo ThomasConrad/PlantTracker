@@ -11,8 +11,8 @@ import { coachApi, CoachMessage, CoachSuggestion } from "@/api/coach";
 import { apiClient } from "@/api/client";
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { CoachInputWidget } from "@/components/plants/CoachInputWidget";
 import { compressImage } from "@/utils/imageCompress";
-import { renderMarkdown } from "@/utils/markdown";
 import type { Photo } from "@/types/api";
 
 interface CoachChatProps {
@@ -222,7 +222,50 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
         return "Photo Request";
       case "species_correction":
         return "Species ID";
+      case "update_attribute":
+        return "Update Info";
     }
+  };
+
+  // Track which input_requests have been answered (by message_id + key)
+  const [answeredInputs, setAnsweredInputs] = createSignal<Set<string>>(new Set());
+
+  const handleInputResponse = async (messageId: string, key: string, value: string) => {
+    // Mark this input as answered
+    setAnsweredInputs((prev) => {
+      const next = new Set(prev);
+      next.add(`${messageId}:${key}`);
+      return next;
+    });
+
+    // Send as a silent context message — the AI will see it and respond
+    const contextContent = `[User input: ${key} = ${value}]`;
+    setSending(true);
+    setStreamingText("");
+    setError(null);
+
+    streamAbort = coachApi.streamMessage(
+      props.plantId,
+      contextContent,
+      value.startsWith("data:image/") ? value : undefined,
+      {
+        onToken: (text) => {
+          setStreamingText((prev) => prev + text);
+        },
+        onDone: (message) => {
+          setStreamingText("");
+          setSending(false);
+          setMessages((prev) => [...prev, message]);
+          streamAbort = undefined;
+        },
+        onError: (errorMsg) => {
+          setStreamingText("");
+          setSending(false);
+          setError(errorMsg);
+          streamAbort = undefined;
+        },
+      },
+    );
   };
 
   return (
@@ -247,90 +290,106 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
 
         <For each={messages()}>
           {(message) => (
-            <div
-              class={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
+            <Show when={!(message.role === "user" && message.content.startsWith("[User input:"))}>
               <div
-                class={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
-                  message.role === "user"
-                    ? "bg-primary-600 text-white rounded-br-md"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md"
-                }`}
+                class={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <Show when={message.imageUrl}>
-                  <img
-                    src={message.imageUrl}
-                    alt="Attached photo"
-                    class="rounded-lg mb-2 max-h-48 object-cover"
-                  />
-                </Show>
-                <p
-                  class="whitespace-pre-wrap text-sm"
-                  innerHTML={
-                    message.role === "assistant"
-                      ? renderMarkdown(message.content)
-                      : undefined
-                  }
+                <div
+                  class={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                    message.role === "user"
+                      ? "bg-primary-600 text-white rounded-br-md"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md"
+                  }`}
                 >
-                  {message.role === "user" ? message.content : undefined}
-                </p>
+                  <Show when={message.imageUrl}>
+                    <img
+                      src={message.imageUrl}
+                      alt="Attached photo"
+                      class="rounded-lg mb-2 max-h-48 object-cover"
+                    />
+                  </Show>
+                  <p class="whitespace-pre-wrap text-sm">
+                    {message.content}
+                  </p>
 
-                {/* Suggestions */}
-                <Show when={message.suggestions.length > 0}>
-                  <div class="mt-3 space-y-2">
-                    <For each={message.suggestions}>
-                      {(suggestion) => (
-                        <div class="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
-                          <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase">
-                              {suggestionLabel(suggestion.suggestionType)}
-                            </span>
-                            <Show when={suggestion.status !== "pending"}>
-                              <span
-                                class={`text-xs px-1.5 py-0.5 rounded ${
-                                  suggestion.status === "accepted"
-                                    ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                                    : "bg-gray-100 text-gray-500 dark:bg-gray-600 dark:text-gray-400"
-                                }`}
-                              >
-                                {suggestion.status}
+                  {/* Suggestions */}
+                  <Show when={message.suggestions.length > 0}>
+                    <div class="mt-3 space-y-2">
+                      <For each={message.suggestions}>
+                        {(suggestion) => (
+                          <div class="bg-white dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="text-xs font-medium text-primary-600 dark:text-primary-400 uppercase">
+                                {suggestionLabel(suggestion.suggestionType)}
                               </span>
+                              <Show when={suggestion.status !== "pending"}>
+                                <span
+                                  class={`text-xs px-1.5 py-0.5 rounded ${
+                                    suggestion.status === "accepted"
+                                      ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                                      : "bg-gray-100 text-gray-500 dark:bg-gray-600 dark:text-gray-400"
+                                  }`}
+                                >
+                                  {suggestion.status}
+                                </span>
+                              </Show>
+                            </div>
+                            <Show when={suggestion.description}>
+                              <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                {suggestion.description}
+                              </p>
+                            </Show>
+                            <Show when={suggestion.status === "pending"}>
+                              <div class="flex gap-2 mt-2">
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() =>
+                                    handleAcceptSuggestion(suggestion)
+                                  }
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleDismissSuggestion(suggestion)
+                                  }
+                                >
+                                  Dismiss
+                                </Button>
+                              </div>
                             </Show>
                           </div>
-                          <Show when={suggestion.description}>
-                            <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                              {suggestion.description}
-                            </p>
-                          </Show>
-                          <Show when={suggestion.status === "pending"}>
-                            <div class="flex gap-2 mt-2">
-                              <Button
-                                size="sm"
-                                variant="primary"
-                                onClick={() =>
-                                  handleAcceptSuggestion(suggestion)
-                                }
-                              >
-                                Accept
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() =>
-                                  handleDismissSuggestion(suggestion)
-                                }
-                              >
-                                Dismiss
-                              </Button>
-                            </div>
-                          </Show>
-                        </div>
-                      )}
-                    </For>
-                  </div>
-                </Show>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+
+                  {/* Input Requests (interactive widgets) */}
+                  <Show when={message.inputRequests && message.inputRequests!.length > 0}>
+                    <div class="mt-3 space-y-2">
+                      <For each={message.inputRequests}>
+                        {(request) => {
+                          const key = (request.params as { key?: string }).key || "";
+                          const isAnswered = () => answeredInputs().has(`${message.id}:${key}`);
+                          return (
+                            <Show when={!isAnswered()}>
+                              <CoachInputWidget
+                                request={request}
+                                onSubmit={(k, v) => handleInputResponse(message.id, k, v)}
+                                disabled={sending()}
+                              />
+                            </Show>
+                          );
+                        }}
+                      </For>
+                    </div>
+                  </Show>
+                </div>
               </div>
-            </div>
+            </Show>
           )}
         </For>
 
@@ -359,8 +418,9 @@ export const CoachChat: Component<CoachChatProps> = (props) => {
               >
                 <p
                   class="whitespace-pre-wrap text-sm"
-                  innerHTML={renderMarkdown(streamingText())}
-                />
+                >
+                  {streamingText()}
+                </p>
                 <span class="inline-block w-0.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-text-bottom" />
               </Show>
             </div>

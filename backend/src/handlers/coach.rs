@@ -102,12 +102,18 @@ pub async fn get_messages(
             })
             .collect();
 
+        let input_requests: Vec<InputRequest> = row.input_requests
+            .as_deref()
+            .and_then(|s| serde_json::from_str(s).ok())
+            .unwrap_or_default();
+
         messages.push(CoachMessage {
             id: row.id,
             role: row.role,
             content: row.content,
             image_url: row.image_url,
             suggestions,
+            input_requests,
             created_at: row.created_at,
         });
     }
@@ -175,6 +181,7 @@ pub async fn send_message(
         "user",
         &payload.content,
         payload.image_url.as_deref(),
+        None,
     )
     .await
     .map_err(|e| AppError::Internal {
@@ -249,12 +256,18 @@ pub async fn send_message(
         })?;
 
     // Insert assistant message
+    let input_requests_json = if response.input_requests.is_empty() {
+        None
+    } else {
+        Some(serde_json::to_string(&response.input_requests).unwrap_or_default())
+    };
     let assistant_msg = db_coach::insert_message(
         &app_state.pool,
         &conversation.id,
         "assistant",
         &response.text,
         None,
+        input_requests_json.as_deref(),
     )
     .await
     .map_err(|e| AppError::Internal {
@@ -324,6 +337,10 @@ pub async fn send_message(
         content: response.text,
         image_url: None,
         suggestions,
+        input_requests: response.input_requests.into_iter().map(|ir| InputRequest {
+            template: ir.template,
+            params: ir.params,
+        }).collect(),
         created_at: assistant_msg.created_at,
     };
 
@@ -820,6 +837,7 @@ pub async fn stream_message(
         "user",
         &payload.content,
         payload.image_url.as_deref(),
+        None,
     )
     .await
     .map_err(|e| AppError::Internal {
@@ -907,8 +925,13 @@ pub async fn stream_message(
         match result {
             Ok(response) => {
                 // Persist assistant message
+                let input_requests_json = if response.input_requests.is_empty() {
+                    None
+                } else {
+                    Some(serde_json::to_string(&response.input_requests).unwrap_or_default())
+                };
                 let assistant_msg =
-                    db_coach::insert_message(&pool, &conv_id, "assistant", &response.text, None)
+                    db_coach::insert_message(&pool, &conv_id, "assistant", &response.text, None, input_requests_json.as_deref())
                         .await;
 
                 if let Ok(assistant_msg) = assistant_msg {
@@ -973,6 +996,10 @@ pub async fn stream_message(
                         content: response.text,
                         image_url: None,
                         suggestions,
+                        input_requests: response.input_requests.into_iter().map(|ir| InputRequest {
+                            template: ir.template,
+                            params: ir.params,
+                        }).collect(),
                         created_at: assistant_msg.created_at,
                     };
                     let _ = event_tx.send(StreamEvent::Done(message)).await;

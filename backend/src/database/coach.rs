@@ -52,7 +52,7 @@ pub async fn get_messages(
     conversation_id: &str,
 ) -> Result<Vec<CoachMessageRow>> {
     let messages: Vec<CoachMessageRow> = sqlx::query_as(
-        "SELECT id, conversation_id, role, content, image_url, created_at
+        "SELECT id, conversation_id, role, content, image_url, input_requests, created_at
          FROM coach_messages
          WHERE conversation_id = ?
          ORDER BY created_at ASC",
@@ -130,20 +130,22 @@ pub async fn insert_message(
     role: &str,
     content: &str,
     image_url: Option<&str>,
+    input_requests: Option<&str>,
 ) -> Result<CoachMessageRow> {
     let id = Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
 
     let row: CoachMessageRow = sqlx::query_as(
-        "INSERT INTO coach_messages (id, conversation_id, role, content, image_url, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)
-         RETURNING id, conversation_id, role, content, image_url, created_at",
+        "INSERT INTO coach_messages (id, conversation_id, role, content, image_url, input_requests, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
+         RETURNING id, conversation_id, role, content, image_url, input_requests, created_at",
     )
     .bind(&id)
     .bind(conversation_id)
     .bind(role)
     .bind(content)
     .bind(image_url)
+    .bind(input_requests)
     .bind(&now)
     .fetch_one(pool)
     .await?;

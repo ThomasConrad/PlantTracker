@@ -132,6 +132,7 @@ impl PlantCoach for MockCoach {
         Ok(CoachResponse {
             text,
             suggestions,
+            input_requests: vec![],
             extracted_facts,
         })
     }

@@ -24,6 +24,7 @@ pub struct CoachMessageRow {
     pub role: String,
     pub content: String,
     pub image_url: Option<String>,
+    pub input_requests: Option<String>,
     pub created_at: String,
 }
 
@@ -51,7 +52,19 @@ pub struct CoachMessage {
     pub content: String,
     pub image_url: Option<String>,
     pub suggestions: Vec<CoachSuggestion>,
+    /// Interactive input widgets attached to this message (only on assistant messages)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub input_requests: Vec<InputRequest>,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct InputRequest {
+    /// Widget template type: toggle, slider, select, multi_select, photo
+    pub template: String,
+    /// Template-specific parameters
+    pub params: serde_json::Value,
 }
 
 #[derive(Debug, Clone, Serialize, ToSchema)]

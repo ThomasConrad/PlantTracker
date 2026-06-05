@@ -127,7 +127,7 @@ export const PlantCreationWizard: Component<Props> = (props) => {
   };
 
   const compressAndProcess = (file: File) => {
-    // Compress to max 1024px for identification (don't need full resolution)
+    // Compress to max 1536px for identification (needs enough detail for leaf features)
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d")!;
     const img = new Image();
@@ -135,7 +135,7 @@ export const PlantCreationWizard: Component<Props> = (props) => {
 
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
-      const maxDim = 1280;
+      const maxDim = 1536;
       let w = img.width;
       let h = img.height;
       if (w > maxDim || h > maxDim) {

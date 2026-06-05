@@ -24,6 +24,8 @@ export interface BottomSheetProps {
   onOpenChange?: (isFullOpen: boolean) => void;
   /** Header content (rendered above the scrollable area) */
   header?: JSX.Element;
+  /** Custom backdrop content (e.g. an image). Replaces the default dim overlay. */
+  backdrop?: JSX.Element;
   /** Main scrollable content */
   children: JSX.Element;
   /** Height from top when fully expanded (px). Default 56. */
@@ -250,12 +252,25 @@ export const BottomSheet: Component<BottomSheetProps> = (props) => {
   return (
     <Show when={visible()}>
       <div class="bottom-sheet-container">
-        {/* Backdrop */}
-        <div
-          ref={backdropRef}
-          class={`bottom-sheet-backdrop ${props.open ? "bottom-sheet-backdrop-visible" : ""}`}
-          onClick={handleBackdropClick}
-        />
+        {/* Backdrop: custom content or default dim */}
+        <Show
+          when={props.backdrop}
+          fallback={
+            <div
+              ref={backdropRef}
+              class={`bottom-sheet-backdrop ${props.open ? "bottom-sheet-backdrop-visible" : ""}`}
+              onClick={handleBackdropClick}
+            />
+          }
+        >
+          <div
+            ref={backdropRef}
+            class={`bottom-sheet-backdrop-custom ${props.open ? "bottom-sheet-backdrop-custom-visible" : ""}`}
+            onClick={handleBackdropClick}
+          >
+            {props.backdrop}
+          </div>
+        </Show>
 
         {/* Sheet */}
         <div

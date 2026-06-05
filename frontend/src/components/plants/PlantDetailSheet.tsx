@@ -131,37 +131,7 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
     <div class="space-y-5 pb-24">
       {/* Plant hero section */}
       <div class="px-5 pt-1">
-        <div class="flex items-start gap-4">
-          {/* Thumbnail */}
-          <div class="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden shadow-sm">
-            <Show
-              when={plant().previewUrl}
-              fallback={
-                <div class="w-full h-full bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
-                  <svg
-                    class="h-8 w-8 text-primary-600 opacity-60"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width={1.5}
-                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                    />
-                  </svg>
-                </div>
-              }
-            >
-              <img
-                src={plant().previewUrl!}
-                alt={plant().name}
-                class="w-full h-full object-cover"
-              />
-            </Show>
-          </div>
-
+        <div class="flex items-center gap-3">
           {/* Name and details */}
           <div class="flex-1 min-w-0">
             <h2 class="text-xl font-bold text-gray-900 truncate">

@@ -226,6 +226,36 @@ export const PlantsPage: Component = () => {
         onDismiss={handleSheetDismiss}
         fullTopOffset={60}
         midFraction={0.5}
+        backdrop={
+          <Show when={selectedPlant()}>
+            <Show
+              when={selectedPlant()!.previewUrl}
+              fallback={
+                <div class="w-full h-full bg-gradient-to-br from-green-400 via-green-500 to-green-600 flex items-center justify-center">
+                  <svg
+                    class="h-24 w-24 text-white/50"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width={1.5}
+                      d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                    />
+                  </svg>
+                </div>
+              }
+            >
+              <img
+                src={selectedPlant()!.previewUrl!}
+                alt={selectedPlant()!.name}
+                class="w-full h-full object-cover"
+              />
+            </Show>
+          </Show>
+        }
       >
         <Show when={selectedPlant()}>
           <PlantDetailSheet

@@ -261,6 +261,22 @@ async fn upload_photo(
         photo.id,
         plant_id
     );
+
+    // Trigger background health assessment from the new photo (best-effort)
+    if let Ok(coach) = crate::llm::resolve_coach_for_request(
+        user.llm_base_url.as_deref(),
+        user.llm_api_key.as_deref(),
+        user.llm_model.as_deref(),
+        app_state.coach.as_ref(),
+    ) {
+        super::memory::trigger_background_assessment(
+            app_state,
+            plant_id,
+            user.id.clone(),
+            coach,
+        );
+    }
+
     Ok((StatusCode::CREATED, Json(photo)))
 }
 

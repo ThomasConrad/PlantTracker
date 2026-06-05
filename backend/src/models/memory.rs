@@ -166,6 +166,8 @@ pub struct PlantHealthScore {
     pub care_adherence: Option<f64>,
     pub overdue_penalty: Option<f64>,
     pub coach_sentiment: Option<f64>,
+    /// AI reasoning about the plant's health condition
+    pub reasoning: Option<String>,
     pub scored_at: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
 }
@@ -178,6 +180,8 @@ pub struct HealthHearts {
     pub hearts: f64,
     pub score: f64,
     pub scored_at: Option<DateTime<Utc>>,
+    /// AI-generated explanation of health status
+    pub reasoning: Option<String>,
 }
 
 impl PlantHealthScore {
@@ -189,6 +193,7 @@ impl PlantHealthScore {
             hearts,
             score: self.score,
             scored_at: Some(self.scored_at),
+            reasoning: self.reasoning.clone(),
         }
     }
 }

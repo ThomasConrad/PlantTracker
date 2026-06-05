@@ -1,4 +1,5 @@
 import type { Plant, Photo, components } from "@/types/api";
+import { logApiSuccess, logApiError, logWarn } from "@/utils/logger";
 
 // Generated API types
 type AuthResponse = components["schemas"]["AuthResponse"];
@@ -123,6 +124,14 @@ class ApiClient {
       ...(options.headers || {}),
     };
 
+    const startTime = performance.now();
+    let parsedBody: unknown;
+    try {
+      parsedBody = options.body ? JSON.parse(options.body) : undefined;
+    } catch {
+      parsedBody = options.body;
+    }
+
     try {
       const response = await fetch(url, {
         method,
@@ -131,8 +140,21 @@ class ApiClient {
         credentials: "include",
       });
 
+      const durationMs = Math.round(performance.now() - startTime);
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => {
+          logWarn("Failed to parse error response as JSON", { url, method, status: response.status });
+          return {};
+        });
+        logApiError({
+          method,
+          url,
+          status: response.status,
+          durationMs,
+          requestBody: parsedBody,
+          responseBody: errorData,
+        });
         throw new ApiError(
           errorData.message || `HTTP ${response.status}`,
           response.status,
@@ -145,6 +167,7 @@ class ApiClient {
         response.status === 204 ||
         response.headers.get("content-length") === "0"
       ) {
+        logApiSuccess({ method, url, status: response.status, durationMs });
         // Cache successful GET responses
         if (method === "GET") {
           cacheResponse(url, "", response.status);
@@ -156,6 +179,7 @@ class ApiClient {
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
+        logApiSuccess({ method, url, status: response.status, durationMs, responseBody: data });
         // Cache successful GET responses
         if (method === "GET") {
           cacheResponse(url, JSON.stringify(data), response.status);
@@ -163,12 +187,23 @@ class ApiClient {
         return data;
       }
 
+      logApiSuccess({ method, url, status: response.status, durationMs });
       return undefined as T;
     } catch (error) {
       // If it's an ApiError (server responded with an error), don't queue
       if (error instanceof ApiError) {
         throw error;
       }
+
+      const durationMs = Math.round(performance.now() - startTime);
+      logApiError({
+        method,
+        url,
+        durationMs,
+        requestBody: parsedBody,
+        error,
+        extra: { offline: !navigator.onLine },
+      });
 
       // Network error — handle offline
       if (method === "GET") {

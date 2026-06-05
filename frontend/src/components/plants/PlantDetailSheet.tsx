@@ -5,6 +5,7 @@ import { plantsStore } from "@/stores/plants";
 import { PlantHearts } from "./PlantHearts";
 import { Button } from "@/components/ui/Button";
 import { calculateDaysUntil, formatDate, isOverdue } from "@/utils/date";
+import { coachApi, type PendingSuggestion } from "@/api/coach";
 
 interface PlantDetailSheetProps {
   plant: Plant;
@@ -19,6 +20,7 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
   const [quickActionError, setQuickActionError] = createSignal<string | null>(
     null,
   );
+  const [suggestions, setSuggestions] = createSignal<PendingSuggestion[]>([]);
 
   // Load full plant details (for care tasks etc)
   const [fullPlant, setFullPlant] = createSignal<Plant | null>(null);
@@ -30,6 +32,10 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
       plantsStore.loadPlant(id).then(() => {
         setFullPlant(plantsStore.selectedPlant);
       });
+      // Load coach suggestions for this plant
+      coachApi.getPlantSuggestions(id).then((resp) => {
+        setSuggestions(resp.suggestions);
+      }).catch(() => {});
     }
   });
 
@@ -220,6 +226,63 @@ export const PlantDetailSheet: Component<PlantDetailSheetProps> = (props) => {
               </div>
             )}
           </For>
+        </div>
+      </Show>
+
+      {/* Coach Suggestions */}
+      <Show when={suggestions().length > 0}>
+        <div class="px-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-amber-500 text-sm">💡</span>
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Coach Suggestions
+            </h3>
+          </div>
+          <div class="space-y-2">
+            <For each={suggestions()}>
+              {(suggestion) => (
+                <div class="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5">
+                  <p class="flex-1 text-xs text-gray-700 leading-relaxed">
+                    {suggestion.description}
+                  </p>
+                  <div class="flex-shrink-0 flex gap-1">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await coachApi.acceptSuggestion(suggestion.id);
+                          setSuggestions((prev) =>
+                            prev.filter((s) => s.id !== suggestion.id),
+                          );
+                        } catch {}
+                      }}
+                      class="w-7 h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-200 transition-colors"
+                      title="Accept"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await coachApi.dismissSuggestion(suggestion.id);
+                          setSuggestions((prev) =>
+                            prev.filter((s) => s.id !== suggestion.id),
+                          );
+                        } catch {}
+                      }}
+                      class="w-7 h-7 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center hover:bg-gray-200 transition-colors"
+                      title="Dismiss"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
         </div>
       </Show>
 

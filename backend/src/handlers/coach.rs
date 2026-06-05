@@ -32,6 +32,11 @@ pub fn routes() -> Router<AppState> {
             post(stream_message),
         )
         .route(
+            "/plants/:plant_id/suggestions",
+            get(get_plant_suggestions),
+        )
+        .route("/suggestions/pending", get(get_all_pending_suggestions))
+        .route(
             "/suggestions/:suggestion_id/accept",
             post(accept_suggestion),
         )
@@ -341,6 +346,128 @@ pub async fn send_message(
     };
 
     Ok((StatusCode::CREATED, Json(CoachMessageResponse { message })))
+}
+
+// ─── Suggestion Listing Endpoints ───────────────────────────────────────────
+
+/// Response for pending suggestions, includes plant name for dashboard display
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingSuggestion {
+    pub id: String,
+    pub plant_id: String,
+    pub plant_name: String,
+    pub suggestion_type: String,
+    pub description: String,
+    pub payload: serde_json::Value,
+    pub created_at: String,
+}
+
+#[derive(Debug, serde::Serialize, utoipa::ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingSuggestionsResponse {
+    pub suggestions: Vec<PendingSuggestion>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/coach/suggestions/pending",
+    responses(
+        (status = 200, description = "All pending suggestions for user", body = PendingSuggestionsResponse),
+        (status = 401, description = "Unauthorized"),
+    ),
+    security(("session" = [])),
+    tag = "coach"
+)]
+async fn get_all_pending_suggestions(
+    auth_session: AuthSession,
+    State(app_state): State<AppState>,
+) -> Result<Json<PendingSuggestionsResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    let rows = db_coach::get_all_pending_suggestions_for_user(&app_state.pool, &user.id)
+        .await
+        .map_err(|e| AppError::Internal {
+            message: e.to_string(),
+        })?;
+
+    // Fetch plant names for each unique plant_id
+    let mut suggestions = Vec::new();
+    for row in rows {
+        let plant_name = match Uuid::parse_str(&row.plant_id) {
+            Ok(pid) => db_plants::get_plant_by_id(&app_state.pool, pid)
+                .await
+                .map(|p| p.name)
+                .unwrap_or_else(|_| "Unknown plant".to_string()),
+            Err(_) => "Unknown plant".to_string(),
+        };
+
+        suggestions.push(PendingSuggestion {
+            id: row.id,
+            plant_id: row.plant_id,
+            plant_name,
+            suggestion_type: row.suggestion_type,
+            description: row.description,
+            payload: serde_json::from_str(&row.payload).unwrap_or_default(),
+            created_at: row.created_at,
+        });
+    }
+
+    Ok(Json(PendingSuggestionsResponse { suggestions }))
+}
+
+#[utoipa::path(
+    get,
+    path = "/coach/plants/{plant_id}/suggestions",
+    responses(
+        (status = 200, description = "Pending suggestions for plant", body = PendingSuggestionsResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Plant not found"),
+    ),
+    params(("plant_id" = Uuid, Path, description = "Plant ID")),
+    security(("session" = [])),
+    tag = "coach"
+)]
+async fn get_plant_suggestions(
+    auth_session: AuthSession,
+    State(app_state): State<AppState>,
+    Path(plant_id): Path<Uuid>,
+) -> Result<Json<PendingSuggestionsResponse>> {
+    let user = auth_session.user.ok_or(AppError::Authentication {
+        message: "Not authenticated".to_string(),
+    })?;
+
+    // Verify plant ownership
+    let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;
+    if plant.user_id != user.id {
+        return Err(AppError::NotFound {
+            resource: format!("Plant with id {plant_id}"),
+        });
+    }
+
+    let rows =
+        db_coach::get_pending_suggestions(&app_state.pool, &plant_id.to_string(), &user.id)
+            .await
+            .map_err(|e| AppError::Internal {
+                message: e.to_string(),
+            })?;
+
+    let suggestions: Vec<PendingSuggestion> = rows
+        .into_iter()
+        .map(|row| PendingSuggestion {
+            id: row.id,
+            plant_id: row.plant_id,
+            plant_name: plant.name.clone(),
+            suggestion_type: row.suggestion_type,
+            description: row.description,
+            payload: serde_json::from_str(&row.payload).unwrap_or_default(),
+            created_at: row.created_at,
+        })
+        .collect();
+
+    Ok(Json(PendingSuggestionsResponse { suggestions }))
 }
 
 #[utoipa::path(

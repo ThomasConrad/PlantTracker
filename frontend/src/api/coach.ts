@@ -29,6 +29,25 @@ export interface CoachMessagesResponse {
   messages: CoachMessage[];
 }
 
+export interface PendingSuggestion {
+  id: string;
+  plantId: string;
+  plantName: string;
+  suggestionType:
+    | "schedule_change"
+    | "new_task"
+    | "care_action"
+    | "photo_request"
+    | "species_correction";
+  description: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface PendingSuggestionsResponse {
+  suggestions: PendingSuggestion[];
+}
+
 export interface CoachMessageResponse {
   message: CoachMessage;
 }
@@ -214,6 +233,22 @@ export const coachApi = {
       {
         method: "POST",
       },
+    );
+  },
+
+  /** Get all pending suggestions for the current user (dashboard) */
+  getPendingSuggestions: async (): Promise<PendingSuggestionsResponse> => {
+    return apiClient.request<PendingSuggestionsResponse>(
+      `/coach/suggestions/pending`,
+    );
+  },
+
+  /** Get pending suggestions for a specific plant */
+  getPlantSuggestions: async (
+    plantId: string,
+  ): Promise<PendingSuggestionsResponse> => {
+    return apiClient.request<PendingSuggestionsResponse>(
+      `/coach/plants/${plantId}/suggestions`,
     );
   },
 };

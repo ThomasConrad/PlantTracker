@@ -4,6 +4,7 @@ pub mod calendar;
 pub mod care_tasks;
 pub mod coach;
 pub mod google_tasks;
+pub mod identify;
 pub mod invites;
 pub mod memory;
 pub mod photos;

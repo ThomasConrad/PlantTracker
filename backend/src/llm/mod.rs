@@ -67,6 +67,18 @@ fn default_confidence() -> f64 {
 pub trait PlantCoach: Send + Sync {
     async fn chat(&self, messages: Vec<ChatMessage>) -> Result<CoachResponse>;
 
+    /// Chat with a custom JSON schema for structured output.
+    /// Returns the raw text content (caller is responsible for parsing).
+    async fn chat_raw(
+        &self,
+        messages: Vec<ChatMessage>,
+        _response_schema: Option<serde_json::Value>,
+    ) -> Result<String> {
+        // Default: use regular chat and return the text field
+        let response = self.chat(messages).await?;
+        Ok(response.text)
+    }
+
     /// Stream tokens through the sender, then return the final parsed response.
     /// Default implementation falls back to non-streaming chat.
     async fn stream_chat(
@@ -265,35 +277,48 @@ pub fn build_plant_context(plant: &crate::models::PlantResponse) -> String {
     )
 }
 
-/// JSON schema for structured output (used by OpenAI response_format and Ollama format).
-pub const RESPONSE_JSON_SCHEMA: &str = r#"{
-    "type": "object",
-    "properties": {
-        "text": { "type": "string" },
-        "suggestions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "suggestion_type": { "type": "string", "enum": ["schedule_change", "new_task", "care_action", "photo_request", "species_correction"] },
-                    "description": { "type": "string" },
-                    "payload": { "type": "object" }
-                },
-                "required": ["suggestion_type", "description", "payload"]
+/// JSON schema for the coach response structured output.
+pub fn coach_response_schema() -> serde_json::Value {
+    serde_json::json!({
+        "type": "object",
+        "properties": {
+            "text": { "type": "string" },
+            "suggestions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "suggestion_type": {
+                            "type": "string",
+                            "enum": ["schedule_change", "new_task", "care_action", "photo_request", "species_correction"]
+                        },
+                        "description": { "type": "string" },
+                        "payload": { "type": "object" }
+                    },
+                    "required": ["suggestion_type", "description", "payload"]
+                }
+            },
+            "extracted_facts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "fact_type": {
+                            "type": "string",
+                            "enum": [
+                                "location", "light", "soil", "pot", "watering_preference",
+                                "temperature", "humidity", "growth_habit", "symptom_pattern",
+                                "pest_history", "fertilizer_preference", "propagation",
+                                "acquisition", "species_note", "general"
+                            ]
+                        },
+                        "content": { "type": "string" },
+                        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+                    },
+                    "required": ["fact_type", "content", "confidence"]
+                }
             }
         },
-        "extracted_facts": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "fact_type": { "type": "string", "enum": ["location", "light", "soil", "pot", "watering_preference", "temperature", "humidity", "growth_habit", "symptom_pattern", "pest_history", "fertilizer_preference", "propagation", "acquisition", "species_note", "general"] },
-                    "content": { "type": "string" },
-                    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
-                },
-                "required": ["fact_type", "content", "confidence"]
-            }
-        }
-    },
-    "required": ["text", "suggestions", "extracted_facts"]
-}"#;
+        "required": ["text", "suggestions", "extracted_facts"]
+    })
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE admin_settings SET value = '1' WHERE key = 'max_total_users'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "11e755a1a764ef17fd6fbfeb1edc6f155e9ba5c55b48da783570b0ec6be31980"
+}

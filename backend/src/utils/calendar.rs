@@ -145,6 +145,7 @@ mod tests {
                 make_care_task("Water", "💧", 7),
                 make_care_task("Fertilize", "🌱", 14),
             ],
+            attributes: vec![],
             created_at: Utc::now(),
             updated_at: Utc::now(),
             user_id: "test-user".to_string(),

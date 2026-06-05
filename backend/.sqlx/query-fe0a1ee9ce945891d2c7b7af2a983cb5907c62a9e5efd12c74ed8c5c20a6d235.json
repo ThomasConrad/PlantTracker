@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO plants (id, user_id, name, genus, created_at, updated_at)\n             VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "fe0a1ee9ce945891d2c7b7af2a983cb5907c62a9e5efd12c74ed8c5c20a6d235"
+}

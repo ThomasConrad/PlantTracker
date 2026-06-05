@@ -1022,6 +1022,25 @@
   background: rgba(0, 0, 0, 0.3);
 }
 
+.bottom-sheet-backdrop-custom {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
+}
+
+.bottom-sheet-backdrop-custom > * {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bottom-sheet-backdrop-custom-visible {
+  opacity: 1;
+}
+
 .bottom-sheet-panel {
   position: absolute;
   left: 0;

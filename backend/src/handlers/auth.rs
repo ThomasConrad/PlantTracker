@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::Multipart,
+    extract::{Multipart, State},
     http::{header, StatusCode},
     response::Json,
     response::Response,
@@ -11,6 +11,7 @@ use axum::{
 use crate::app_state::AppState;
 use crate::auth::{AuthSession, Credentials};
 use crate::database::users as db_users;
+use crate::extractors::AuthenticatedUser;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{
     AuthResponse, ChangePasswordRequest, CreateUserRequest, DeleteAccountRequest, LoginRequest,
@@ -200,16 +201,9 @@ async fn register(
     Ok((axum::http::StatusCode::CREATED, Json(response)))
 }
 
-async fn me(auth_session: AuthSession) -> Result<Json<UserResponse>> {
-    if let Some(user) = auth_session.user {
-        tracing::debug!("Retrieved user profile: {}", user.email);
-        Ok(Json(user.into()))
-    } else {
-        tracing::warn!("Unauthenticated request to /me endpoint");
-        Err(AppError::Authentication {
-            message: "Not authenticated".to_string(),
-        })
-    }
+async fn me(AuthenticatedUser(user): AuthenticatedUser) -> Result<Json<UserResponse>> {
+    tracing::debug!("Retrieved user profile: {}", user.email);
+    Ok(Json(user.into()))
 }
 
 async fn logout(mut auth_session: AuthSession) -> Result<axum::http::StatusCode> {
@@ -239,15 +233,12 @@ async fn logout(mut auth_session: AuthSession) -> Result<axum::http::StatusCode>
     security(("session" = []))
 )]
 async fn update_profile(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<UpdateProfileRequest>,
 ) -> Result<Json<UserResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
-
     let updated_user = db_users::update_user_profile(
-        &auth_session.backend.db,
+        &app_state.pool,
         &user.id,
         &payload.name,
         &payload.email,
@@ -266,13 +257,10 @@ async fn update_profile(
 }
 
 async fn update_llm_settings(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<UpdateLlmSettingsRequest>,
 ) -> Result<Json<UserResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
-
     // If api_key is None/empty, preserve existing key (user just didn't re-enter it)
     let api_key = match &payload.api_key {
         Some(k) if !k.is_empty() => Some(k.as_str()),
@@ -281,7 +269,7 @@ async fn update_llm_settings(
     };
 
     let updated_user = db_users::update_user_llm_settings(
-        &auth_session.backend.db,
+        &app_state.pool,
         &user.id,
         payload.base_url.as_deref(),
         api_key,
@@ -293,12 +281,10 @@ async fn update_llm_settings(
 }
 
 async fn upload_profile_picture(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<serde_json::Value>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let mut file_data: Option<Vec<u8>> = None;
     let mut content_type: Option<String> = None;
@@ -338,7 +324,7 @@ async fn upload_profile_picture(
         .map_err(|_| AppError::Validation(validator::ValidationErrors::new()))?;
 
     db_users::set_user_profile_picture(
-        &auth_session.backend.db,
+        &app_state.pool,
         &user.id,
         &processed.data,
         &processed.content_type,
@@ -354,12 +340,11 @@ async fn upload_profile_picture(
     ))
 }
 
-async fn get_profile_picture(auth_session: AuthSession) -> Result<Response<Body>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
-
-    let picture = db_users::get_user_profile_picture(&auth_session.backend.db, &user.id).await?;
+async fn get_profile_picture(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
+) -> Result<Response<Body>> {
+    let picture = db_users::get_user_profile_picture(&app_state.pool, &user.id).await?;
 
     let (data, content_type) = picture.ok_or(AppError::NotFound {
         resource: "Profile picture".to_string(),
@@ -378,12 +363,11 @@ async fn get_profile_picture(auth_session: AuthSession) -> Result<Response<Body>
     Ok(response)
 }
 
-async fn delete_profile_picture(auth_session: AuthSession) -> Result<StatusCode> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
-
-    db_users::delete_user_profile_picture(&auth_session.backend.db, &user.id).await?;
+async fn delete_profile_picture(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
+) -> Result<StatusCode> {
+    db_users::delete_user_profile_picture(&app_state.pool, &user.id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -399,15 +383,12 @@ async fn delete_profile_picture(auth_session: AuthSession) -> Result<StatusCode>
     security(("session" = []))
 )]
 async fn change_password(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<ChangePasswordRequest>,
 ) -> Result<Json<serde_json::Value>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
-
     db_users::change_user_password(
-        &auth_session.backend.db,
+        &app_state.pool,
         &user.id,
         &payload.current_password,
         &payload.new_password,
@@ -429,12 +410,11 @@ async fn change_password(
     ),
     security(("session" = []))
 )]
-async fn export_data(auth_session: AuthSession) -> Result<Json<serde_json::Value>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
-
-    let payload = db_users::export_user_data(&auth_session.backend.db, &user.id).await?;
+async fn export_data(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
+) -> Result<Json<serde_json::Value>> {
+    let payload = db_users::export_user_data(&app_state.pool, &user.id).await?;
     Ok(Json(payload))
 }
 

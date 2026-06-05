@@ -10,13 +10,13 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::tracking as db_tracking;
+use crate::extractors::AuthenticatedUser;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::tracking_entry::{
     CreateTrackingEntryRequest, TrackingEntriesResponse, TrackingEntry,
 };
-use crate::utils::errors::{AppError, Result};
+use crate::utils::errors::Result;
 
 #[derive(Debug, Deserialize)]
 struct ListEntriesQuery {
@@ -51,14 +51,11 @@ pub fn routes() -> Router<AppState> {
     )
 )]
 async fn list_entries(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListEntriesQuery>,
 ) -> Result<Json<TrackingEntriesResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "List tracking entries request for plant: {} by user: {} with params: {:?}",
@@ -111,14 +108,11 @@ async fn list_entries(
     )
 )]
 async fn create_entry(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<CreateTrackingEntryRequest>,
 ) -> Result<(StatusCode, Json<TrackingEntry>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Create tracking entry request for plant: {} by user: {}",
@@ -138,13 +132,10 @@ async fn create_entry(
 }
 
 async fn get_entry(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<TrackingEntry>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Get tracking entry request for plant: {}, entry: {} by user: {}",
@@ -165,16 +156,13 @@ async fn get_entry(
 }
 
 async fn update_entry(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
     ValidatedJson(payload): ValidatedJson<
         crate::models::tracking_entry::UpdateTrackingEntryRequest,
     >,
 ) -> Result<Json<TrackingEntry>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Update tracking entry request for plant: {}, entry: {} by user: {}",
@@ -201,13 +189,10 @@ async fn update_entry(
 }
 
 async fn delete_entry(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((plant_id, entry_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Delete tracking entry request for plant: {}, entry: {} by user: {}",

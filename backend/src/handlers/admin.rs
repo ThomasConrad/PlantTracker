@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     admin::{get_system_stats, SystemStats},
     app_state::AppState,
-    auth::AuthSession,
+    extractors::AuthenticatedUser,
     models::user::{FirstDayOfWeek, PreferredUnits, UserResponse, UserRole},
     utils::errors::{AppError, Result},
 };
@@ -98,12 +98,9 @@ pub enum BulkUserAction {
     security(("session" = []))
 )]
 pub async fn get_admin_dashboard(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<AdminDashboardResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -213,13 +210,10 @@ pub async fn get_admin_dashboard(
     security(("session" = []))
 )]
 pub async fn list_users(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     Query(query): Query<UserListQuery>,
 ) -> Result<Json<UserListResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -313,14 +307,11 @@ pub async fn list_users(
     security(("session" = []))
 )]
 pub async fn update_user(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     axum::extract::Path(user_id): axum::extract::Path<String>,
     JsonExtractor(request): JsonExtractor<UpdateUserRequest>,
 ) -> Result<Json<UserResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -448,13 +439,10 @@ pub async fn update_user(
     security(("session" = []))
 )]
 pub async fn delete_user(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     axum::extract::Path(user_id): axum::extract::Path<String>,
 ) -> Result<Json<serde_json::Value>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -503,12 +491,9 @@ pub async fn delete_user(
     security(("session" = []))
 )]
 pub async fn get_admin_settings(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<AdminSettingsResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -559,13 +544,10 @@ pub async fn get_admin_settings(
     security(("session" = []))
 )]
 pub async fn update_admin_settings(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     JsonExtractor(request): JsonExtractor<UpdateAdminSettingsRequest>,
 ) -> Result<Json<AdminSettingsResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -653,13 +635,10 @@ pub async fn update_admin_settings(
     security(("session" = []))
 )]
 pub async fn bulk_user_action(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
     JsonExtractor(request): JsonExtractor<BulkUserActionRequest>,
 ) -> Result<Json<serde_json::Value>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -753,12 +732,9 @@ pub async fn bulk_user_action(
     security(("session" = []))
 )]
 pub async fn get_system_health(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     // Check if user is admin
     if !user.is_admin() {
@@ -837,12 +813,9 @@ pub async fn get_system_health(
     security(("session" = []))
 )]
 pub async fn run_daily_health_check(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
 
     if !user.is_admin() {
         return Err(AppError::Authorization {
@@ -888,12 +861,7 @@ pub async fn run_daily_health_check(
         };
 
         // Resolve the coach for this user
-        let coach = match crate::llm::resolve_coach_for_request(
-            plant_user.llm_base_url.as_deref(),
-            plant_user.llm_api_key.as_deref(),
-            plant_user.llm_model.as_deref(),
-            state.coach.as_ref(),
-        ) {
+        let coach = match plant_user.resolve_coach(state.coach.as_ref()) {
             Ok(c) => c,
             Err(_) => {
                 failed += 1;

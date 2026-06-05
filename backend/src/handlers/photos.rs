@@ -10,8 +10,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::photos as db_photos;
+use crate::extractors::AuthenticatedUser;
 use crate::models::{Photo, UploadPhotoRequest};
 use crate::utils::errors::{AppError, Result};
 
@@ -46,14 +46,11 @@ pub fn routes() -> Router<AppState> {
 }
 
 async fn list_photos(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListPhotosQuery>,
 ) -> Result<Json<PhotosResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "List photos request for plant: {} by user: {}",
@@ -105,13 +102,10 @@ async fn list_photos(
 }
 
 async fn serve_photo(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Response<Body>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Serve photo request for plant: {}, photo: {} by user: {}",
@@ -139,14 +133,11 @@ async fn serve_photo(
 }
 
 async fn upload_photo(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<crate::models::Photo>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Upload photo request for plant: {} by user: {}",
@@ -263,12 +254,7 @@ async fn upload_photo(
     );
 
     // Trigger background health assessment from the new photo (best-effort)
-    if let Ok(coach) = crate::llm::resolve_coach_for_request(
-        user.llm_base_url.as_deref(),
-        user.llm_api_key.as_deref(),
-        user.llm_model.as_deref(),
-        app_state.coach.as_ref(),
-    ) {
+    if let Ok(coach) = user.resolve_coach(app_state.coach.as_ref()) {
         super::memory::trigger_background_assessment(
             app_state,
             plant_id,
@@ -281,13 +267,10 @@ async fn upload_photo(
 }
 
 async fn delete_photo(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((plant_id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Delete photo request for plant: {}, photo: {} by user: {}",

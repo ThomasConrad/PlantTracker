@@ -10,8 +10,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::plants as db_plants;
+use crate::extractors::AuthenticatedUser;
 use crate::handlers::{care_tasks, photos, tracking};
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{CreatePlantRequest, PlantResponse, PlantsResponse, UpdatePlantRequest};
@@ -64,13 +64,10 @@ struct ListPlantsQuery {
     )
 )]
 async fn list_plants(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Query(params): Query<ListPlantsQuery>,
 ) -> Result<Json<PlantsResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "List plants request for user {} with params: {:?}",
@@ -123,13 +120,10 @@ async fn list_plants(
     )
 )]
 async fn create_plant(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<CreatePlantRequest>,
 ) -> Result<(StatusCode, Json<PlantResponse>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Create plant request for user {}: name={}, genus={}",
@@ -162,13 +156,10 @@ async fn create_plant(
     )
 )]
 async fn get_plant(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!("Get plant request for id: {} by user: {}", id, user.id);
 
@@ -204,14 +195,11 @@ async fn get_plant(
     )
 )]
 async fn update_plant(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdatePlantRequest>,
 ) -> Result<Json<PlantResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!("Update plant request for id: {} by user: {}", id, user.id);
     tracing::debug!("Update payload: {:?}", payload);
@@ -240,13 +228,10 @@ async fn update_plant(
     )
 )]
 async fn delete_plant(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!("Delete plant request for id: {} by user: {}", id, user.id);
 
@@ -274,13 +259,10 @@ async fn delete_plant(
     )
 )]
 pub async fn archive_plant(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!("Archive plant request for id: {} by user: {}", id, user.id);
     let plant = db_plants::archive_plant(&app_state.pool, id, &user.id).await?;
@@ -305,13 +287,10 @@ pub async fn archive_plant(
     )
 )]
 pub async fn unarchive_plant(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Unarchive plant request for id: {} by user: {}",
@@ -323,13 +302,10 @@ pub async fn unarchive_plant(
 }
 
 async fn set_plant_preview(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((id, photo_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<PlantResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Set preview request for plant: {}, photo: {} by user: {}",
@@ -350,13 +326,10 @@ async fn set_plant_preview(
 }
 
 async fn clear_plant_preview(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<PlantResponse>> {
-    let user = auth_session.user.ok_or_else(|| AppError::Authentication {
-        message: "User not authenticated".to_string(),
-    })?;
 
     tracing::info!(
         "Clear preview request for plant: {} by user: {}",

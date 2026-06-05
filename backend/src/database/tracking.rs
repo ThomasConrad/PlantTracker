@@ -6,6 +6,7 @@ use crate::database::DatabasePool;
 use crate::models::tracking_entry::{
     CreateTrackingEntryRequest, Measurement, TrackingEntriesResponse, TrackingEntry,
 };
+use crate::utils::db_traits::{DbParse, RequireAffected};
 use crate::utils::errors::AppError;
 
 /// Convert raw field values into a TrackingEntry. Shared logic for both
@@ -21,7 +22,7 @@ fn fields_to_entry(
     photo_ids_json: Option<&str>,
     created_at: &str,
     updated_at: &str,
-) -> TrackingEntry {
+) -> Result<TrackingEntry, AppError> {
     let care_task_ids = care_task_ids_json.and_then(|s| {
         serde_json::from_str::<Vec<String>>(s).ok().map(|ids| {
             ids.iter()
@@ -41,27 +42,21 @@ fn fields_to_entry(
         })
     });
 
-    TrackingEntry {
-        id: Uuid::parse_str(id).expect("Invalid UUID"),
-        plant_id: Uuid::parse_str(plant_id).expect("Invalid UUID"),
-        timestamp: chrono::DateTime::parse_from_rfc3339(timestamp)
-            .expect("Invalid timestamp")
-            .with_timezone(&Utc),
+    Ok(TrackingEntry {
+        id: DbParse::uuid(id)?,
+        plant_id: DbParse::uuid(plant_id)?,
+        timestamp: DbParse::datetime(timestamp)?,
         care_task_ids,
         measurements,
         notes,
         photo_ids,
-        created_at: chrono::DateTime::parse_from_rfc3339(created_at)
-            .expect("Invalid timestamp")
-            .with_timezone(&Utc),
-        updated_at: chrono::DateTime::parse_from_rfc3339(updated_at)
-            .expect("Invalid timestamp")
-            .with_timezone(&Utc),
-    }
+        created_at: DbParse::datetime(created_at)?,
+        updated_at: DbParse::datetime(updated_at)?,
+    })
 }
 
 /// Convert a SqliteRow to TrackingEntry (used by dynamic queries)
-fn row_to_entry(row: &sqlx::sqlite::SqliteRow) -> TrackingEntry {
+fn row_to_entry(row: &sqlx::sqlite::SqliteRow) -> Result<TrackingEntry, AppError> {
     let id: String = row.get("id");
     let plant_id: String = row.get("plant_id");
     let timestamp: String = row.get("timestamp");
@@ -94,21 +89,9 @@ pub async fn get_tracking_entries_for_plant_paginated(
     sort_desc: bool,
     _entry_type_filter: Option<&str>,
 ) -> Result<TrackingEntriesResponse, AppError> {
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
+
     let plant_id_str = plant_id.to_string();
-
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
 
     let order_clause = if sort_desc {
         "ORDER BY timestamp DESC"
@@ -118,7 +101,7 @@ pub async fn get_tracking_entries_for_plant_paginated(
 
     let count_query = "SELECT COUNT(*) as count FROM tracking_entries WHERE plant_id = ?";
     let total = sqlx::query(count_query)
-        .bind(plant_id.to_string())
+        .bind(&plant_id_str)
         .fetch_one(pool)
         .await?
         .get::<i64, _>("count");
@@ -133,13 +116,16 @@ pub async fn get_tracking_entries_for_plant_paginated(
     );
 
     let entries_rows = sqlx::query(&entries_query)
-        .bind(plant_id.to_string())
+        .bind(&plant_id_str)
         .bind(limit)
         .bind(offset)
         .fetch_all(pool)
         .await?;
 
-    let entries: Vec<TrackingEntry> = entries_rows.iter().map(row_to_entry).collect();
+    let entries: Vec<TrackingEntry> = entries_rows
+        .iter()
+        .map(row_to_entry)
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(TrackingEntriesResponse { entries, total })
 }
@@ -150,21 +136,9 @@ pub async fn get_tracking_entries_for_plant(
     plant_id: &Uuid,
     user_id: &str,
 ) -> Result<TrackingEntriesResponse, AppError> {
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
+
     let plant_id_str = plant_id.to_string();
-
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
 
     let entries_rows = sqlx::query!(
         r#"SELECT id, plant_id, timestamp, care_task_ids, measurements, notes, photo_ids, created_at, updated_at
@@ -191,7 +165,7 @@ pub async fn get_tracking_entries_for_plant(
                 &row.updated_at,
             )
         })
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
     let total = entries.len() as i64;
 
     Ok(TrackingEntriesResponse { entries, total })
@@ -203,21 +177,9 @@ pub async fn create_tracking_entry(
     user_id: &str,
     request: &CreateTrackingEntryRequest,
 ) -> Result<TrackingEntry, AppError> {
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
+
     let plant_id_str = plant_id.to_string();
-
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
 
     let entry_id = Uuid::new_v4();
     let now = Utc::now();
@@ -292,22 +254,10 @@ pub async fn get_tracking_entry(
     entry_id: &Uuid,
     user_id: &str,
 ) -> Result<TrackingEntry, AppError> {
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
+
     let plant_id_str = plant_id.to_string();
     let entry_id_str = entry_id.to_string();
-
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
 
     let row = sqlx::query!(
         r#"SELECT id, plant_id, timestamp, care_task_ids, measurements, notes, photo_ids, created_at, updated_at
@@ -322,7 +272,7 @@ pub async fn get_tracking_entry(
         resource: format!("Tracking entry with id {entry_id}"),
     })?;
 
-    Ok(fields_to_entry(
+    fields_to_entry(
         &row.id,
         &row.plant_id,
         &row.timestamp,
@@ -332,7 +282,7 @@ pub async fn get_tracking_entry(
         row.photo_ids.as_deref(),
         &row.created_at,
         &row.updated_at,
-    ))
+    )
 }
 
 pub async fn update_tracking_entry(
@@ -342,22 +292,10 @@ pub async fn update_tracking_entry(
     user_id: &str,
     request: &crate::models::tracking_entry::UpdateTrackingEntryRequest,
 ) -> Result<TrackingEntry, AppError> {
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
+
     let plant_id_str = plant_id.to_string();
     let entry_id_str = entry_id.to_string();
-
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
 
     let entry_exists = sqlx::query!(
         r#"SELECT 1 as "x" FROM tracking_entries WHERE id = ? AND plant_id = ?"#,
@@ -431,13 +369,10 @@ pub async fn update_tracking_entry(
         .bind(entry_id.to_string())
         .bind(plant_id.to_string());
 
-    let result = query_builder.execute(pool).await?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Tracking entry with id {entry_id}"),
-        });
-    }
+    query_builder
+        .execute(pool)
+        .await?
+        .require_affected(format!("Tracking entry with id {entry_id}"))?;
 
     // Update last_performed for any new care tasks
     if let Some(care_task_ids) = &request.care_task_ids {
@@ -467,36 +402,19 @@ pub async fn delete_tracking_entry(
     entry_id: &Uuid,
     user_id: &str,
 ) -> Result<(), AppError> {
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
+
     let plant_id_str = plant_id.to_string();
     let entry_id_str = entry_id.to_string();
 
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
-
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"DELETE FROM tracking_entries WHERE id = ? AND plant_id = ?"#,
         entry_id_str,
         plant_id_str
     )
     .execute(pool)
-    .await?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Tracking entry with id {entry_id}"),
-        });
-    }
+    .await?
+    .require_affected(format!("Tracking entry with id {entry_id}"))?;
 
     Ok(())
 }

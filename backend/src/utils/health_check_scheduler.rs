@@ -80,12 +80,7 @@ async fn run_all_assessments(app_state: &AppState) -> Result<(u32, u32, usize), 
         };
 
         // Resolve the coach for this user
-        let coach: Arc<dyn PlantCoach> = match crate::llm::resolve_coach_for_request(
-            plant_user.llm_base_url.as_deref(),
-            plant_user.llm_api_key.as_deref(),
-            plant_user.llm_model.as_deref(),
-            app_state.coach.as_ref(),
-        ) {
+        let coach: Arc<dyn PlantCoach> = match plant_user.resolve_coach(app_state.coach.as_ref()) {
             Ok(c) => c,
             Err(_) => {
                 // No coach available for this user, skip

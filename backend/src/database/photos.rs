@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::database::DatabasePool;
 use crate::models::{Photo, PhotosResponse, UploadPhotoRequest};
+use crate::utils::db_traits::RequireAffected;
 use crate::utils::errors::AppError;
 use crate::utils::image_processing::process_uploaded_image;
 
@@ -26,20 +27,9 @@ pub async fn get_photos_for_plant_paginated(
     sort_desc: Option<bool>,
 ) -> Result<PhotosResponse, AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_id_str = plant_id.to_string();
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
 
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    let plant_id_str = plant_id.to_string();
 
     // Set default values
     let limit = limit.unwrap_or(50);
@@ -114,22 +104,10 @@ pub async fn get_photo_data(
     user_id: &str,
 ) -> Result<(Vec<u8>, String), AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_id_str = plant_id.to_string();
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
 
     // Get photo data
+    let plant_id_str = plant_id.to_string();
     let photo_id_str = photo_id.to_string();
     let photo_row = sqlx::query!(
         r#"SELECT data, content_type FROM photos WHERE id = ? AND plant_id = ?"#,
@@ -159,20 +137,9 @@ pub async fn create_photo(
     request: &UploadPhotoRequest,
 ) -> Result<Photo, AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_id_str = plant_id.to_string();
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
 
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    let plant_id_str = plant_id.to_string();
 
     let photo_id = Uuid::new_v4();
     let now = Utc::now();
@@ -240,20 +207,9 @@ pub async fn delete_photo(
     user_id: &str,
 ) -> Result<(), AppError> {
     // First verify the plant exists and belongs to the user
-    let plant_id_str = plant_id.to_string();
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as exists_flag FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
 
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    let plant_id_str = plant_id.to_string();
 
     // Verify photo exists before deletion
     let photo_id_str = photo_id.to_string();
@@ -323,19 +279,14 @@ pub async fn delete_photo(
     }
 
     // Delete photo record (photo data is deleted with the row)
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"DELETE FROM photos WHERE id = ? AND plant_id = ?"#,
         photo_id_str,
         plant_id_str
     )
     .execute(&mut *tx)
-    .await?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Photo with id {photo_id}"),
-        });
-    }
+    .await?
+    .require_affected(format!("Photo with id {photo_id}"))?;
 
     tx.commit().await?;
 

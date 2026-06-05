@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use sqlx::Row;
 use uuid::Uuid;
 
@@ -8,19 +8,8 @@ use crate::models::care_task::{
     UpdateCareTaskRequest,
 };
 use crate::models::tracking_entry::TrackingEntry;
+use crate::utils::db_traits::{DbParse, RequireAffected};
 use crate::utils::errors::AppError;
-
-fn parse_dt(s: &str) -> Result<DateTime<Utc>, AppError> {
-    s.parse::<DateTime<Utc>>().map_err(|_| AppError::Internal {
-        message: "Invalid datetime in database".to_string(),
-    })
-}
-
-fn parse_uuid(s: &str) -> Result<Uuid, AppError> {
-    Uuid::parse_str(s).map_err(|_| AppError::Internal {
-        message: "Invalid UUID in database".to_string(),
-    })
-}
 
 /// Convert individual field values into a CareTask. Shared by both dynamic
 /// queries (via `row_to_care_task`) and compile-time-checked macro queries.
@@ -43,9 +32,9 @@ fn fields_to_care_task(
     updated_at: &str,
 ) -> Result<CareTask, AppError> {
     Ok(CareTask {
-        id: parse_uuid(id)?,
-        plant_id: parse_uuid(plant_id)?,
-        user_id: parse_uuid(user_id)?,
+        id: DbParse::uuid(id)?,
+        plant_id: DbParse::uuid(plant_id)?,
+        user_id: DbParse::uuid(user_id)?,
         name,
         icon,
         color,
@@ -53,11 +42,11 @@ fn fields_to_care_task(
         amount,
         unit,
         notes,
-        last_performed: last_performed.map(parse_dt).transpose()?,
+        last_performed: last_performed.map(DbParse::datetime).transpose()?,
         sort_order,
-        archived_at: archived_at.map(parse_dt).transpose()?,
-        created_at: parse_dt(created_at)?,
-        updated_at: parse_dt(updated_at)?,
+        archived_at: archived_at.map(DbParse::datetime).transpose()?,
+        created_at: DbParse::datetime(created_at)?,
+        updated_at: DbParse::datetime(updated_at)?,
     })
 }
 
@@ -122,22 +111,7 @@ pub async fn list_care_tasks_for_plant(
     user_id: &str,
     include_archived: bool,
 ) -> Result<CareTasksResponse, AppError> {
-    // Verify plant ownership
-    let plant_id_str = plant_id.to_string();
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(AppError::Database)?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
 
     // Dynamic query based on include_archived flag — keep as runtime query
     let query = if include_archived {
@@ -225,25 +199,11 @@ pub async fn create_care_task(
     user_id: &str,
     request: &CreateCareTaskRequest,
 ) -> Result<CareTaskWithStatus, AppError> {
-    // Verify plant ownership
-    let plant_id_str = plant_id.to_string();
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "x" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(AppError::Database)?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    crate::utils::db_traits::verify_plant_ownership(pool, plant_id, user_id).await?;
 
     let id = Uuid::new_v4();
     let id_str = id.to_string();
+    let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
     let last_performed = request.last_performed.map(|dt| dt.to_rfc3339());
     let sort_order = request.sort_order.unwrap_or(0);
@@ -396,20 +356,15 @@ pub async fn delete_care_task(
     user_id: &str,
 ) -> Result<(), AppError> {
     let task_id_str = task_id.to_string();
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"DELETE FROM care_tasks WHERE id = ? AND user_id = ?"#,
         task_id_str,
         user_id
     )
     .execute(pool)
     .await
-    .map_err(AppError::Database)?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Care task with id {task_id}"),
-        });
-    }
+    .map_err(AppError::Database)?
+    .require_affected(format!("Care task with id {task_id}"))?;
 
     Ok(())
 }
@@ -421,7 +376,7 @@ pub async fn archive_care_task(
 ) -> Result<CareTaskWithStatus, AppError> {
     let now = Utc::now().to_rfc3339();
     let task_id_str = task_id.to_string();
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"UPDATE care_tasks SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND archived_at IS NULL"#,
         now,
         now,
@@ -430,13 +385,8 @@ pub async fn archive_care_task(
     )
     .execute(pool)
     .await
-    .map_err(AppError::Database)?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Care task with id {task_id}"),
-        });
-    }
+    .map_err(AppError::Database)?
+    .require_affected(format!("Care task with id {task_id}"))?;
 
     get_care_task(pool, task_id, user_id).await
 }
@@ -448,7 +398,7 @@ pub async fn unarchive_care_task(
 ) -> Result<CareTaskWithStatus, AppError> {
     let now = Utc::now().to_rfc3339();
     let task_id_str = task_id.to_string();
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"UPDATE care_tasks SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?"#,
         now,
         task_id_str,
@@ -456,13 +406,8 @@ pub async fn unarchive_care_task(
     )
     .execute(pool)
     .await
-    .map_err(AppError::Database)?;
-
-    if result.rows_affected() == 0 {
-        return Err(AppError::NotFound {
-            resource: format!("Care task with id {task_id}"),
-        });
-    }
+    .map_err(AppError::Database)?
+    .require_affected(format!("Care task with id {task_id}"))?;
 
     get_care_task(pool, task_id, user_id).await
 }

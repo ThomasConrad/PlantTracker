@@ -9,15 +9,15 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::care_tasks as db;
+use crate::extractors::AuthenticatedUser;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::care_task::{
     CareTaskWithStatus, CareTasksResponse, CreateCareTaskRequest, LogCareTaskRequest,
     ReorderCareTasksRequest, UpdateCareTaskRequest,
 };
 use crate::models::tracking_entry::TrackingEntry;
-use crate::utils::errors::{AppError, Result};
+use crate::utils::errors::Result;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -65,14 +65,11 @@ struct ListCareTasksQuery {
     security(("session" = []))
 )]
 async fn list_care_tasks(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     Query(params): Query<ListCareTasksQuery>,
 ) -> Result<Json<CareTasksResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let response = db::list_care_tasks_for_plant(
         &app_state.pool,
@@ -100,14 +97,11 @@ async fn list_care_tasks(
     security(("session" = []))
 )]
 async fn create_care_task(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<CreateCareTaskRequest>,
 ) -> Result<(StatusCode, Json<CareTaskWithStatus>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let task = db::create_care_task(&app_state.pool, &plant_id, &user.id, &payload).await?;
     Ok((StatusCode::CREATED, Json(task)))
@@ -129,13 +123,10 @@ async fn create_care_task(
     security(("session" = []))
 )]
 async fn get_care_task(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<CareTaskWithStatus>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let task = db::get_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(Json(task))
@@ -158,14 +149,11 @@ async fn get_care_task(
     security(("session" = []))
 )]
 async fn update_care_task(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
     ValidatedJson(payload): ValidatedJson<UpdateCareTaskRequest>,
 ) -> Result<Json<CareTaskWithStatus>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let task = db::update_care_task(&app_state.pool, &task_id, &user.id, &payload).await?;
     Ok(Json(task))
@@ -187,13 +175,10 @@ async fn update_care_task(
     security(("session" = []))
 )]
 async fn delete_care_task(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     db::delete_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -216,14 +201,11 @@ async fn delete_care_task(
     security(("session" = []))
 )]
 async fn log_care_task(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
     ValidatedJson(payload): ValidatedJson<LogCareTaskRequest>,
 ) -> Result<(StatusCode, Json<LogCareTaskResponse>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let (task, entry) = db::log_care_task(&app_state.pool, &task_id, &user.id, &payload).await?;
     Ok((
@@ -255,13 +237,10 @@ pub struct LogCareTaskResponse {
     security(("session" = []))
 )]
 async fn archive_care_task(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<CareTaskWithStatus>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let task = db::archive_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(Json(task))
@@ -283,13 +262,10 @@ async fn archive_care_task(
     security(("session" = []))
 )]
 async fn unarchive_care_task(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path((_plant_id, task_id)): Path<(Uuid, Uuid)>,
 ) -> Result<Json<CareTaskWithStatus>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let task = db::unarchive_care_task(&app_state.pool, &task_id, &user.id).await?;
     Ok(Json(task))
@@ -309,14 +285,11 @@ async fn unarchive_care_task(
     security(("session" = []))
 )]
 async fn reorder_care_tasks(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     Json(payload): Json<ReorderCareTasksRequest>,
 ) -> Result<Json<CareTasksResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let response =
         db::reorder_care_tasks(&app_state.pool, &plant_id, &user.id, &payload.task_ids).await?;

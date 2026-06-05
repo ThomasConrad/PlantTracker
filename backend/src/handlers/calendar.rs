@@ -8,8 +8,8 @@ use axum::{
 use serde::Deserialize;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::plants as db_plants;
+use crate::extractors::AuthenticatedUser;
 use crate::utils::calendar::{generate_calendar_token, generate_plant_calendar};
 use crate::utils::errors::{AppError, Result};
 
@@ -246,13 +246,10 @@ pub async fn get_calendar_feed(
 )]
 pub async fn get_calendar_subscription_info(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     uri: Uri,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!("Calendar subscription info request for user: {}", user.id);
 
@@ -310,13 +307,10 @@ pub async fn get_calendar_subscription_info(
 )]
 pub async fn regenerate_calendar_token(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     uri: Uri,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     tracing::info!("Calendar token regeneration request for user: {}", user.id);
 

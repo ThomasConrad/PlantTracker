@@ -1,18 +1,19 @@
 use axum::{
+    extract::State,
     response::Json,
     routing::{get, post},
     Router,
 };
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::reminders as db_reminders;
+use crate::extractors::AuthenticatedUser;
 use crate::middleware::validation::ValidatedJson;
 use crate::models::{
     DispatchRemindersResponse, DueRemindersResponse, ReminderPreferences,
     UpdateReminderPreferencesRequest,
 };
-use crate::utils::errors::{AppError, Result};
+use crate::utils::errors::Result;
 use crate::utils::push::{PushCategory, PushPayload, send_push_if_allowed};
 
 pub fn routes() -> Router<AppState> {
@@ -32,12 +33,11 @@ pub fn routes() -> Router<AppState> {
     security(("session" = [])),
     tag = "reminders"
 )]
-async fn get_preferences(auth_session: AuthSession) -> Result<Json<ReminderPreferences>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
-
-    let prefs = db_reminders::get_or_create_preferences(&auth_session.backend.db, &user.id).await?;
+async fn get_preferences(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
+) -> Result<Json<ReminderPreferences>> {
+    let prefs = db_reminders::get_or_create_preferences(&app_state.pool, &user.id).await?;
     Ok(Json(prefs))
 }
 
@@ -54,15 +54,12 @@ async fn get_preferences(auth_session: AuthSession) -> Result<Json<ReminderPrefe
     tag = "reminders"
 )]
 async fn update_preferences(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
     ValidatedJson(payload): ValidatedJson<UpdateReminderPreferencesRequest>,
 ) -> Result<Json<ReminderPreferences>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
-
     let prefs =
-        db_reminders::update_preferences(&auth_session.backend.db, &user.id, &payload).await?;
+        db_reminders::update_preferences(&app_state.pool, &user.id, &payload).await?;
     Ok(Json(prefs))
 }
 
@@ -76,12 +73,11 @@ async fn update_preferences(
     security(("session" = [])),
     tag = "reminders"
 )]
-async fn get_due_reminders(auth_session: AuthSession) -> Result<Json<DueRemindersResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
-
-    let reminders = db_reminders::list_due_reminders(&auth_session.backend.db, &user.id).await?;
+async fn get_due_reminders(
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
+) -> Result<Json<DueRemindersResponse>> {
+    let reminders = db_reminders::list_due_reminders(&app_state.pool, &user.id).await?;
     let unsent_count = reminders.iter().filter(|r| !r.already_sent).count();
 
     Ok(Json(DueRemindersResponse {
@@ -102,13 +98,10 @@ async fn get_due_reminders(auth_session: AuthSession) -> Result<Json<DueReminder
     tag = "reminders"
 )]
 async fn dispatch_due_reminders(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
+    State(app_state): State<AppState>,
 ) -> Result<Json<DispatchRemindersResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Authentication required".to_string(),
-    })?;
-
-    let prefs = db_reminders::get_or_create_preferences(&auth_session.backend.db, &user.id).await?;
+    let prefs = db_reminders::get_or_create_preferences(&app_state.pool, &user.id).await?;
     if !prefs.enabled {
         return Ok(Json(DispatchRemindersResponse {
             reminders: vec![],
@@ -116,7 +109,7 @@ async fn dispatch_due_reminders(
         }));
     }
 
-    let pool = auth_session.backend.db.clone();
+    let pool = app_state.pool.clone();
     let reminders =
         db_reminders::dispatch_due_reminders(&pool, &user.id).await?;
 

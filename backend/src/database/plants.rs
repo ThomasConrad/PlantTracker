@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use sqlx::{FromRow, Row};
 use uuid::Uuid;
 
@@ -8,6 +8,7 @@ use crate::models::care_task::CreateCareTaskRequest;
 use crate::models::{
     CreatePlantRequest, CustomMetric, MetricDataType, PlantResponse, UpdatePlantRequest,
 };
+use crate::utils::db_traits::{DbParse, RequireAffected};
 use crate::utils::errors::AppError;
 
 #[derive(Debug, FromRow)]
@@ -26,38 +27,19 @@ impl PlantRow {
     #[allow(clippy::wrong_self_convention)]
     pub fn to_response(self) -> Result<PlantResponse, AppError> {
         Ok(PlantResponse {
-            id: Uuid::parse_str(&self.id).map_err(|_| AppError::Internal {
-                message: "Invalid UUID in database".to_string(),
-            })?,
+            id: DbParse::uuid(&self.id)?,
             name: self.name,
             genus: self.genus,
-            preview_id: self
-                .preview_id
-                .as_ref()
-                .and_then(|s| Uuid::parse_str(s).ok()),
+            preview_id: DbParse::optional_uuid(self.preview_id.as_deref())?,
             preview_url: self
                 .preview_id
                 .as_ref()
                 .map(|thumb_id| format!("/api/v1/plants/{}/photos/{}", self.id, thumb_id)),
-            archived_at: self
-                .archived_at
-                .map(|s| s.parse::<DateTime<Utc>>())
-                .transpose()
-                .map_err(|_| AppError::Internal {
-                    message: "Invalid datetime in database".to_string(),
-                })?,
+            archived_at: DbParse::optional_datetime(self.archived_at.as_deref())?,
             custom_metrics: vec![],
             care_tasks: vec![],
-            created_at: self.created_at.parse::<DateTime<Utc>>().map_err(|_| {
-                AppError::Internal {
-                    message: "Invalid datetime in database".to_string(),
-                }
-            })?,
-            updated_at: self.updated_at.parse::<DateTime<Utc>>().map_err(|_| {
-                AppError::Internal {
-                    message: "Invalid datetime in database".to_string(),
-                }
-            })?,
+            created_at: DbParse::datetime(&self.created_at)?,
+            updated_at: DbParse::datetime(&self.updated_at)?,
             user_id: self.user_id,
         })
     }
@@ -99,12 +81,8 @@ async fn load_custom_metrics_for_plant(
             let data_type = row.data_type;
 
             Ok(CustomMetric {
-                id: Uuid::parse_str(&id).map_err(|_| AppError::Internal {
-                    message: "Invalid custom metric id UUID in database".to_string(),
-                })?,
-                plant_id: Uuid::parse_str(&plant_id).map_err(|_| AppError::Internal {
-                    message: "Invalid custom metric plant_id UUID in database".to_string(),
-                })?,
+                id: DbParse::uuid(&id)?,
+                plant_id: DbParse::uuid(&plant_id)?,
                 name: row.name,
                 unit: row.unit,
                 data_type: parse_metric_data_type(&data_type),
@@ -420,7 +398,7 @@ pub async fn delete_plant(
 ) -> Result<(), AppError> {
     let plant_id_str = plant_id.to_string();
 
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"DELETE FROM plants WHERE id = ? AND user_id = ?"#,
         plant_id_str,
         user_id
@@ -430,13 +408,8 @@ pub async fn delete_plant(
     .map_err(|e| {
         tracing::error!("Failed to delete plant: {}", e);
         AppError::Database(e)
-    })?;
-
-    if result.rows_affected() != 1 {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    })?
+    .require_affected(format!("Plant with id {plant_id}"))?;
 
     Ok(())
 }
@@ -449,7 +422,7 @@ pub async fn archive_plant(
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
 
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"UPDATE plants SET archived_at = ?, updated_at = ? WHERE id = ? AND user_id = ?"#,
         now,
         now,
@@ -461,13 +434,8 @@ pub async fn archive_plant(
     .map_err(|e| {
         tracing::error!("Failed to archive plant: {}", e);
         AppError::Database(e)
-    })?;
-
-    if result.rows_affected() != 1 {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    })?
+    .require_affected(format!("Plant with id {plant_id}"))?;
 
     get_plant_by_id(pool, plant_id).await
 }
@@ -480,7 +448,7 @@ pub async fn unarchive_plant(
     let plant_id_str = plant_id.to_string();
     let now = Utc::now().to_rfc3339();
 
-    let result = sqlx::query!(
+    sqlx::query!(
         r#"UPDATE plants SET archived_at = NULL, updated_at = ? WHERE id = ? AND user_id = ?"#,
         now,
         plant_id_str,
@@ -491,13 +459,8 @@ pub async fn unarchive_plant(
     .map_err(|e| {
         tracing::error!("Failed to unarchive plant: {}", e);
         AppError::Database(e)
-    })?;
-
-    if result.rows_affected() != 1 {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    })?
+    .require_affected(format!("Plant with id {plant_id}"))?;
 
     get_plant_by_id(pool, plant_id).await
 }
@@ -511,20 +474,7 @@ pub async fn set_plant_preview(
     let plant_id_str = plant_id.to_string();
     let photo_id_str = photo_id.to_string();
 
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "one" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(AppError::Database)?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    crate::utils::db_traits::verify_plant_ownership(pool, &plant_id, user_id).await?;
 
     let photo_exists = sqlx::query!(
         r#"SELECT 1 as "one" FROM photos WHERE id = ? AND plant_id = ?"#,
@@ -563,20 +513,7 @@ pub async fn clear_plant_preview(
 ) -> Result<PlantResponse, AppError> {
     let plant_id_str = plant_id.to_string();
 
-    let plant_exists = sqlx::query!(
-        r#"SELECT 1 as "one" FROM plants WHERE id = ? AND user_id = ?"#,
-        plant_id_str,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await
-    .map_err(AppError::Database)?;
-
-    if plant_exists.is_none() {
-        return Err(AppError::NotFound {
-            resource: format!("Plant with id {plant_id}"),
-        });
-    }
+    crate::utils::db_traits::verify_plant_ownership(pool, &plant_id, user_id).await?;
 
     let now = Utc::now().to_rfc3339();
     sqlx::query!(

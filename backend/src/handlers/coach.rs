@@ -13,9 +13,9 @@ use std::convert::Infallible;
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::coach as db_coach;
 use crate::database::plants as db_plants;
+use crate::extractors::AuthenticatedUser;
 use crate::llm::{ChatMessage, ContentPart};
 use crate::middleware::validation::ValidatedJson;
 use crate::models::coach::*;
@@ -63,13 +63,10 @@ pub fn routes() -> Router<AppState> {
     tag = "coach"
 )]
 pub async fn get_messages(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<CoachMessagesResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // Verify plant belongs to user
     let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;
@@ -147,14 +144,11 @@ pub async fn get_messages(
     tag = "coach"
 )]
 pub async fn send_message(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<SendCoachMessageRequest>,
 ) -> Result<(StatusCode, Json<CoachMessageResponse>)> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // At least one of content or image must be provided
     if payload.content.is_empty() && payload.image_url.is_none() {
@@ -172,15 +166,7 @@ pub async fn send_message(
     }
 
     // Resolve coach: per-user LLM settings take priority over global config
-    let coach = crate::llm::resolve_coach_for_request(
-        user.llm_base_url.as_deref(),
-        user.llm_api_key.as_deref(),
-        user.llm_model.as_deref(),
-        app_state.coach.as_ref(),
-    )
-    .map_err(|_| AppError::External {
-        message: "No AI coach configured. Set up your LLM provider in Settings, or ask the admin to configure a default.".to_string(),
-    })?;
+    let coach = user.resolve_coach(app_state.coach.as_ref())?;
     let coach_ref: &dyn crate::llm::PlantCoach = coach.as_ref();
 
     let conversation =
@@ -379,12 +365,9 @@ pub struct PendingSuggestionsResponse {
     tag = "coach"
 )]
 async fn get_all_pending_suggestions(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
 ) -> Result<Json<PendingSuggestionsResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let rows = db_coach::get_all_pending_suggestions_for_user(&app_state.pool, &user.id)
         .await
@@ -430,13 +413,10 @@ async fn get_all_pending_suggestions(
     tag = "coach"
 )]
 async fn get_plant_suggestions(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<PendingSuggestionsResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // Verify plant ownership
     let plant = db_plants::get_plant_by_id(&app_state.pool, plant_id).await?;
@@ -486,13 +466,10 @@ async fn get_plant_suggestions(
     tag = "coach"
 )]
 pub async fn accept_suggestion(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(suggestion_id): Path<String>,
 ) -> Result<Json<CoachSuggestion>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let row =
         db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "accepted")
@@ -751,13 +728,10 @@ pub async fn accept_suggestion(
     tag = "coach"
 )]
 pub async fn dismiss_suggestion(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(suggestion_id): Path<String>,
 ) -> Result<Json<CoachSuggestion>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let row =
         db_coach::update_suggestion_status(&app_state.pool, &suggestion_id, &user.id, "dismissed")
@@ -783,14 +757,11 @@ pub async fn dismiss_suggestion(
 /// Streams text tokens as `event: token` and sends the final structured response as `event: done`.
 /// On error, sends `event: error` with the error message.
 pub async fn stream_message(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Path(plant_id): Path<Uuid>,
     ValidatedJson(payload): ValidatedJson<SendCoachMessageRequest>,
 ) -> Result<Sse<impl Stream<Item = std::result::Result<Event, Infallible>>>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // At least one of content or image must be provided
     if payload.content.is_empty() && payload.image_url.is_none() {
@@ -808,15 +779,7 @@ pub async fn stream_message(
     }
 
     // Resolve coach
-    let coach = crate::llm::resolve_coach_for_request(
-        user.llm_base_url.as_deref(),
-        user.llm_api_key.as_deref(),
-        user.llm_model.as_deref(),
-        app_state.coach.as_ref(),
-    )
-    .map_err(|_| AppError::External {
-        message: "No AI coach configured.".to_string(),
-    })?;
+    let coach = user.resolve_coach(app_state.coach.as_ref())?;
 
     let conversation =
         db_coach::get_or_create_conversation(&app_state.pool, &plant_id.to_string(), &user.id)

@@ -11,9 +11,9 @@ use tracing::{error, info, warn};
 use uuid::Uuid;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
 use crate::database::memory as db;
 use crate::database::photos as db_photos;
+use crate::extractors::AuthenticatedUser;
 use crate::llm::{ChatMessage, ContentPart, ImageUrlContent};
 use crate::models::memory::{
     CreateMemoryRequest, HealthHearts, MemorySource, PlantMemoriesResponse, PlantMemory,
@@ -62,12 +62,9 @@ pub fn routes() -> Router<AppState> {
 )]
 async fn list_memories(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<PlantMemoriesResponse>, AppError> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let response = db::list_memories_for_plant(&app_state.pool, &plant_id, &user.id).await?;
     Ok(Json(response))
@@ -86,13 +83,10 @@ async fn list_memories(
 )]
 async fn create_memory(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(plant_id): Path<Uuid>,
     Json(payload): Json<CreateMemoryRequest>,
 ) -> Result<(StatusCode, Json<PlantMemory>), AppError> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let memory = db::create_memory(
         &app_state.pool,
@@ -126,13 +120,10 @@ async fn create_memory(
 )]
 async fn update_memory(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path((_plant_id, memory_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<UpdateMemoryRequest>,
 ) -> Result<Json<PlantMemory>, AppError> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let memory = db::update_memory(
         &app_state.pool,
@@ -162,12 +153,9 @@ async fn update_memory(
 )]
 async fn delete_memory(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path((_plant_id, memory_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, AppError> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     db::delete_memory(&app_state.pool, &memory_id, &user.id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -185,12 +173,9 @@ async fn delete_memory(
 )]
 async fn get_health(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<HealthHearts>, AppError> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // Get latest score, or compute a basic one from care task adherence
     let score = db::get_latest_health_score(&app_state.pool, &plant_id, &user.id).await?;
@@ -304,12 +289,9 @@ struct AiHealthAssessment {
 )]
 async fn assess_health(
     State(app_state): State<AppState>,
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     Path(plant_id): Path<Uuid>,
 ) -> Result<Json<HealthHearts>, AppError> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     // Get plant info for context
     let plant = crate::database::plants::get_plant_by_id(&app_state.pool, plant_id).await?;
@@ -337,13 +319,7 @@ async fn assess_health(
     let data_url = format!("data:{};base64,{}", content_type, base64_data);
 
     // Resolve LLM coach (per-user settings take priority)
-    let coach = crate::llm::resolve_coach_for_request(
-        user.llm_base_url.as_deref(),
-        user.llm_api_key.as_deref(),
-        user.llm_model.as_deref(),
-        app_state.coach.as_ref(),
-    )
-    .map_err(|msg| AppError::External { message: msg })?;
+    let coach = user.resolve_coach(app_state.coach.as_ref())?;
 
     // Build messages for the vision model
     let system_message = ChatMessage {

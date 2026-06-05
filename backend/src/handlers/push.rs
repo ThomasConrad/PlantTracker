@@ -11,7 +11,7 @@ use tracing::info;
 use utoipa::ToSchema;
 
 use crate::app_state::AppState;
-use crate::auth::AuthSession;
+use crate::extractors::AuthenticatedUser;
 use crate::utils::errors::{AppError, Result};
 use crate::utils::push;
 
@@ -94,13 +94,10 @@ async fn get_vapid_public_key(
     tag = "push"
 )]
 async fn subscribe(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Json(payload): Json<SubscribeRequest>,
 ) -> Result<Json<SubscribeResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     push::save_subscription(
         &app_state.pool,
@@ -133,13 +130,10 @@ async fn subscribe(
     tag = "push"
 )]
 async fn unsubscribe(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
     Json(payload): Json<UnsubscribeRequest>,
 ) -> Result<Json<SubscribeResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     push::remove_subscription_by_endpoint(&app_state.pool, &user.id, &payload.endpoint)
         .await
@@ -164,12 +158,9 @@ async fn unsubscribe(
     tag = "push"
 )]
 async fn test_push(
-    auth_session: AuthSession,
+    AuthenticatedUser(user): AuthenticatedUser,
     State(app_state): State<AppState>,
 ) -> Result<Json<TestPushResponse>> {
-    let user = auth_session.user.ok_or(AppError::Authentication {
-        message: "Not authenticated".to_string(),
-    })?;
 
     let config = push::PushConfig::from_env().ok_or(AppError::External {
         message: "Push notifications are not configured on this server".to_string(),

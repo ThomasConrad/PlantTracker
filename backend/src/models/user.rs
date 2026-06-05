@@ -294,6 +294,21 @@ impl User {
     pub fn invites_remaining(&self) -> Option<i32> {
         self.max_invites.map(|max| max - self.invites_created)
     }
+
+    /// Resolve the AI coach for this user, falling back to the global coach.
+    /// Returns the coach Arc or an `AppError::External` if neither is configured.
+    pub fn resolve_coach(
+        &self,
+        global_coach: Option<&std::sync::Arc<dyn crate::llm::PlantCoach>>,
+    ) -> Result<std::sync::Arc<dyn crate::llm::PlantCoach>, crate::utils::errors::AppError> {
+        crate::llm::resolve_coach_for_request(
+            self.llm_base_url.as_deref(),
+            self.llm_api_key.as_deref(),
+            self.llm_model.as_deref(),
+            global_coach,
+        )
+        .map_err(|msg| crate::utils::errors::AppError::External { message: msg })
+    }
 }
 
 impl From<User> for UserResponse {

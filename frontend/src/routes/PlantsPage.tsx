@@ -3,6 +3,7 @@ import { A } from "@solidjs/router";
 import { plantsStore } from "@/stores/plants";
 import { PlantCard } from "@/components/plants/PlantCard";
 import { NeedsAttention } from "@/components/plants/NeedsAttention";
+import { CoachTips } from "@/components/plants/CoachTips";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PlantDetailSheet } from "@/components/plants/PlantDetailSheet";
@@ -119,6 +120,11 @@ export const PlantsPage: Component = () => {
         {/* Needs Attention Section */}
         <Show when={plantsStore.plants.length > 0}>
           <NeedsAttention plants={plantsStore.plants} />
+        </Show>
+
+        {/* Coach Tips Section */}
+        <Show when={plantsStore.plants.length > 0}>
+          <CoachTips />
         </Show>
 
         <Show

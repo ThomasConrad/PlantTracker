@@ -102,6 +102,27 @@ pub async fn get_pending_suggestions(
     Ok(suggestions)
 }
 
+/// Get all pending suggestions across all plants for a user (for dashboard)
+pub async fn get_all_pending_suggestions_for_user(
+    pool: &DatabasePool,
+    user_id: &str,
+) -> Result<Vec<CoachSuggestionRow>> {
+    let suggestions: Vec<CoachSuggestionRow> = sqlx::query_as(
+        "SELECT s.id, s.message_id, s.plant_id, s.suggestion_type, s.description, s.payload, s.status, s.applied_at, s.created_at
+         FROM coach_suggestions s
+         JOIN coach_messages m ON m.id = s.message_id
+         JOIN coach_conversations c ON c.id = m.conversation_id
+         WHERE c.user_id = ? AND s.status = 'pending'
+         ORDER BY s.created_at DESC
+         LIMIT 20",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(suggestions)
+}
+
 /// Insert a new message
 pub async fn insert_message(
     pool: &DatabasePool,

@@ -1,13 +1,42 @@
-import { Component, createEffect, createSignal, For, Show } from "solid-js";
+import { Component, createEffect, createSignal, For, Show, onMount, onCleanup } from "solid-js";
 import { A } from "@solidjs/router";
 import { plantsStore } from "@/stores/plants";
 import { PlantCard } from "@/components/plants/PlantCard";
 import { NeedsAttention } from "@/components/plants/NeedsAttention";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { PlantDetailSheet } from "@/components/plants/PlantDetailSheet";
+import type { Plant } from "@/types";
 
 export const PlantsPage: Component = () => {
   const [searchQuery] = createSignal("");
   const [sortBy, setSortBy] = createSignal("date_desc");
+  const [isMobile, setIsMobile] = createSignal(false);
+  const [selectedPlant, setSelectedPlant] = createSignal<Plant | null>(null);
+  const [sheetOpen, setSheetOpen] = createSignal(false);
+
+  onMount(() => {
+    const checkMobile = () => {
+      const isNarrow = window.innerWidth < 640;
+      const hasCoarse = window.matchMedia("(pointer: coarse)").matches;
+      const hasNoHover = window.matchMedia("(hover: none)").matches;
+      setIsMobile(isNarrow && (hasCoarse || hasNoHover));
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    onCleanup(() => window.removeEventListener("resize", checkMobile));
+  });
+
+  const handlePlantTap = (plant: Plant) => {
+    setSelectedPlant(plant);
+    setSheetOpen(true);
+  };
+
+  const handleSheetDismiss = () => {
+    setSheetOpen(false);
+    // Clear selected plant after animation
+    setTimeout(() => setSelectedPlant(null), 350);
+  };
 
   createEffect(() => {
     plantsStore.loadPlants({
@@ -155,7 +184,12 @@ export const PlantsPage: Component = () => {
                   {/* Plants Grid */}
                   <div class="grid grid-cols-1 h-full sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                     <For each={group.plants}>
-                      {(plant) => <PlantCard plant={plant} />}
+                      {(plant) => (
+                        <PlantCard
+                          plant={plant}
+                          onTap={isMobile() ? handlePlantTap : undefined}
+                        />
+                      )}
                     </For>
                   </div>
                 </div>
@@ -185,6 +219,21 @@ export const PlantsPage: Component = () => {
           </div>
         </div>
       )}
+
+      {/* Mobile plant detail bottom sheet */}
+      <BottomSheet
+        open={sheetOpen()}
+        onDismiss={handleSheetDismiss}
+        fullTopOffset={60}
+        midFraction={0.5}
+      >
+        <Show when={selectedPlant()}>
+          <PlantDetailSheet
+            plant={selectedPlant()!}
+            onDismiss={handleSheetDismiss}
+          />
+        </Show>
+      </BottomSheet>
     </div>
   );
 };
